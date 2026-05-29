@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}数据看板 - CAM 建筑工程维护系统{% endblock %}
+{% block breadcrumb %}看板{% endblock %}
+
+{% block content %}
+<div class="welcome-banner">
+  <div class="welcome-text">
+    <h1>欢迎使用 建筑工程维护系统</h1>
+    <p>实时监控项目支出，规范化管理公司凭证、人员与企业资质资质证书。</p>
+  </div>
+</div>
+
+<section class="metric-grid">
+  <article class="metric-card emerald">
+    <div class="card-glow"></div>
+    <div class="metric-info">
+      <span class="metric-title">本月项目支出</span>
+      <strong class="metric-value">¥{{ metrics.month_spending }}</strong>
+    </div>
+    <div class="metric-icon">💰</div>
+  </article>
+
+  <article class="metric-card dark-green">
+    <div class="card-glow"></div>
+    <div class="metric-info">
+      <span class="metric-title">累计项目支出</span>
+      <strong class="metric-value">¥{{ metrics.total_spending }}</strong>
+    </div>
+    <div class="metric-icon">📈</div>
+  </article>
+
+  <article class="metric-card gold">
+    <div class="card-glow"></div>
+    <div class="metric-info">
+      <span class="metric-title">本月凭证数</span>
+      <strong class="metric-value">{{ metrics.voucher_count }}</strong>
+    </div>
+    <div class="metric-icon">📄</div>
+  </article>
+
+  <article class="metric-card cyan">
+    <div class="card-glow"></div>
+    <div class="metric-info">
+      <span class="metric-title">待确认资料</span>
+      <strong class="metric-value">{{ metrics.pending_count }}</strong>
+    </div>
+    <div class="metric-icon">📥</div>
+  </article>
+
+  <article class="metric-card rose">
+    <div class="card-glow"></div>
+    <div class="metric-info">
+      <span class="metric-title">临期资质</span>
+      <strong class="metric-value">{{ metrics.expiring_qualifications }}</strong>
+    </div>
+    <div class="metric-icon">🛡️</div>
+  </article>
+</section>
+{% endblock %}

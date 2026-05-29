@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}建筑工程维护系统{% endblock %}</title>
+    <!-- 引入 Outfit 现代化高级字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  </head>
+  <body>
+    <div class="app-container">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-icon">🌱</span>
+          <span class="brand-text">CAM 维护系统</span>
+        </div>
+        <nav class="nav-menu">
+          <a href="{{ url_for('web.dashboard') }}" class="nav-item active">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">数据看板</span>
+          </a>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="version">v0.1.0 Premium</div>
+        </div>
+      </aside>
+      <main class="main-content">
+        <header class="main-header">
+          <div class="breadcrumb">
+            <span class="breadcrumb-item">系统</span>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-item active">{% block breadcrumb %}看板{% endblock %}</span>
+          </div>
+          <div class="user-profile">
+            <span class="avatar">👤</span>
+            <span class="username">系统管理员</span>
+          </div>
+        </header>
+        <div class="content-body">
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
