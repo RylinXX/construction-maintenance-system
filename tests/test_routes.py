@@ -98,3 +98,33 @@ def test_batch_upload_creates_pending_item(client):
     assert response.status_code == 200
     assert "pay.png".encode("utf-8") in response.data
     assert "待确认".encode("utf-8") in response.data
+
+
+def test_project_vouchers_detail_page(client):
+    # 先建立一个项目和一张凭证
+    client.post(
+        "/projects",
+        data={
+            "name": "基坑支护工程",
+            "status": "进行中",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        "/vouchers",
+        data={
+            "project_id": "1",
+            "voucher_date": "2026-05-29",
+            "voucher_type": "电费",
+            "amount": "800",
+            "notes": "临时用电",
+        },
+        follow_redirects=True,
+    )
+
+    # 访问专属项目费用页面
+    response = client.get("/projects/1/vouchers")
+    assert response.status_code == 200
+    assert "基坑支护工程".encode("utf-8") in response.data
+    assert "临时用电".encode("utf-8") in response.data
+    assert "800.00".encode("utf-8") in response.data

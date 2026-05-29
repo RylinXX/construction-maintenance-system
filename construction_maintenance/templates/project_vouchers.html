@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} - 费用台账 - CAM 建筑工程维护系统{% endblock %}
+{% block breadcrumb %}项目台账 / 专属费用台账{% endblock %}
+
+{% block content %}
+<div class="panel-section">
+  <!-- Back Button Row -->
+  <div class="back-row animate-slide-up">
+    <a href="{{ url_for('web.projects') }}" class="btn btn-secondary">🔙 返回项目列表</a>
+  </div>
+
+  <div class="welcome-banner animate-slide-up" style="animation-delay: 0.05s; background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);">
+    <div class="welcome-text">
+      <h1>📂 {{ project.name }}</h1>
+      <p>负责人：{{ project.owner or '未分配' }} &nbsp;|&nbsp; 状态：
+        {% if project.status == '进行中' %}
+        <span class="badge badge-success" style="vertical-align: middle;">{{ project.status }}</span>
+        {% elif project.status == '已完工' %}
+        <span class="badge badge-secondary" style="vertical-align: middle;">{{ project.status }}</span>
+        {% else %}
+        <span class="badge badge-warning" style="vertical-align: middle;">{{ project.status }}</span>
+        {% endif %}
+        &nbsp;|&nbsp; 所属公司：{{ project.company_name }}
+      </p>
+      {% if project.notes %}
+      <p style="margin-top: 8px; opacity: 0.8; font-size: 13.5px;">备注：{{ project.notes }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <section class="metric-grid animate-slide-up" style="animation-delay: 0.1s;">
+    <div class="metric-card emerald">
+      <div class="metric-info">
+        <span class="metric-title">累计费用支出总额</span>
+        <strong class="metric-value" style="color: var(--primary);">¥{{ total_spending|money }}</strong>
+      </div>
+      <div class="metric-icon">💰</div>
+    </div>
+    
+    <div class="metric-card gold">
+      <div class="metric-info">
+        <span class="metric-title">已登记凭证记录</span>
+        <strong class="metric-value">{{ vouchers|length }} 张</strong>
+      </div>
+      <div class="metric-icon">📄</div>
+    </div>
+  </section>
+
+  <div class="panel-card animate-slide-up" style="animation-delay: 0.15s; margin-top: 24px;">
+    <div class="panel-header">
+      <h2 class="panel-title">📋 专属凭证流水台账</h2>
+      <p class="panel-subtitle">该工程项目已归档记录的全部明细流水账目。</p>
+    </div>
+    
+    <div class="table-container">
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th>支出日期</th>
+            <th>费用科目</th>
+            <th class="text-right">支出金额 (元)</th>
+            <th>经办人</th>
+            <th>备注信息</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for voucher in vouchers %}
+          <tr>
+            <td class="font-mono text-dark">{{ voucher.voucher_date }}</td>
+            <td>
+              {% if voucher.voucher_type == '材料费用' %}
+              <span class="badge badge-info">{{ voucher.voucher_type }}</span>
+              {% elif voucher.voucher_type in ['油费', '电费'] %}
+              <span class="badge badge-warning">{{ voucher.voucher_type }}</span>
+              {% elif voucher.voucher_type == '人工工资' %}
+              <span class="badge badge-success">{{ voucher.voucher_type }}</span>
+              {% elif voucher.voucher_type == '员工报销' %}
+              <span class="badge badge-purple">{{ voucher.voucher_type }}</span>
+              {% else %}
+              <span class="badge badge-secondary">{{ voucher.voucher_type }}</span>
+              {% endif %}
+            </td>
+            <td class="text-right font-mono font-semibold text-primary">¥{{ voucher.amount|money }}</td>
+            <td>{{ voucher.entry_user or '--' }}</td>
+            <td class="text-muted">{{ voucher.notes or '--' }}</td>
+          </tr>
+          {% else %}
+          <tr class="empty-row">
+            <td colspan="5">
+              <div class="empty-state">
+                <span class="empty-icon">💸</span>
+                <span class="empty-text">该项目当前暂无任何相关的费用支出账目。</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<style>
+.back-row {
+  margin-bottom: 4px;
+}
+.btn-secondary {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+.btn-secondary:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+</style>
+{% endblock %}

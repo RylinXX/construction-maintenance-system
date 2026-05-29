@@ -61,11 +61,38 @@ def vouchers():
             }
         )
         return redirect(url_for("web.vouchers"))
+    
+    # 动态支持按项目进行过滤
+    filter_project_id = request.args.get("project_id", type=int)
+    if filter_project_id:
+        vouchers_list = repo.list_vouchers(project_id=filter_project_id)
+    else:
+        vouchers_list = repo.list_vouchers()
+
     return render_template(
         "vouchers.html",
         projects=repo.list_projects(),
-        vouchers=repo.list_vouchers(),
+        vouchers=vouchers_list,
+        filter_project_id=filter_project_id,
         voucher_types=["员工报销", "转账凭证", "材料费用", "油费", "电费", "人工工资", "其它"],
+    )
+
+
+@bp.route("/projects/<int:project_id>/vouchers")
+def project_vouchers(project_id: int):
+    # 查找特定项目的基本信息
+    project = next((p for p in repo.list_projects() if int(p["id"]) == project_id), None)
+    if not project:
+        return "Project not found", 404
+        
+    vouchers_list = repo.list_vouchers(project_id=project_id)
+    total_spending = sum(float(row["amount"]) for row in vouchers_list)
+    
+    return render_template(
+        "project_vouchers.html",
+        project=project,
+        vouchers=vouchers_list,
+        total_spending=total_spending
     )
 
 

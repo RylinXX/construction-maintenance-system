@@ -74,6 +74,13 @@
       <h2 class="panel-title">📋 基础人员花名册</h2>
       <p class="panel-subtitle">公司已录入及进场的全体人员档案名册。</p>
     </div>
+    
+    <!-- Premium Interactive Live Search Bar -->
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="peopleSearch" class="search-input" oninput="filterPeopleTable()" placeholder="输入人员姓名、身份证号或工种岗位进行快速智能检索...">
+    </div>
+
     <div class="table-container">
       <table class="premium-table">
         <thead>
@@ -123,4 +130,45 @@
     </div>
   </div>
 </div>
+
+<script>
+function filterPeopleTable() {
+  const query = document.getElementById('peopleSearch').value.toLowerCase();
+  const rows = document.querySelectorAll('.premium-table tbody tr');
+  rows.forEach(row => {
+    if (row.classList.contains('empty-row')) return;
+    const text = row.innerText.toLowerCase();
+    row.style.display = text.includes(query) ? '' : 'none';
+  });
+}
+</script>
+
+<style>
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 18px;
+}
+.search-icon {
+  font-size: 16px;
+  color: var(--muted);
+}
+.search-input {
+  flex-grow: 1;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-family);
+  font-size: 14px;
+  outline: none;
+  color: var(--text);
+}
+.search-input::placeholder {
+  color: #94a3b8;
+}
+</style>
 {% endblock %}

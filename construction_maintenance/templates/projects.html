@@ -66,7 +66,7 @@
         <tbody>
           {% for project in projects %}
           <tr>
-            <td class="font-semibold text-dark">{{ project.name }}</td>
+            <td class="font-semibold text-dark"><a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="project-link" title="点击查看项目专属费用台账">📂 {{ project.name }}</a></td>
             <td>{{ project.owner or '--' }}</td>
             <td class="font-mono">{{ project.start_date or '--' }}</td>
             <td>
@@ -96,4 +96,18 @@
     </div>
   </div>
 </div>
+
+<style>
+.project-link {
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1.5px dashed transparent;
+  padding-bottom: 2px;
+  transition: var(--transition);
+}
+.project-link:hover {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+</style>
 {% endblock %}

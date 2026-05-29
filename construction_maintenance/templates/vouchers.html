@@ -57,6 +57,21 @@
       <h2 class="panel-title">📋 凭证费用明细</h2>
       <p class="panel-subtitle">最近记录的各项项目工程费用凭证明细。</p>
     </div>
+    
+    <!-- Premium Project Filter Bar -->
+    <div class="filter-bar">
+      <form method="get" action="{{ url_for('web.vouchers') }}" class="filter-form">
+        <label class="filter-label">🔍 按项目检索过滤：
+          <select name="project_id" class="filter-select" onchange="this.form.submit()">
+            <option value="">-- 显示所有项目凭证明细 --</option>
+            {% for p in projects %}
+            <option value="{{ p.id }}" {% if p.id == filter_project_id %}selected{% endif %}>{{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </form>
+    </div>
+
     <div class="table-container">
       <table class="premium-table">
         <thead>
@@ -106,4 +121,41 @@
     </div>
   </div>
 </div>
+
+<style>
+.filter-bar {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.filter-form {
+  display: flex;
+  align-items: center;
+}
+.filter-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-select {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: var(--font-family);
+  font-size: 13.5px;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition);
+}
+.filter-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+</style>
 {% endblock %}
