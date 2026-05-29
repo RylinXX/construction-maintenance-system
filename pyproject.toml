@@ -19,3 +19,6 @@ testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
 include = ["construction_maintenance*"]
+
+[tool.setuptools.package-data]
+construction_maintenance = ["templates/*.html", "static/*.css"]
