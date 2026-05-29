@@ -251,3 +251,35 @@ def test_people_requires_valid_age(client):
 
     assert response.status_code == 400
     assert "年龄必须是有效数字".encode("utf-8") in response.data
+
+
+def test_people_rejects_negative_age(client):
+    response = client.post(
+        "/people",
+        data={
+            "name": "王小明",
+            "id_number": "410000199001011234",
+            "age": "-1",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "年龄不能小于 0".encode("utf-8") in response.data
+
+
+def test_people_rejects_duplicate_id_number(client):
+    data = {
+        "name": "王小明",
+        "id_number": "410000199001011234",
+        "phone": "13800000000",
+        "job_type": "普工",
+    }
+    first_response = client.post("/people", data=data)
+    duplicate_response = client.post(
+        "/people",
+        data={**data, "name": "李小红"},
+    )
+
+    assert first_response.status_code == 302
+    assert duplicate_response.status_code == 400
+    assert "身份证号已存在".encode("utf-8") in duplicate_response.data

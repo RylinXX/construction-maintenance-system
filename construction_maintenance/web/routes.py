@@ -154,6 +154,9 @@ def optional_int(form, key: str, label: str) -> int | None:
     if not value:
         return None
     try:
-        return int(value)
+        parsed = int(value)
     except ValueError as exc:
         raise ValueError(f"{label}必须是有效数字") from exc
+    if parsed < 0:
+        raise ValueError(f"{label}不能小于 0")
+    return parsed

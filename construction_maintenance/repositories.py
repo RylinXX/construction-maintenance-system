@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import sqlite3
 from typing import Any
 
 from .db import get_db
@@ -121,28 +122,33 @@ def list_people():
 
 
 def create_person(data: dict[str, Any]) -> int:
-    cursor = get_db().execute(
-        """
-        insert into people
-          (name, id_number, gender, birth_date, age, phone, address, job_type,
-           bank_card, bank_name, entry_date, notes, review_status)
-        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            data["name"],
-            data["id_number"],
-            data.get("gender", ""),
-            data.get("birth_date", ""),
-            data.get("age"),
-            data.get("phone", ""),
-            data.get("address", ""),
-            data.get("job_type", ""),
-            data.get("bank_card", ""),
-            data.get("bank_name", ""),
-            data.get("entry_date", ""),
-            data.get("notes", ""),
-            data.get("review_status", "已确认"),
-        ),
-    )
-    get_db().commit()
+    try:
+        cursor = get_db().execute(
+            """
+            insert into people
+              (name, id_number, gender, birth_date, age, phone, address, job_type,
+               bank_card, bank_name, entry_date, notes, review_status)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                data["name"],
+                data["id_number"],
+                data.get("gender", ""),
+                data.get("birth_date", ""),
+                data.get("age"),
+                data.get("phone", ""),
+                data.get("address", ""),
+                data.get("job_type", ""),
+                data.get("bank_card", ""),
+                data.get("bank_name", ""),
+                data.get("entry_date", ""),
+                data.get("notes", ""),
+                data.get("review_status", "已确认"),
+            ),
+        )
+        get_db().commit()
+    except sqlite3.IntegrityError as exc:
+        if "people.id_number" in str(exc):
+            raise ValueError("身份证号已存在") from exc
+        raise
     return int(cursor.lastrowid)
