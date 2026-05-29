@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}看板 - 建筑工程维护系统{% endblock %}
+{% block content %}
+<header class="page-header">
+  <h1>看板</h1>
+</header>
+<section class="metric-grid">
+  <article class="metric"><span>本月项目支出</span><strong>¥{{ metrics.month_spending }}</strong></article>
+  <article class="metric"><span>累计项目支出</span><strong>¥{{ metrics.total_spending }}</strong></article>
+  <article class="metric"><span>本月凭证数</span><strong>{{ metrics.voucher_count }}</strong></article>
+  <article class="metric"><span>待确认资料</span><strong>{{ metrics.pending_count }}</strong></article>
+  <article class="metric"><span>临期资质</span><strong>{{ metrics.expiring_qualifications }}</strong></article>
+</section>
+{% endblock %}
