@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}人员花名册 - 建筑工程维护系统{% endblock %}
+{% block content %}
+<header class="page-header">
+  <h1>人员花名册</h1>
+  {% if error %}<p class="error-message" role="alert">{{ error }}</p>{% endif %}
+</header>
+<section class="panel">
+  <h2>新增人员</h2>
+  <form method="post" class="form-grid">
+    <label>姓名<input name="name" required></label>
+    <label>身份证号<input name="id_number" required></label>
+    <label>性别<input name="gender"></label>
+    <label>出生日期<input name="birth_date" type="date"></label>
+    <label>年龄<input name="age" type="number" min="0"></label>
+    <label>电话<input name="phone"></label>
+    <label>岗位/工种<input name="job_type"></label>
+    <label>银行卡号<input name="bank_card"></label>
+    <label>开户行<input name="bank_name"></label>
+    <label>入职/进场日期<input name="entry_date" type="date"></label>
+    <label class="full">住址<input name="address"></label>
+    <label class="full">备注<input name="notes"></label>
+    <button type="submit">保存人员</button>
+  </form>
+</section>
+<section class="panel">
+  <h2>基础人员信息</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>姓名</th>
+        <th>身份证号</th>
+        <th>电话</th>
+        <th>岗位/工种</th>
+        <th>银行卡</th>
+        <th>状态</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for person in people %}
+      <tr>
+        <td>{{ person.name }}</td>
+        <td>{{ person.id_number }}</td>
+        <td>{{ person.phone }}</td>
+        <td>{{ person.job_type }}</td>
+        <td>{{ person.bank_card }}</td>
+        <td>{{ person.review_status }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">暂无人员</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

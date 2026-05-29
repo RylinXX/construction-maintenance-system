@@ -113,3 +113,47 @@ def render_vouchers(error: str | None = None):
         voucher_types=VOUCHER_TYPES,
         error=error,
     )
+
+
+@bp.route("/people", methods=["GET", "POST"])
+def people():
+    if request.method == "POST":
+        try:
+            repo.create_person(
+                {
+                    "name": required_text(request.form, "name", "姓名"),
+                    "id_number": required_text(request.form, "id_number", "身份证号"),
+                    "gender": text_value(request.form, "gender"),
+                    "birth_date": text_value(request.form, "birth_date"),
+                    "age": optional_int(request.form, "age", "年龄"),
+                    "phone": text_value(request.form, "phone"),
+                    "address": text_value(request.form, "address"),
+                    "job_type": text_value(request.form, "job_type"),
+                    "bank_card": text_value(request.form, "bank_card"),
+                    "bank_name": text_value(request.form, "bank_name"),
+                    "entry_date": text_value(request.form, "entry_date"),
+                    "notes": text_value(request.form, "notes"),
+                }
+            )
+        except ValueError as exc:
+            return render_people_error(str(exc))
+        return redirect(url_for("web.people"))
+    return render_people()
+
+
+def render_people_error(error: str):
+    return render_people(error), 400
+
+
+def render_people(error: str | None = None):
+    return render_template("people.html", people=repo.list_people(), error=error)
+
+
+def optional_int(form, key: str, label: str) -> int | None:
+    value = text_value(form, key)
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise ValueError(f"{label}必须是有效数字") from exc

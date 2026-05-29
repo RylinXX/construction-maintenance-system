@@ -114,3 +114,35 @@ def create_voucher(data: dict[str, Any]) -> int:
     )
     get_db().commit()
     return int(cursor.lastrowid)
+
+
+def list_people():
+    return get_db().execute("select * from people order by created_at desc").fetchall()
+
+
+def create_person(data: dict[str, Any]) -> int:
+    cursor = get_db().execute(
+        """
+        insert into people
+          (name, id_number, gender, birth_date, age, phone, address, job_type,
+           bank_card, bank_name, entry_date, notes, review_status)
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data["name"],
+            data["id_number"],
+            data.get("gender", ""),
+            data.get("birth_date", ""),
+            data.get("age"),
+            data.get("phone", ""),
+            data.get("address", ""),
+            data.get("job_type", ""),
+            data.get("bank_card", ""),
+            data.get("bank_name", ""),
+            data.get("entry_date", ""),
+            data.get("notes", ""),
+            data.get("review_status", "已确认"),
+        ),
+    )
+    get_db().commit()
+    return int(cursor.lastrowid)

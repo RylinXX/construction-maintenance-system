@@ -206,3 +206,48 @@ def test_dashboard_month_metrics_exclude_prior_month(app, client):
     assert "¥100.00".encode("utf-8") in response.data
     assert "¥300.00".encode("utf-8") in response.data
     assert b"<strong>1</strong>" in response.data
+
+
+def test_people_page_creates_person(client):
+    response = client.post(
+        "/people",
+        data={
+            "name": "王小明",
+            "id_number": "410000199001011234",
+            "phone": "13800000000",
+            "job_type": "普工",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "王小明".encode("utf-8") in response.data
+
+
+def test_people_requires_name(client):
+    response = client.post(
+        "/people",
+        data={
+            "name": "",
+            "id_number": "410000199001011234",
+            "phone": "",
+            "job_type": "",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "姓名不能为空".encode("utf-8") in response.data
+
+
+def test_people_requires_valid_age(client):
+    response = client.post(
+        "/people",
+        data={
+            "name": "王小明",
+            "id_number": "410000199001011234",
+            "age": "abc",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "年龄必须是有效数字".encode("utf-8") in response.data
