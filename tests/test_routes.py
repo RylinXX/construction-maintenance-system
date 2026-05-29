@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import timedelta
 
 from construction_maintenance import repositories as repo
 
@@ -167,10 +168,8 @@ def test_voucher_requires_amount(app, client):
 
 def test_dashboard_month_metrics_exclude_prior_month(app, client):
     today = date.today()
-    if today.month == 1:
-        prior_month = today.replace(year=today.year - 1, month=12)
-    else:
-        prior_month = today.replace(month=today.month - 1)
+    first_day_of_month = today.replace(day=1)
+    prior_month_day = first_day_of_month - timedelta(days=1)
 
     with app.app_context():
         main_company = repo.get_main_company()
@@ -187,7 +186,7 @@ def test_dashboard_month_metrics_exclude_prior_month(app, client):
         )
         for voucher_date, amount in (
             (today.isoformat(), "100"),
-            (prior_month.isoformat(), "200"),
+            (prior_month_day.isoformat(), "200"),
         ):
             repo.create_voucher(
                 {
