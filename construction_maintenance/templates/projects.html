@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}项目台账 - CAM 建筑工程维护系统{% endblock %}
+{% block breadcrumb %}项目台账{% endblock %}
+
+{% block content %}
+<div class="panel-section">
+  <div class="panel-card animate-slide-up">
+    <div class="panel-header">
+      <h2 class="panel-title">📂 新增项目工程</h2>
+      <p class="panel-subtitle">在此创建新的建筑项目，用以跟踪管理后续所有的支出凭证明细。</p>
+    </div>
+    <form method="post" class="premium-form">
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label class="form-label" for="name">项目名称 <span class="required">*</span></label>
+          <input class="form-input" id="name" name="name" type="text" placeholder="例如：新城区土方挖掘工程" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="owner">项目负责人</label>
+          <input class="form-input" id="owner" name="owner" type="text" placeholder="例如：张工">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="status">当前状态</label>
+          <select class="form-select" id="status" name="status">
+            <option value="进行中">进行中</option>
+            <option value="已完工">已完工</option>
+            <option value="已暂停">已暂停</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="start_date">开工时间</label>
+          <input class="form-input" id="start_date" name="start_date" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="end_date">预估完工</label>
+          <input class="form-input" id="end_date" name="end_date" type="date">
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label" for="notes">备注说明</label>
+          <input class="form-input" id="notes" name="notes" type="text" placeholder="关于该项目的背景或概算注释...">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 保存项目</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel-card animate-slide-up" style="animation-delay: 0.1s;">
+    <div class="panel-header">
+      <h2 class="panel-title">📋 现有项目列表</h2>
+      <p class="panel-subtitle">当前正在执行或已结项的全部工程项目总览。</p>
+    </div>
+    <div class="table-container">
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th>项目名称</th>
+            <th>负责人</th>
+            <th>开工日期</th>
+            <th>状态</th>
+            <th>所属公司</th>
+            <th>备注信息</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for project in projects %}
+          <tr>
+            <td class="font-semibold text-dark">{{ project.name }}</td>
+            <td>{{ project.owner or '--' }}</td>
+            <td class="font-mono">{{ project.start_date or '--' }}</td>
+            <td>
+              {% if project.status == '进行中' %}
+              <span class="badge badge-success">{{ project.status }}</span>
+              {% elif project.status == '已完工' %}
+              <span class="badge badge-secondary">{{ project.status }}</span>
+              {% else %}
+              <span class="badge badge-warning">{{ project.status }}</span>
+              {% endif %}
+            </td>
+            <td>{{ project.company_name }}</td>
+            <td class="text-muted">{{ project.notes or '--' }}</td>
+          </tr>
+          {% else %}
+          <tr class="empty-row">
+            <td colspan="6">
+              <div class="empty-state">
+                <span class="empty-icon">📭</span>
+                <span class="empty-text">暂无项目，请在上方表单中录入您的第一个工程项目</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

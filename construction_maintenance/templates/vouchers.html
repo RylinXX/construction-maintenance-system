@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}凭证录入 - CAM 建筑工程维护系统{% endblock %}
+{% block breadcrumb %}凭证录入{% endblock %}
+
+{% block content %}
+<div class="panel-section">
+  <div class="panel-card animate-slide-up">
+    <div class="panel-header">
+      <h2 class="panel-title">✍️ 录入费用凭证</h2>
+      <p class="panel-subtitle">在此记录每笔项目支出的详细费用明细，自动关联并汇总至项目台账中。</p>
+    </div>
+    <form method="post" class="premium-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="voucher_date">凭证日期 <span class="required">*</span></label>
+          <input class="form-input" id="voucher_date" name="voucher_date" type="date" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="project_id">关联项目工程 <span class="required">*</span></label>
+          <select class="form-select" id="project_id" name="project_id" required>
+            <option value="" disabled selected>-- 请选择所属项目 --</option>
+            {% for project in projects %}
+            <option value="{{ project.id }}">{{ project.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="voucher_type">费用科目/类型 <span class="required">*</span></label>
+          <select class="form-select" id="voucher_type" name="voucher_type" required>
+            <option value="" disabled selected>-- 请选择科目类型 --</option>
+            {% for item in voucher_types %}
+            <option value="{{ item }}">{{ item }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="amount">支出金额 (¥) <span class="required">*</span></label>
+          <input class="form-input font-mono font-semibold" id="amount" name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="entry_user">经办/录入人</label>
+          <input class="form-input" id="entry_user" name="entry_user" type="text" placeholder="例如：出纳王小姐">
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label" for="notes">费用备注/详情</label>
+          <input class="form-input" id="notes" name="notes" type="text" placeholder="例：采购五金配件、加油发票等...">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 保存并记录</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel-card animate-slide-up" style="animation-delay: 0.1s;">
+    <div class="panel-header">
+      <h2 class="panel-title">📋 凭证费用明细</h2>
+      <p class="panel-subtitle">最近记录的各项项目工程费用凭证明细。</p>
+    </div>
+    <div class="table-container">
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th>支出日期</th>
+            <th>关联项目</th>
+            <th>费用科目</th>
+            <th class="text-right">金额 (元)</th>
+            <th>经办人</th>
+            <th>备注信息</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for voucher in vouchers %}
+          <tr>
+            <td class="font-mono text-dark">{{ voucher.voucher_date }}</td>
+            <td class="font-semibold">{{ voucher.project_name }}</td>
+            <td>
+              {% if voucher.voucher_type == '材料费用' %}
+              <span class="badge badge-info">{{ voucher.voucher_type }}</span>
+              {% elif voucher.voucher_type in ['油费', '电费'] %}
+              <span class="badge badge-warning">{{ voucher.voucher_type }}</span>
+              {% elif voucher.voucher_type == '人工工资' %}
+              <span class="badge badge-success">{{ voucher.voucher_type }}</span>
+              {% elif voucher.voucher_type == '员工报销' %}
+              <span class="badge badge-purple">{{ voucher.voucher_type }}</span>
+              {% else %}
+              <span class="badge badge-secondary">{{ voucher.voucher_type }}</span>
+              {% endif %}
+            </td>
+            <td class="text-right font-mono font-semibold text-primary">¥{{ voucher.amount|money }}</td>
+            <td>{{ voucher.entry_user or '--' }}</td>
+            <td class="text-muted">{{ voucher.notes or '--' }}</td>
+          </tr>
+          {% else %}
+          <tr class="empty-row">
+            <td colspan="6">
+              <div class="empty-state">
+                <span class="empty-icon">💸</span>
+                <span class="empty-text">暂无费用支出记录，请在上方表单中录入第一笔凭证</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
