@@ -134,3 +134,30 @@ def qualifications():
         companies=repo.list_companies(),
         qualifications=repo.list_qualifications(),
     )
+
+
+@bp.route("/batch", methods=["GET", "POST"])
+def batch():
+    from pathlib import Path
+    from flask import current_app
+    from construction_maintenance.services.imports import save_upload
+
+    if request.method == "POST":
+        item_type = text_value(request.form, "item_type") or "voucher"
+        upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
+        for file in request.files.getlist("files"):
+            if not file.filename:
+                continue
+            stored = save_upload(upload_folder, file)
+            repo.create_batch_item(
+                {
+                    "item_type": item_type,
+                    "source_filename": file.filename,
+                    "stored_path": str(stored),
+                    "status": "待确认",
+                    "recognized_json": "{}",
+                    "confidence": None,
+                }
+            )
+        return redirect(url_for("web.batch"))
+    return render_template("batch.html", items=repo.list_batch_items())

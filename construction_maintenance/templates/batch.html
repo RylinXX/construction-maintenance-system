@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}批量录入 - CAM 建筑工程维护系统{% endblock %}
+{% block breadcrumb %}批量录入{% endblock %}
+
+{% block content %}
+<div class="panel-section">
+  <div class="panel-card animate-slide-up">
+    <div class="panel-header">
+      <h2 class="panel-title">📥 批量上传文件</h2>
+      <p class="panel-subtitle">支持批量拖拽或选择多个凭证发票、身份证扫描件，进入系统队列待人工复核确认。</p>
+    </div>
+    <form method="post" enctype="multipart/form-data" class="premium-form">
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label class="form-label" for="item_type">文件类型科目</label>
+          <select class="form-select" id="item_type" name="item_type" style="max-width: 320px;">
+            <option value="voucher">📂 费用支出凭证</option>
+            <option value="person">👥 施工人员身份证</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label">上传批量文件</label>
+          <div class="dropzone-area">
+            <span class="dropzone-icon">📤</span>
+            <span class="dropzone-text">点击选择或拖拽文件至此区域进行上传</span>
+            <span class="dropzone-subtext">支持多选，允许上传 .png, .jpg, .jpeg, .pdf, .xlsx 等格式</span>
+            <input class="dropzone-input" id="files" name="files" type="file" multiple required>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">⚡ 上传并进入待确认队列</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel-card animate-slide-up" style="animation-delay: 0.1s;">
+    <div class="panel-header">
+      <h2 class="panel-title">📋 待确认批量队列</h2>
+      <p class="panel-subtitle">已上传待复核和解析的批量任务状态列表。</p>
+    </div>
+    <div class="table-container">
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th>文件类型</th>
+            <th>原始文件名</th>
+            <th>当前状态</th>
+            <th>自动识别结果</th>
+            <th>上传时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>
+              {% if item.item_type == 'voucher' %}
+              <span class="badge badge-info">费用凭证</span>
+              {% else %}
+              <span class="badge badge-purple">身份证件</span>
+              {% endif %}
+            </td>
+            <td class="font-semibold text-dark">{{ item.source_filename }}</td>
+            <td>
+              {% if item.status == '待确认' %}
+              <span class="badge badge-warning">{{ item.status }}</span>
+              {% else %}
+              <span class="badge badge-success">{{ item.status }}</span>
+              {% endif %}
+            </td>
+            <td class="font-mono text-muted">
+              {% if item.recognized_json == '{}' %}
+              <span class="text-muted">（未提取，等待 AI 解析）</span>
+              {% else %}
+              {{ item.recognized_json }}
+              {% endif %}
+            </td>
+            <td class="font-mono">{{ item.created_at }}</td>
+          </tr>
+          {% else %}
+          <tr class="empty-row">
+            <td colspan="5">
+              <div class="empty-state">
+                <span class="empty-icon">📤</span>
+                <span class="empty-text">暂无待确认的批量任务，请在上方区域上传文件</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Dropzone UI Aesthetics */
+.dropzone-area {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  background-color: #f8fafc;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition);
+}
+
+.dropzone-area:hover {
+  border-color: var(--primary);
+  background-color: var(--primary-light);
+}
+
+.dropzone-icon {
+  font-size: 42px;
+  margin-bottom: 6px;
+  transition: var(--transition);
+}
+
+.dropzone-area:hover .dropzone-icon {
+  transform: translateY(-4px);
+}
+
+.dropzone-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dropzone-subtext {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.dropzone-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+</style>
+{% endblock %}

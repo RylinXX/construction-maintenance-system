@@ -71,3 +71,21 @@ def test_qualification_page_creates_qualification(client):
 
     assert response.status_code == 200
     assert "建筑业企业资质".encode("utf-8") in response.data
+
+
+def test_batch_upload_creates_pending_item(client):
+    from io import BytesIO
+
+    response = client.post(
+        "/batch",
+        data={
+            "item_type": "voucher",
+            "files": (BytesIO(b"fake image"), "pay.png"),
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "pay.png".encode("utf-8") in response.data
+    assert "待确认".encode("utf-8") in response.data

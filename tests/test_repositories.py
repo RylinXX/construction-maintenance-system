@@ -40,3 +40,21 @@ def test_create_project_and_voucher(app):
 def test_voucher_amount_validation():
     with pytest.raises(ValueError, match="金额必须大于 0"):
         repo.normalize_amount("0")
+
+
+def test_create_batch_item(app):
+    with app.app_context():
+        item_id = repo.create_batch_item(
+            {
+                "item_type": "voucher",
+                "source_filename": "pay.png",
+                "stored_path": "uploads/pay.png",
+                "status": "待确认",
+                "recognized_json": "{}",
+                "confidence": None,
+            }
+        )
+        items = repo.list_batch_items("voucher")
+
+    assert item_id > 0
+    assert items[0]["source_filename"] == "pay.png"

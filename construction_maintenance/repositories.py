@@ -177,3 +177,32 @@ def create_qualification(data: dict[str, Any]) -> int:
     )
     get_db().commit()
     return int(cursor.lastrowid)
+
+
+def create_batch_item(data: dict[str, Any]) -> int:
+    cursor = get_db().execute(
+        """
+        insert into batch_items
+          (item_type, source_filename, stored_path, status, recognized_json, confidence)
+        values (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data["item_type"],
+            data["source_filename"],
+            data.get("stored_path", ""),
+            data.get("status", "待确认"),
+            data.get("recognized_json", "{}"),
+            data.get("confidence"),
+        ),
+    )
+    get_db().commit()
+    return int(cursor.lastrowid)
+
+
+def list_batch_items(item_type: str | None = None):
+    if item_type:
+        return get_db().execute(
+            "select * from batch_items where item_type = ? order by created_at desc",
+            (item_type,),
+        ).fetchall()
+    return get_db().execute("select * from batch_items order by created_at desc").fetchall()
