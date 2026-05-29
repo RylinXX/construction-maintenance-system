@@ -5,6 +5,7 @@ from typing import Any
 
 from flask import Flask
 
+from . import db
 from .config import DEFAULT_DATABASE, DEFAULT_UPLOAD_FOLDER
 from .web.routes import bp as web_bp
 
@@ -21,6 +22,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     Path(app.config["DATABASE"]).parent.mkdir(parents=True, exist_ok=True)
     Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
+
+    db.init_app(app)
+    with app.app_context():
+        db.init_db()
 
     app.register_blueprint(web_bp)
     return app
