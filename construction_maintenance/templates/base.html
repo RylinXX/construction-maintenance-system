@@ -34,6 +34,10 @@
             <span class="nav-icon">👥</span>
             <span class="nav-label">人员花名册</span>
           </a>
+          <a href="{{ url_for('web.qualifications') }}" class="nav-item {% if request.endpoint == 'web.qualifications' %}active{% endif %}">
+            <span class="nav-icon">🛡️</span>
+            <span class="nav-label">企业资质</span>
+          </a>
         </nav>
         <div class="sidebar-footer">
           <div class="version">v0.1.0 Premium</div>

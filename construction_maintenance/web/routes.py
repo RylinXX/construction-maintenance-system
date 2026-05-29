@@ -98,3 +98,39 @@ def people():
         )
         return redirect(url_for("web.people"))
     return render_template("people.html", people=repo.list_people())
+
+
+@bp.route("/qualifications", methods=["GET", "POST"])
+def qualifications():
+    if request.method == "POST":
+        if text_value(request.form, "company_name"):
+            company_id = repo.create_company(
+                {
+                    "name": required_text(request.form, "company_name", "公司名称"),
+                    "credit_code": text_value(request.form, "credit_code"),
+                    "legal_person": text_value(request.form, "legal_person"),
+                    "phone": text_value(request.form, "phone"),
+                    "notes": text_value(request.form, "company_notes"),
+                    "is_main": 0,
+                }
+            )
+        else:
+            company_id = int(required_text(request.form, "company_id", "公司"))
+        repo.create_qualification(
+            {
+                "company_id": company_id,
+                "name": required_text(request.form, "name", "资质名称"),
+                "certificate_no": required_text(request.form, "certificate_no", "证书编号"),
+                "issue_date": text_value(request.form, "issue_date"),
+                "expiry_date": text_value(request.form, "expiry_date"),
+                "is_long_term": 1 if request.form.get("is_long_term") else 0,
+                "attachment_path": "",
+                "notes": text_value(request.form, "notes"),
+            }
+        )
+        return redirect(url_for("web.qualifications"))
+    return render_template(
+        "qualifications.html",
+        companies=repo.list_companies(),
+        qualifications=repo.list_qualifications(),
+    )

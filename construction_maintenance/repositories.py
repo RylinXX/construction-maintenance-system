@@ -143,3 +143,37 @@ def create_person(data: dict[str, Any]) -> int:
     )
     get_db().commit()
     return int(cursor.lastrowid)
+
+
+def list_qualifications():
+    return get_db().execute(
+        """
+        select qualifications.*, companies.name as company_name
+        from qualifications
+        join companies on companies.id = qualifications.company_id
+        order by companies.is_main desc, companies.name, qualifications.expiry_date
+        """
+    ).fetchall()
+
+
+def create_qualification(data: dict[str, Any]) -> int:
+    cursor = get_db().execute(
+        """
+        insert into qualifications
+          (company_id, name, certificate_no, issue_date, expiry_date,
+           is_long_term, attachment_path, notes)
+        values (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data["company_id"],
+            data["name"],
+            data["certificate_no"],
+            data.get("issue_date", ""),
+            data.get("expiry_date", ""),
+            int(data.get("is_long_term", 0)),
+            data.get("attachment_path", ""),
+            data.get("notes", ""),
+        ),
+    )
+    get_db().commit()
+    return int(cursor.lastrowid)

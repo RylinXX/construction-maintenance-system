@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}企业资质 - CAM 建筑工程维护系统{% endblock %}
+{% block breadcrumb %}企业资质{% endblock %}
+
+{% block content %}
+<div class="panel-section">
+  <div class="panel-card animate-slide-up">
+    <div class="panel-header">
+      <h2 class="panel-title">🛡️ 维护公司与企业资质</h2>
+      <p class="panel-subtitle">在此登记关联合作公司资质、更新各项建筑业资质等级和证书有效期。</p>
+    </div>
+    <form method="post" class="premium-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="company_id">关联已有合作公司</label>
+          <select class="form-select" id="company_id" name="company_id">
+            {% for company in companies %}
+            <option value="{{ company.id }}">{{ company.name }} {% if company.is_main %}(主公司){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="company_name"><b>或</b> 新增合作公司名称</label>
+          <input class="form-input" id="company_name" name="company_name" type="text" placeholder="不填则使用左侧已有公司">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="credit_code">统一社会信用代码</label>
+          <input class="form-input font-mono" id="credit_code" name="credit_code" type="text" placeholder="新增公司时选填">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="legal_person">公司法定代表人</label>
+          <input class="form-input" id="legal_person" name="legal_person" type="text" placeholder="新增公司时选填">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="phone">公司联系电话</label>
+          <input class="form-input" id="phone" name="phone" type="tel" placeholder="新增公司时选填">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="name">资质证书名称 <span class="required">*</span></label>
+          <input class="form-input" id="name" name="name" type="text" placeholder="例如：建筑工程施工总承包一级" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="certificate_no">资质证书编号 <span class="required">*</span></label>
+          <input class="form-input font-mono" id="certificate_no" name="certificate_no" type="text" placeholder="证书上的正规编号" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="issue_date">发证日期</label>
+          <input class="form-input" id="issue_date" name="issue_date" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="expiry_date">证书到期日期</label>
+          <input class="form-input" id="expiry_date" name="expiry_date" type="date">
+        </div>
+        <div class="form-group" style="justify-content: center; padding-top: 24px;">
+          <label class="form-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input id="is_long_term" name="is_long_term" type="checkbox" value="1" style="width: 18px; height: 18px; cursor: pointer;">
+            <span>证书长期有效</span>
+          </label>
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label" for="notes">资质备注/核准范围</label>
+          <input class="form-input" id="notes" name="notes" type="text" placeholder="例：可承担单项合同额3000万元以下的建筑工程施工等...">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 保存企业资质</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel-card animate-slide-up" style="animation-delay: 0.1s;">
+    <div class="panel-header">
+      <h2 class="panel-title">📋 资质证书清单</h2>
+      <p class="panel-subtitle">登记的各公司企业资质及证书有效期实时状态。</p>
+    </div>
+    <div class="table-container">
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th>公司名称</th>
+            <th>资质名称</th>
+            <th>证书编号</th>
+            <th>发证日期</th>
+            <th>到期日期</th>
+            <th>有效期状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in qualifications %}
+          <tr>
+            <td class="font-semibold text-dark">{{ item.company_name }}</td>
+            <td class="font-semibold">{{ item.name }}</td>
+            <td class="font-mono">{{ item.certificate_no }}</td>
+            <td class="font-mono">{{ item.issue_date or '--' }}</td>
+            <td class="font-mono">
+              {% if item.is_long_term %}
+              <span class="text-muted">长期有效</span>
+              {% else %}
+              {{ item.expiry_date or '--' }}
+              {% endif %}
+            </td>
+            <td>
+              {% if item.is_long_term %}
+              <span class="badge badge-success">永久有效</span>
+              {% else %}
+              <span class="badge badge-info">正常服务中</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr class="empty-row">
+            <td colspan="6">
+              <div class="empty-state">
+                <span class="empty-icon">🛡️</span>
+                <span class="empty-text">暂无企业资质记录，请在上方表单中录入第一项公司资质证书</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

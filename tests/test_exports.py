@@ -32,3 +32,28 @@ def test_build_people_workbook(app, tmp_path):
     assert sheet["A1"].value == "姓名"
     assert sheet["A2"].value == "王小明"
     assert sheet["B2"].value == "410000199001011234"
+
+
+def test_build_qualification_workbook(app, tmp_path):
+    with app.app_context():
+        company = repo.get_main_company()
+        repo.create_qualification(
+            {
+                "company_id": company["id"],
+                "name": "建筑业企业资质",
+                "certificate_no": "D300000",
+                "issue_date": "2026-01-01",
+                "expiry_date": "2029-01-01",
+                "is_long_term": 0,
+                "attachment_path": "",
+                "notes": "",
+            }
+        )
+        output = tmp_path / "qualifications.xlsx"
+        from construction_maintenance.services.exports import build_qualification_workbook
+        build_qualification_workbook(output)
+
+    workbook = load_workbook(output)
+    sheet = workbook.active
+    assert sheet["A1"].value == "公司"
+    assert sheet["B2"].value == "建筑业企业资质"

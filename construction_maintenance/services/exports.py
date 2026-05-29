@@ -47,3 +47,29 @@ def build_people_workbook(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(path)
     return path
+
+
+QUALIFICATION_HEADERS = ["公司", "资质名称", "证书编号", "发证日期", "到期日期", "长期有效", "附件", "备注"]
+
+
+def build_qualification_workbook(path: Path) -> Path:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "企业资质清单"
+    sheet.append(QUALIFICATION_HEADERS)
+    for item in repo.list_qualifications():
+        sheet.append(
+            [
+                item["company_name"],
+                item["name"],
+                item["certificate_no"],
+                item["issue_date"],
+                item["expiry_date"],
+                "是" if item["is_long_term"] else "否",
+                item["attachment_path"],
+                item["notes"],
+            ]
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    workbook.save(path)
+    return path

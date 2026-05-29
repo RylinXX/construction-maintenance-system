@@ -56,3 +56,18 @@ def test_people_page_creates_person(client):
 
     assert response.status_code == 200
     assert "王小明".encode("utf-8") in response.data
+
+
+def test_qualification_page_creates_qualification(client):
+    response = client.post(
+        "/qualifications",
+        data={
+            "company_id": "1",
+            "name": "建筑业企业资质",
+            "certificate_no": "D300000",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "建筑业企业资质".encode("utf-8") in response.data
