@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from .db import get_db
@@ -10,6 +11,8 @@ def normalize_amount(value: Any) -> float:
         amount = float(value)
     except (TypeError, ValueError) as exc:
         raise ValueError("\u91d1\u989d\u5fc5\u987b\u662f\u6570\u5b57") from exc
+    if not math.isfinite(amount):
+        raise ValueError("\u91d1\u989d\u5fc5\u987b\u662f\u6570\u5b57")
     if amount <= 0:
         raise ValueError("\u91d1\u989d\u5fc5\u987b\u5927\u4e8e 0")
     return amount
@@ -76,7 +79,7 @@ def create_project(data: dict[str, Any]) -> int:
 def list_vouchers(project_id: int | None = None):
     params: list[Any] = []
     where = ""
-    if project_id:
+    if project_id is not None:
         where = "where vouchers.project_id = ?"
         params.append(project_id)
     return get_db().execute(
