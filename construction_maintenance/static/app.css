@@ -52,3 +52,21 @@ body {
 }
 .metric span { display: block; color: var(--muted); font-size: 13px; }
 .metric strong { display: block; margin-top: 8px; font-size: 22px; }
+
+@media (max-width: 640px) {
+  body {
+    display: block;
+  }
+
+  .sidebar {
+    padding: 14px 16px;
+  }
+
+  .brand {
+    margin-bottom: 12px;
+  }
+
+  .main {
+    padding: 18px 14px;
+  }
+}
