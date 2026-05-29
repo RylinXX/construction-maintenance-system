@@ -1,0 +1,11 @@
+.worktrees/
+worktrees/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.sqlite3
+instance/
+uploads/
+exports/
+.env
