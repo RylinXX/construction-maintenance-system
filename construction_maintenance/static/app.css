@@ -79,6 +79,11 @@ body {
   margin-bottom: 16px;
 }
 .panel h2 { margin: 0 0 14px; font-size: 18px; }
+.error-message {
+  margin: 0 0 12px;
+  color: #b42318;
+  font-size: 14px;
+}
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -102,10 +107,14 @@ button {
   font: inherit;
   cursor: pointer;
 }
+.table-scroll {
+  overflow-x: auto;
+}
 table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  min-width: 680px;
 }
 th, td {
   border-bottom: 1px solid var(--line);

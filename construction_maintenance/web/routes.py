@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from flask import Blueprint
 from flask import redirect
 from flask import render_template
@@ -11,6 +13,7 @@ from construction_maintenance.web.forms import required_text
 from construction_maintenance.web.forms import text_value
 
 bp = Blueprint("web", __name__)
+VOUCHER_TYPES = ["员工报销", "转账凭证", "材料费用", "油费", "电费", "人工工资", "其它"]
 
 
 @bp.app_template_filter("money")
@@ -22,10 +25,15 @@ def money(value: float) -> str:
 def dashboard():
     vouchers = repo.list_vouchers()
     total = sum(float(row["amount"]) for row in vouchers)
+    current_month = date.today().strftime("%Y-%m")
+    month_vouchers = [
+        row for row in vouchers if str(row["voucher_date"]).startswith(current_month)
+    ]
+    month_total = sum(float(row["amount"]) for row in month_vouchers)
     metrics = {
-        "month_spending": f"{total:.2f}",
+        "month_spending": f"{month_total:.2f}",
         "total_spending": f"{total:.2f}",
-        "voucher_count": len(vouchers),
+        "voucher_count": len(month_vouchers),
         "pending_count": 0,
         "expiring_qualifications": 0,
     }
@@ -35,18 +43,26 @@ def dashboard():
 @bp.route("/projects", methods=["GET", "POST"])
 def projects():
     if request.method == "POST":
-        main_company = repo.get_main_company()
-        repo.create_project(
-            {
-                "company_id": main_company["id"],
-                "name": required_text(request.form, "name", "项目名称"),
-                "status": text_value(request.form, "status") or "进行中",
-                "owner": text_value(request.form, "owner"),
-                "start_date": text_value(request.form, "start_date"),
-                "end_date": text_value(request.form, "end_date"),
-                "notes": text_value(request.form, "notes"),
-            }
-        )
+        try:
+            main_company = repo.get_main_company()
+            repo.create_project(
+                {
+                    "company_id": main_company["id"],
+                    "name": required_text(request.form, "name", "项目名称"),
+                    "status": text_value(request.form, "status") or "进行中",
+                    "owner": text_value(request.form, "owner"),
+                    "start_date": text_value(request.form, "start_date"),
+                    "end_date": text_value(request.form, "end_date"),
+                    "notes": text_value(request.form, "notes"),
+                }
+            )
+        except ValueError as exc:
+            return (
+                render_template(
+                    "projects.html", projects=repo.list_projects(), error=str(exc)
+                ),
+                400,
+            )
         return redirect(url_for("web.projects"))
     return render_template("projects.html", projects=repo.list_projects())
 
@@ -54,21 +70,46 @@ def projects():
 @bp.route("/vouchers", methods=["GET", "POST"])
 def vouchers():
     if request.method == "POST":
-        repo.create_voucher(
-            {
-                "project_id": int(required_text(request.form, "project_id", "项目")),
-                "voucher_date": required_text(request.form, "voucher_date", "日期"),
-                "voucher_type": required_text(request.form, "voucher_type", "凭证类型"),
-                "amount": required_text(request.form, "amount", "金额"),
-                "notes": text_value(request.form, "notes"),
-                "attachment_path": "",
-                "entry_user": text_value(request.form, "entry_user"),
-            }
-        )
+        try:
+            project_id_value = required_text(request.form, "project_id", "项目")
+        except ValueError as exc:
+            return render_vouchers_error(str(exc))
+
+        try:
+            project_id = int(project_id_value)
+        except ValueError:
+            return render_vouchers_error("项目必须是有效编号")
+
+        if not any(project["id"] == project_id for project in repo.list_projects()):
+            return render_vouchers_error("项目不存在")
+
+        try:
+            repo.create_voucher(
+                {
+                    "project_id": project_id,
+                    "voucher_date": required_text(request.form, "voucher_date", "日期"),
+                    "voucher_type": required_text(request.form, "voucher_type", "凭证类型"),
+                    "amount": required_text(request.form, "amount", "金额"),
+                    "notes": text_value(request.form, "notes"),
+                    "attachment_path": "",
+                    "entry_user": text_value(request.form, "entry_user"),
+                }
+            )
+        except ValueError as exc:
+            return render_vouchers_error(str(exc))
         return redirect(url_for("web.vouchers"))
+    return render_vouchers()
+
+
+def render_vouchers_error(error: str):
+    return render_vouchers(error), 400
+
+
+def render_vouchers(error: str | None = None):
     return render_template(
         "vouchers.html",
         projects=repo.list_projects(),
         vouchers=repo.list_vouchers(),
-        voucher_types=["员工报销", "转账凭证", "材料费用", "油费", "电费", "人工工资", "其它"],
+        voucher_types=VOUCHER_TYPES,
+        error=error,
     )
