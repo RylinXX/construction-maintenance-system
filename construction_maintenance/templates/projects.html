@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}项目台账 - 建筑工程维护系统{% endblock %}
+{% block content %}
+<header class="page-header"><h1>项目台账</h1></header>
+<section class="panel">
+  <h2>新增项目</h2>
+  <form method="post" class="form-grid">
+    <label>项目名称<input name="name" required></label>
+    <label>状态<input name="status" value="进行中"></label>
+    <label>负责人<input name="owner"></label>
+    <label>开始日期<input name="start_date" type="date"></label>
+    <label>结束日期<input name="end_date" type="date"></label>
+    <label class="full">备注<input name="notes"></label>
+    <button type="submit">保存项目</button>
+  </form>
+</section>
+<section class="panel">
+  <h2>项目列表</h2>
+  <table>
+    <thead><tr><th>项目</th><th>状态</th><th>负责人</th><th>开始日期</th><th>备注</th></tr></thead>
+    <tbody>
+      {% for project in projects %}
+      <tr><td>{{ project.name }}</td><td>{{ project.status }}</td><td>{{ project.owner }}</td><td>{{ project.start_date }}</td><td>{{ project.notes }}</td></tr>
+      {% else %}
+      <tr><td colspan="5">暂无项目</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
