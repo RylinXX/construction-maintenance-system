@@ -73,6 +73,15 @@ def test_qualification_page_creates_qualification(client):
     assert "建筑业企业资质".encode("utf-8") in response.data
 
 
+def test_export_center_downloads_people_workbook(client):
+    response = client.get("/exports/people")
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
 def test_batch_upload_creates_pending_item(client):
     from io import BytesIO
 

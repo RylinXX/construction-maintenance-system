@@ -3,34 +3,31 @@
 {% block breadcrumb %}看板{% endblock %}
 
 {% block content %}
-<div class="welcome-banner">
+<div class="welcome-banner animate-slide-up">
   <div class="welcome-text">
     <h1>欢迎使用 建筑工程维护系统</h1>
     <p>实时监控项目支出，规范化管理公司凭证、人员与企业资质资质证书。</p>
   </div>
 </div>
 
-<section class="metric-grid">
+<section class="metric-grid animate-slide-up" style="animation-delay: 0.05s;">
   <article class="metric-card emerald">
-    <div class="card-glow"></div>
     <div class="metric-info">
       <span class="metric-title">本月项目支出</span>
-      <strong class="metric-value">¥{{ metrics.month_spending }}</strong>
+      <strong class="metric-value">¥{{ metrics.month_spending|money }}</strong>
     </div>
     <div class="metric-icon">💰</div>
   </article>
 
   <article class="metric-card dark-green">
-    <div class="card-glow"></div>
     <div class="metric-info">
       <span class="metric-title">累计项目支出</span>
-      <strong class="metric-value">¥{{ metrics.total_spending }}</strong>
+      <strong class="metric-value">¥{{ metrics.total_spending|money }}</strong>
     </div>
     <div class="metric-icon">📈</div>
   </article>
 
   <article class="metric-card gold">
-    <div class="card-glow"></div>
     <div class="metric-info">
       <span class="metric-title">本月凭证数</span>
       <strong class="metric-value">{{ metrics.voucher_count }}</strong>
@@ -39,7 +36,6 @@
   </article>
 
   <article class="metric-card cyan">
-    <div class="card-glow"></div>
     <div class="metric-info">
       <span class="metric-title">待确认资料</span>
       <strong class="metric-value">{{ metrics.pending_count }}</strong>
@@ -48,7 +44,6 @@
   </article>
 
   <article class="metric-card rose">
-    <div class="card-glow"></div>
     <div class="metric-info">
       <span class="metric-title">临期资质</span>
       <strong class="metric-value">{{ metrics.expiring_qualifications }}</strong>
@@ -56,4 +51,108 @@
     <div class="metric-icon">🛡️</div>
   </article>
 </section>
+
+<!-- Advanced Analytics Leaderboard (Premium Feel) -->
+<div class="analysis-section animate-slide-up" style="animation-delay: 0.15s; margin-top: 28px;">
+  <div class="panel-card">
+    <div class="panel-header">
+      <h2 class="panel-title">📊 项目支出排行榜</h2>
+      <p class="panel-subtitle">各项建筑工程的累计总资金支出排行。</p>
+    </div>
+    <div class="leaderboard-list">
+      {% for name, amt in metrics.by_project %}
+      <div class="leaderboard-item">
+        <div class="leaderboard-meta">
+          <span class="leaderboard-name font-semibold">{{ name }}</span>
+          <span class="leaderboard-value font-mono font-semibold">¥{{ amt|money }}</span>
+        </div>
+        <div class="leaderboard-track">
+          <!-- 简单用当前占比作宽度 -->
+          <div class="leaderboard-bar" style="width: {% if metrics.total_spending > 0 %}{{ (amt / metrics.total_spending * 100)|round(1) }}{% else %}0{% endif %}%;"></div>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding: 32px 0;">
+        <span class="empty-icon">📊</span>
+        <span class="empty-text">暂无项目支出统计，请先录入凭证</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel-card">
+    <div class="panel-header">
+      <h2 class="panel-title">📋 费用科目构成榜</h2>
+      <p class="panel-subtitle">所有工程项目的各项科目支出汇总排行。</p>
+    </div>
+    <div class="leaderboard-list">
+      {% for type, amt in metrics.by_type %}
+      <div class="leaderboard-item">
+        <div class="leaderboard-meta">
+          <span class="leaderboard-name font-semibold">{{ type }}</span>
+          <span class="leaderboard-value font-mono font-semibold">¥{{ amt|money }}</span>
+        </div>
+        <div class="leaderboard-track">
+          <div class="leaderboard-bar" style="width: {% if metrics.total_spending > 0 %}{{ (amt / metrics.total_spending * 100)|round(1) }}{% else %}0{% endif %}%; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);"></div>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding: 32px 0;">
+        <span class="empty-icon">📋</span>
+        <span class="empty-text">暂无科目支出统计，请先录入凭证</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<style>
+/* Leaderboard UI Aesthetics */
+.analysis-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 24px;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.leaderboard-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaderboard-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.leaderboard-name {
+  color: var(--text);
+}
+
+.leaderboard-value {
+  color: var(--primary);
+}
+
+.leaderboard-track {
+  height: 8px;
+  background-color: #f1f5f9;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.leaderboard-bar {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+</style>
 {% endblock %}

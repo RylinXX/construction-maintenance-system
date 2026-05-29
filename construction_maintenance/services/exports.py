@@ -73,3 +73,28 @@ def build_qualification_workbook(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(path)
     return path
+
+
+PROJECT_LEDGER_HEADERS = ["日期", "项目", "类型", "金额", "备注", "附件", "录入人"]
+
+
+def build_project_ledger_workbook(path: Path) -> Path:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "项目台账"
+    sheet.append(PROJECT_LEDGER_HEADERS)
+    for item in repo.list_vouchers():
+        sheet.append(
+            [
+                item["voucher_date"],
+                item["project_name"],
+                item["voucher_type"],
+                item["amount"],
+                item["notes"],
+                item["attachment_path"],
+                item["entry_user"],
+            ]
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    workbook.save(path)
+    return path

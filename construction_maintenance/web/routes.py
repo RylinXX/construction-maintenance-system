@@ -23,16 +23,8 @@ def money(value: float) -> str:
 
 @bp.get("/")
 def dashboard():
-    vouchers = repo.list_vouchers()
-    total = sum(float(row["amount"]) for row in vouchers)
-    metrics = {
-        "month_spending": f"{total:.2f}",
-        "total_spending": f"{total:.2f}",
-        "voucher_count": len(vouchers),
-        "pending_count": 0,
-        "expiring_qualifications": 0,
-    }
-    return render_template("dashboard.html", metrics=metrics)
+    from construction_maintenance.services.dashboard import build_dashboard
+    return render_template("dashboard.html", metrics=build_dashboard())
 
 
 @bp.route("/projects", methods=["GET", "POST"])
@@ -161,3 +153,32 @@ def batch():
             )
         return redirect(url_for("web.batch"))
     return render_template("batch.html", items=repo.list_batch_items())
+
+
+@bp.get("/exports")
+def exports():
+    return render_template("exports.html")
+
+
+@bp.get("/exports/<export_type>")
+def download_export(export_type: str):
+    from pathlib import Path
+    from flask import current_app
+    from flask import send_file
+    from construction_maintenance.services.exports import (
+        build_people_workbook,
+        build_project_ledger_workbook,
+        build_qualification_workbook
+    )
+
+    export_dir = Path(current_app.root_path).parent / "exports"
+    builders = {
+        "project-ledger": ("项目台账.xlsx", build_project_ledger_workbook),
+        "people": ("基础人员信息表.xlsx", build_people_workbook),
+        "qualifications": ("企业资质清单.xlsx", build_qualification_workbook),
+    }
+    if export_type not in builders:
+        return "Unknown export type", 404
+    filename, builder = builders[export_type]
+    path = builder(export_dir / filename)
+    return send_file(path, as_attachment=True, download_name=filename)
