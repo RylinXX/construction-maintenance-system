@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}人员花名册 - CAM 建筑工程维护系统{% endblock %}
+{% block breadcrumb %}人员花名册{% endblock %}
+
+{% block content %}
+<div class="panel-section">
+  <div class="panel-card animate-slide-up">
+    <div class="panel-header">
+      <h2 class="panel-title">👥 新增员工/进场人员</h2>
+      <p class="panel-subtitle">登记施工现场人员、管理岗位工种信息，自动归档并保留 OCR 待确认凭证接口。</p>
+    </div>
+    <form method="post" class="premium-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="name">姓名 <span class="required">*</span></label>
+          <input class="form-input" id="name" name="name" type="text" placeholder="例如：李强" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="id_number">身份证号 <span class="required">*</span></label>
+          <input class="form-input font-mono" id="id_number" name="id_number" type="text" placeholder="18位身份证号" required maxlength="18">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="gender">性别</label>
+          <select class="form-select" id="gender" name="gender">
+            <option value="男">男</option>
+            <option value="女">女</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="birth_date">出生日期</label>
+          <input class="form-input" id="birth_date" name="birth_date" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="age">年龄</label>
+          <input class="form-input" id="age" name="age" type="number" min="1" max="120" placeholder="例如：35">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="phone">联系电话</label>
+          <input class="form-input" id="phone" name="phone" type="tel" placeholder="11位手机号">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="job_type">岗位/工种</label>
+          <input class="form-input" id="job_type" name="job_type" type="text" placeholder="如：普工、架子工、安全员">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="entry_date">入职/进场日期</label>
+          <input class="form-input" id="entry_date" name="entry_date" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="bank_card">银行卡号</label>
+          <input class="form-input font-mono" id="bank_card" name="bank_card" type="text" placeholder="收款银行卡号">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="bank_name">开户行名称</label>
+          <input class="form-input" id="bank_name" name="bank_name" type="text" placeholder="如：中国建设银行郑州支行">
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label" for="address">联系地址</label>
+          <input class="form-input" id="address" name="address" type="text" placeholder="员工身份证住址或常住地址...">
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label" for="notes">备注说明</label>
+          <input class="form-input" id="notes" name="notes" type="text" placeholder="其它补充资质或合同相关的备注信息...">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 保存并录入</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel-card animate-slide-up" style="animation-delay: 0.1s;">
+    <div class="panel-header">
+      <h2 class="panel-title">📋 基础人员花名册</h2>
+      <p class="panel-subtitle">公司已录入及进场的全体人员档案名册。</p>
+    </div>
+    <div class="table-container">
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th>姓名</th>
+            <th>身份证号</th>
+            <th>电话</th>
+            <th>工种/岗位</th>
+            <th>银行卡</th>
+            <th>核实状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for person in people %}
+          <tr>
+            <td class="font-semibold text-dark">{{ person.name }}</td>
+            <td class="font-mono">{{ person.id_number }}</td>
+            <td>{{ person.phone or '--' }}</td>
+            <td>
+              {% if person.job_type %}
+              <span class="badge badge-info">{{ person.job_type }}</span>
+              {% else %}
+              <span class="text-muted">--</span>
+              {% endif %}
+            </td>
+            <td class="font-mono">{{ person.bank_card or '--' }} <span class="text-muted">({{ person.bank_name or '未指定开户行' }})</span></td>
+            <td>
+              {% if person.review_status == '已确认' %}
+              <span class="badge badge-success">{{ person.review_status }}</span>
+              {% else %}
+              <span class="badge badge-warning">{{ person.review_status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr class="empty-row">
+            <td colspan="6">
+              <div class="empty-state">
+                <span class="empty-icon">👥</span>
+                <span class="empty-text">暂无人员记录，请在上方表单中录入第一名施工人员档案</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

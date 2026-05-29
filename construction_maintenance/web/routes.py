@@ -75,3 +75,26 @@ def vouchers():
         vouchers=repo.list_vouchers(),
         voucher_types=["员工报销", "转账凭证", "材料费用", "油费", "电费", "人工工资", "其它"],
     )
+
+
+@bp.route("/people", methods=["GET", "POST"])
+def people():
+    if request.method == "POST":
+        repo.create_person(
+            {
+                "name": required_text(request.form, "name", "姓名"),
+                "id_number": required_text(request.form, "id_number", "身份证号"),
+                "gender": text_value(request.form, "gender"),
+                "birth_date": text_value(request.form, "birth_date"),
+                "age": int(text_value(request.form, "age") or 0) or None,
+                "phone": text_value(request.form, "phone"),
+                "address": text_value(request.form, "address"),
+                "job_type": text_value(request.form, "job_type"),
+                "bank_card": text_value(request.form, "bank_card"),
+                "bank_name": text_value(request.form, "bank_name"),
+                "entry_date": text_value(request.form, "entry_date"),
+                "notes": text_value(request.form, "notes"),
+            }
+        )
+        return redirect(url_for("web.people"))
+    return render_template("people.html", people=repo.list_people())

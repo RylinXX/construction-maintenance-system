@@ -40,3 +40,19 @@ def test_project_and_voucher_flow(client):
     assert voucher_response.status_code == 200
     assert "购买材料".encode("utf-8") in voucher_response.data
     assert "2,300.00".encode("utf-8") in voucher_response.data
+
+
+def test_people_page_creates_person(client):
+    response = client.post(
+        "/people",
+        data={
+            "name": "王小明",
+            "id_number": "410000199001011234",
+            "phone": "13800000000",
+            "job_type": "普工",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "王小明".encode("utf-8") in response.data
