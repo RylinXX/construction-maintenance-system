@@ -722,6 +722,79 @@ def download_export(export_type: str):
     return send_file(path, as_attachment=True, download_name=filename)
 
 
+@bp.route("/contracts", methods=["GET", "POST"])
+def contracts():
+    if request.method == "POST":
+        repo.create_contract(
+            {
+                "project_id": int(required_text(request.form, "project_id", "归属项目")),
+                "name": required_text(request.form, "name", "合同名称"),
+                "contract_type": required_text(request.form, "contract_type", "合同分类"),
+                "notes": text_value(request.form, "notes"),
+                "attachment_path": _save_form_upload("attachment"),
+            }
+        )
+        flash("新增合同成功。", "success")
+        return redirect(url_for("web.contracts"))
+
+    filter_project_id = request.args.get("project_id", type=int)
+    filter_contract_type = request.args.get("contract_type")
+    search_query = request.args.get("query")
+
+    contracts_list = repo.list_contracts(
+        project_id=filter_project_id,
+        contract_type=filter_contract_type,
+        query=search_query,
+    )
+
+    # 计算合同统计指标
+    all_c = repo.list_contracts()
+    type_stats = {
+        "总包合同": sum(1 for c in all_c if c["contract_type"] == "总包合同"),
+        "劳务合同": sum(1 for c in all_c if c["contract_type"] == "劳务合同"),
+        "材料商合同": sum(1 for c in all_c if c["contract_type"] == "材料商合同"),
+        "人员合同": sum(1 for c in all_c if c["contract_type"] == "人员合同"),
+        "其它": sum(1 for c in all_c if c["contract_type"] == "其它"),
+    }
+
+    return render_template(
+        "contracts.html",
+        contracts=contracts_list,
+        projects=repo.list_projects(),
+        filter_project_id=filter_project_id,
+        filter_contract_type=filter_contract_type,
+        search_query=search_query,
+        stats={
+            "total": len(all_c),
+            **type_stats
+        }
+    )
+
+
+@bp.route("/contracts/<int:contract_id>/edit", methods=["POST"])
+def edit_contract(contract_id: int):
+    attachment_path = _save_form_upload("attachment")
+    data = {
+        "project_id": int(required_text(request.form, "project_id", "归属项目")),
+        "name": required_text(request.form, "name", "合同名称"),
+        "contract_type": required_text(request.form, "contract_type", "合同分类"),
+        "notes": text_value(request.form, "notes"),
+    }
+    if attachment_path:
+        data["attachment_path"] = attachment_path
+
+    repo.update_contract(contract_id, data)
+    flash("合同更新成功。", "success")
+    return redirect(request.referrer or url_for("web.contracts"))
+
+
+@bp.route("/contracts/<int:contract_id>/delete", methods=["POST"])
+def delete_contract(contract_id: int):
+    repo.delete_contract(contract_id)
+    flash("合同删除成功。", "success")
+    return redirect(url_for("web.contracts"))
+
+
 @bp.route("/uploads/<path:filename>")
 def download_attachment(filename):
     from flask import send_from_directory, current_app, request, Response
@@ -744,30 +817,105 @@ def download_attachment(filename):
     # If the file does not exist, dynamically generate a gorgeous SVG certificate!
     db = repo.get_db()
     qual = db.execute("select * from qualifications where attachment_path = ?", (filename,)).fetchone()
+    contract = db.execute("select * from contracts where attachment_path = ?", (filename,)).fetchone()
     
-    if not qual:
-        name = "企业合规备案证书"
-        cert_no = "CAM-MOCK-998877"
-        company_name = "河南城建第一集团有限公司"
-        issue_date = "2020-05-10"
-        expiry_date = ""
-        is_long_term = True
-        notes = "系统智能存证与企业官方合规双签章备案文件"
-    else:
-        company = db.execute("select * from companies where id = ?", (qual["company_id"],)).fetchone()
-        company_name = company["name"] if company else "合作单位"
-        name = qual["name"]
-        cert_no = qual["certificate_no"]
-        issue_date = qual["issue_date"] or "2020-05-10"
-        expiry_date = qual["expiry_date"] or ""
-        is_long_term = qual["is_long_term"]
-        notes = qual["notes"] or "经核准，该合作单位此项企业资质证照合法合规，准予在此工程维护系统归档备案。"
+    if contract:
+        # Render gorgeous contract compliance vector SVG
+        proj = db.execute("select * from projects where id = ?", (contract["project_id"],)).fetchone()
+        project_name = proj["name"] if proj else "未知工程项目"
+        name = contract["name"]
+        cert_no = f"CAM-CON-{contract['id']:06d}"
+        company_name = project_name
+        issue_date = contract["created_at"][:10] if contract["created_at"] else "2026-06-02"
+        notes = contract["notes"] or "该项目合同已通过建筑工程维护系统存证并归档备案，附件处于云端安全托管状态。"
         
-    expiry_text = "长期有效" if is_long_term else (expiry_date or "长期有效")
-    expiry_color = "#2563eb" if is_long_term else "#dc2626"
+        svg_content = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f766e" />
+      <stop offset="50%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#042f2e" />
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f0fdf4" />
+      <stop offset="100%" stop-color="#f6fbf7" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="800" height="600" fill="url(#bgGrad)" rx="12"/>
+  
+  <rect x="25" y="25" width="750" height="550" fill="none" stroke="url(#emeraldGrad)" stroke-width="4.5" rx="10"/>
+  <rect x="35" y="35" width="730" height="530" fill="none" stroke="#0f766e" stroke-width="1.2" stroke-dasharray="6 3" rx="8" stroke-opacity="0.75"/>
+  
+  <path d="M 35 60 L 60 35 M 35 70 L 70 35" stroke="url(#emeraldGrad)" stroke-width="2"/>
+  <path d="M 765 60 L 740 35 M 765 70 L 730 35" stroke="url(#emeraldGrad)" stroke-width="2"/>
+  <path d="M 35 540 L 60 565 M 35 530 L 70 565" stroke="url(#emeraldGrad)" stroke-width="2"/>
+  <path d="M 765 540 L 740 565 M 765 530 L 730 565" stroke="url(#emeraldGrad)" stroke-width="2"/>
+
+  <text x="400" y="95" text-anchor="middle" font-family="'Noto Serif SC', 'SimSun', serif" font-size="28" font-weight="bold" fill="#0f766e" letter-spacing="4">项目合规合同存证证书</text>
+  <text x="400" y="122" text-anchor="middle" font-family="'Inter', sans-serif" font-size="11" font-weight="700" fill="#0d9488" letter-spacing="2">PROJECT CONTRACT COMPLIANCE ARCHIVE</text>
+  
+  <path d="M 220 140 L 360 140 M 440 140 L 580 140" stroke="url(#emeraldGrad)" stroke-width="1.5"/>
+  <circle cx="400" cy="140" r="4.5" fill="#0f766e"/>
+  
+  <g font-family="'Microsoft YaHei', sans-serif" font-size="15" fill="#374151" transform="translate(110, 0)">
+    <text x="40" y="200" font-weight="bold" fill="#6b7280" font-size="14.5">归属工程项目：</text>
+    <text x="170" y="200" font-weight="bold" font-size="17" fill="#111827">{company_name}</text>
     
-    # Golden and Navy Elegant Vector SVG
-    svg_content = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+    <text x="40" y="255" font-weight="bold" fill="#6b7280" font-size="14.5">合同存证类别：</text>
+    <text x="170" y="255" font-weight="bold" font-size="18" fill="#0f766e">{contract['contract_type']}</text>
+    
+    <text x="40" y="310" font-weight="bold" fill="#6b7280" font-size="14.5">合同备案名称：</text>
+    <text x="170" y="310" font-weight="bold" font-size="17" fill="#111827">{name}</text>
+    
+    <text x="40" y="365" font-weight="bold" fill="#6b7280" font-size="14.5">系统存证编号：</text>
+    <text x="170" y="365" font-family="monospace" font-weight="bold" font-size="18" fill="#111827">{cert_no}</text>
+    
+    <text x="40" y="420" font-weight="bold" fill="#6b7280" font-size="14.5">备案登记日期：</text>
+    <text x="170" y="420" font-weight="bold" font-size="16" fill="#111827">{issue_date}</text>
+
+    <text x="40" y="475" font-weight="bold" fill="#6b7280" font-size="14.5">合同存证备注：</text>
+    <text x="170" y="475" font-size="13.5" fill="#4b5563" font-weight="500" width="400">{notes}</text>
+  </g>
+  
+  <g transform="translate(615, 435)">
+    <circle cx="0" cy="0" r="54" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-opacity="0.85"/>
+    <circle cx="0" cy="0" r="50" fill="none" stroke="#dc2626" stroke-width="1" stroke-opacity="0.85" stroke-dasharray="3 1.5"/>
+    <polygon points="0,-14 4,-3 15,-3 6,4 10,15 0,8 -10,15 -6,4 -15,-3 -4,-3" fill="#dc2626" fill-opacity="0.85"/>
+    <text x="0" y="36" text-anchor="middle" font-family="'SimSun', serif" font-size="9" font-weight="bold" fill="#dc2626" fill-opacity="0.85" letter-spacing="1">合同存证专用章</text>
+    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(-35 0 -34)">C</text>
+    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(-17 0 -34)">A</text>
+    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(0 0 -34)">M</text>
+    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(17 0 -34)">F</text>
+    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(35 0 -34)">ILE</text>
+  </g>
+  
+  <text x="400" y="565" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="10.5" fill="#9ca3af">本证书由 CAM 建筑工程维护系统合同备案中心自动签章，具有同等系统存证效力。</text>
+</svg>"""
+    else:
+        if not qual:
+            name = "企业合规备案证书"
+            cert_no = "CAM-MOCK-998877"
+            company_name = "河南城建第一集团有限公司"
+            issue_date = "2020-05-10"
+            expiry_date = ""
+            is_long_term = True
+            notes = "系统智能存证与企业官方合规双签章备案文件"
+        else:
+            company = db.execute("select * from companies where id = ?", (qual["company_id"],)).fetchone()
+            company_name = company["name"] if company else "合作单位"
+            name = qual["name"]
+            cert_no = qual["certificate_no"]
+            issue_date = qual["issue_date"] or "2020-05-10"
+            expiry_date = qual["expiry_date"] or ""
+            is_long_term = qual["is_long_term"]
+            notes = qual["notes"] or "经核准，该合作单位此项企业资质证照合法合规，准予在此工程维护系统归档备案。"
+            
+        expiry_text = "长期有效" if is_long_term else (expiry_date or "长期有效")
+        expiry_color = "#2563eb" if is_long_term else "#dc2626"
+        
+        # Golden and Navy Elegant Vector SVG
+        svg_content = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
   <defs>
     <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#c5a880" />
@@ -853,6 +1001,7 @@ def download_attachment(filename):
         headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{dn}"
         
     return Response(svg_content, mimetype="image/svg+xml", headers=headers)
+
 
 
 @bp.route("/vouchers/<int:voucher_id>/edit", methods=["POST"])

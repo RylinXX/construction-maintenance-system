@@ -607,3 +607,69 @@ def test_confirm_batch_qualification_success_new_company(client, app):
         assert qual[0]["name"] == "营业执照"
         assert qual[0]["is_long_term"] == 1
         assert qual[0]["notes"] == "新公司营业执照备注"
+
+
+def test_contract_routes(client, app):
+    with app.app_context():
+        from construction_maintenance import repositories as repo
+        from construction_maintenance.db import init_db
+        init_db()
+        
+        # 1. 访问合同管理页面
+        res = client.get("/contracts")
+        assert res.status_code == 200
+        assert "合同".encode("utf-8") in res.data
+        
+        # 获取主公司和创建项目
+        main_company = repo.get_main_company()
+        proj_id = repo.create_project({
+            "company_id": main_company["id"],
+            "name": "新路由测试项目",
+            "status": "进行中"
+        })
+        
+        # 2. 新增合同提交
+        res = client.post("/contracts", data={
+            "name": "新路由测试合同",
+            "project_id": str(proj_id),
+            "contract_type": "材料商合同",
+            "notes": "路由测试备注"
+        }, follow_redirects=True)
+        assert res.status_code == 200
+        assert "新路由测试合同".encode("utf-8") in res.data
+        
+        # 获取刚才创建的合同
+        contracts = repo.list_contracts(query="新路由测试合同")
+        assert len(contracts) > 0
+        c_id = contracts[0]["id"]
+        
+        # 3. 编辑合同
+        res = client.post(f"/contracts/{c_id}/edit", data={
+            "name": "编辑后路由测试合同",
+            "project_id": str(proj_id),
+            "contract_type": "总包合同",
+            "notes": "编辑备注"
+        }, follow_redirects=True)
+        assert res.status_code == 200
+        assert "编辑后路由测试合同".encode("utf-8") in res.data
+        
+        # 4. SVG 证书生成测试 (由于没有物理文件，系统应生成 SVG 模拟合同)
+        # 先更新合同关联的附件名称为特定值，然后下载它
+        repo.update_contract(c_id, {
+            "project_id": proj_id,
+            "name": "编辑后路由测试合同",
+            "contract_type": "总包合同",
+            "notes": "编辑备注",
+            "attachment_path": "test_contract_file.pdf"
+        })
+        res = client.get(f"/uploads/test_contract_file.pdf")
+        assert res.status_code == 200
+        assert b"svg" in res.data
+        assert "合同".encode("utf-8") in res.data
+        
+        # 5. 删除合同
+        res = client.post(f"/contracts/{c_id}/delete", follow_redirects=True)
+        assert res.status_code == 200
+        assert "编辑后路由测试合同".encode("utf-8") not in res.data
+
+

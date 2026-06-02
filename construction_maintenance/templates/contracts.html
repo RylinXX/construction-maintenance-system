@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>合同管理</title></head>
+<body>
+    <h1>合同</h1>
+    <!-- 极简模板，以满足路由测试 -->
+    <div id="contracts-list">
+        {% for contract in contracts %}
+            <div>
+                <h3>{{ contract.name }}</h3>
+                <p>{{ contract.contract_type }}</p>
+                <p>{{ contract.notes }}</p>
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
