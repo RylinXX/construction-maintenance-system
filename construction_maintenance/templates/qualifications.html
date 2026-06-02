@@ -1,125 +1,1173 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}企业资质 - CAM 建筑工程维护系统{% endblock %}
 {% block breadcrumb %}企业资质{% endblock %}
 
 {% block content %}
+<style>
+/* Qualifications Grid View Layout */
+.qualifications-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.qualification-card {
+  background: var(--panel);
+  border: 1.5px solid var(--line-light);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.qualification-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+
+/* Elegant Left Border Indicator based on Qualification Category */
+.qualification-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 100%;
+  background: var(--primary);
+}
+
+/* Custom border colors depending on status or type */
+.qualification-card.status-success::before { background: var(--success); }
+.qualification-card.status-warning::before { background: var(--warning); }
+.qualification-card.status-danger::before { background: var(--danger); }
+.qualification-card.status-info::before { background: var(--info); }
+.qualification-card.status-purple::before { background: #8b5cf6; }
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+  gap: 12px;
+}
+
+.card-title-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.card-icon {
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-light);
+  flex-shrink: 0;
+}
+
+.card-name {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-company {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-weight: 600;
+  margin: 2px 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-badge {
+  flex-shrink: 0;
+}
+
+.card-body {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-grow: 1;
+}
+
+.card-info-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 1px dashed var(--line-light);
+  padding-bottom: 8px;
+}
+
+.card-info-item:last-of-type {
+  border-bottom: none;
+}
+
+.card-info-label {
+  color: var(--muted);
+}
+
+.card-info-val {
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+}
+
+.card-info-val.font-mono {
+  font-family: Consolas, Monaco, monospace;
+  font-size: 12px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid var(--line-light);
+  padding-top: 16px;
+  margin-top: auto;
+}
+
+.card-btn {
+  flex: 1;
+}
+
+.qualification-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+  align-items: stretch;
+}
+
+.qualification-actions .btn {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.qualification-preview-btn,
+.qualification-edit-btn {
+  padding: 0 12px !important;
+  font-size: 13px !important;
+}
+
+.qualification-delete-btn {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  padding: 0 !important;
+  border-color: var(--error-color) !important;
+  background: var(--error-color) !important;
+  color: #fff !important;
+}
+
+.qualification-delete-btn .inline-icon {
+  width: 17px;
+  height: 17px;
+  filter: brightness(0) invert(1);
+}
+
+/* View Switcher Tabs */
+.view-switcher {
+  display: inline-flex;
+  background: var(--bg);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-light);
+}
+
+.view-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+}
+
+.view-btn:hover {
+  color: var(--text);
+}
+
+.view-btn.active {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+</style>
+
 <div class="panel-section">
-  <div class="panel-card animate-slide-up">
-    <div class="panel-header">
-      <h2 class="panel-title">🛡️ 维护公司与企业资质</h2>
-      <p class="panel-subtitle">在此登记关联合作公司资质、更新各项建筑业资质等级和证书有效期。</p>
-    </div>
-    <form method="post" class="premium-form">
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label" for="company_id">关联已有合作公司</label>
-          <select class="form-select" id="company_id" name="company_id">
-            {% for company in companies %}
-            <option value="{{ company.id }}">{{ company.name }} {% if company.is_main %}(主公司){% endif %}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="company_name"><b>或</b> 新增合作公司名称</label>
-          <input class="form-input" id="company_name" name="company_name" type="text" placeholder="不填则使用左侧已有公司">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="credit_code">统一社会信用代码</label>
-          <input class="form-input font-mono" id="credit_code" name="credit_code" type="text" placeholder="新增公司时选填">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="legal_person">公司法定代表人</label>
-          <input class="form-input" id="legal_person" name="legal_person" type="text" placeholder="新增公司时选填">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="phone">公司联系电话</label>
-          <input class="form-input" id="phone" name="phone" type="tel" placeholder="新增公司时选填">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="name">资质证书名称 <span class="required">*</span></label>
-          <input class="form-input" id="name" name="name" type="text" placeholder="例如：建筑工程施工总承包一级" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="certificate_no">资质证书编号 <span class="required">*</span></label>
-          <input class="form-input font-mono" id="certificate_no" name="certificate_no" type="text" placeholder="证书上的正规编号" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="issue_date">发证日期</label>
-          <input class="form-input" id="issue_date" name="issue_date" type="date">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="expiry_date">证书到期日期</label>
-          <input class="form-input" id="expiry_date" name="expiry_date" type="date">
-        </div>
-        <div class="form-group" style="justify-content: center; padding-top: 24px;">
-          <label class="form-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input id="is_long_term" name="is_long_term" type="checkbox" value="1" style="width: 18px; height: 18px; cursor: pointer;">
-            <span>证书长期有效</span>
-          </label>
-        </div>
-        <div class="form-group full-width">
-          <label class="form-label" for="notes">资质备注/核准范围</label>
-          <input class="form-input" id="notes" name="notes" type="text" placeholder="例：可承担单项合同额3000万元以下的建筑工程施工等...">
-        </div>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">💾 保存企业资质</button>
-      </div>
-    </form>
+  <!-- Company Switcher Tabs -->
+  <div class="company-tabs animate-slide-up" style="animation-delay: 0.02s;">
+    {% for company in companies %}
+    <button type="button" class="company-tab {% if loop.first %}active{% endif %}" data-target-company-id="{{ company.id }}" onclick="switchCompanyQualifications({{ company.id }})">
+      {{ icon('folder') }} {{ company.name }} {% if company.is_main %}(主公司){% endif %}
+    </button>
+    {% endfor %}
   </div>
 
-  <div class="panel-card animate-slide-up" style="animation-delay: 0.1s;">
+  <!-- Main Qualifications Card -->
+  <div class="panel-card animate-slide-up" style="animation-delay: 0.05s;">
     <div class="panel-header">
-      <h2 class="panel-title">📋 资质证书清单</h2>
-      <p class="panel-subtitle">登记的各公司企业资质及证书有效期实时状态。</p>
+      <div>
+        <h2 class="panel-title">{{ icon('checklist') }} 资质证书与基础证照清单</h2>
+        <p class="panel-subtitle">当前选中公司归档及登记的各项企业资质与基础证照有效期实时状态。</p>
+      </div>
+      <div class="toolbar-actions">
+        <!-- Unified Premium View Switcher -->
+        <div class="view-switcher">
+          <button type="button" class="view-btn active" id="viewBtnGrid" onclick="toggleQualificationView('grid')">
+            {{ icon('card-view') }} 卡片视图
+          </button>
+          <button type="button" class="view-btn" id="viewBtnList" onclick="toggleQualificationView('list')">
+            {{ icon('list-view') }} 列表视图
+          </button>
+        </div>
+        <button type="button" class="btn btn-secondary toolbar-btn" onclick="openModal('addCompanyModal')">{{ icon('add') }} 新增单位</button>
+        <button type="button" class="btn btn-secondary toolbar-btn" onclick="openActiveCompanyModal()">{{ icon('edit') }} 编辑单位</button>
+        <a href="{{ url_for('web.download_export', export_type='qualifications') }}" class="btn btn-secondary toolbar-btn">{{ icon('upload') }} 导出 Excel</a>
+        <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addQualificationModal')">{{ icon('add') }} 新增资质</button>
+      </div>
     </div>
-    <div class="table-container">
-      <table class="premium-table">
-        <thead>
-          <tr>
-            <th>公司名称</th>
-            <th>资质名称</th>
-            <th>证书编号</th>
-            <th>发证日期</th>
-            <th>到期日期</th>
-            <th>有效期状态</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in qualifications %}
-          <tr>
-            <td class="font-semibold text-dark">{{ item.company_name }}</td>
-            <td class="font-semibold">{{ item.name }}</td>
-            <td class="font-mono">{{ item.certificate_no }}</td>
-            <td class="font-mono">{{ item.issue_date or '--' }}</td>
-            <td class="font-mono">
+    
+    <!-- Tradational List View -->
+    <div id="qualificationsListView" style="display: none;">
+      <div class="table-container">
+        <table class="premium-table">
+          <thead>
+            <tr>
+              <th>公司名称</th>
+              <th>资质/证照名称</th>
+              <th>证书/证件编号</th>
+              <th>发证日期</th>
+              <th>到期日期</th>
+              <th>有效期状态</th>
+              <th class="text-right">证件附件</th>
+            </tr>
+          </thead>
+          <tbody id="qualificationsTableBody">
+            {% for item in qualifications %}
+            <tr class="qualification-row" data-company-id="{{ item.company_id }}">
+              <td class="font-semibold text-dark">{{ item.company_name }}</td>
+              <td class="font-semibold">{{ item.name }}</td>
+              <td class="font-mono">{{ item.certificate_no }}</td>
+              <td class="font-mono">{{ item.issue_date or '--' }}</td>
+              <td class="font-mono">
+                {% if item.is_long_term %}
+                <span class="text-muted">长期有效</span>
+                {% else %}
+                {{ item.expiry_date or '--' }}
+                {% endif %}
+              </td>
+              <td>
+                {% if item.is_long_term %}
+                <span class="badge badge-success">永久有效</span>
+                {% else %}
+                <span class="badge badge-info">正常服务中</span>
+                {% endif %}
+              </td>
+              <td class="text-right" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                <button type="button" class="btn btn-secondary toolbar-btn" style="padding: 6px 12px; font-size: 13px;" onclick='openDocumentPreview({
+                  "id": "{{ item.id }}",
+                  "company_name": "{{ item.company_name }}",
+                  "name": "{{ item.name }}",
+                  "certificate_no": "{{ item.certificate_no }}",
+                  "issue_date": "{{ item.issue_date or '--' }}",
+                  "expiry_date": "{% if item.is_long_term %}长期有效{% else %}{{ item.expiry_date or '--' }}{% endif %}",
+                  "is_long_term": {{ 1 if item.is_long_term else 0 }},
+                  "notes": "{{ item.notes or '暂无备注说明。' }}",
+                  "attachment_path": "{{ item.attachment_path or '' }}"
+                })'>
+                  {{ icon('preview') }} 预览 / {{ icon('import') }} 下载
+                </button>
+                <button type="button" class="btn btn-primary toolbar-btn" style="padding: 6px 12px; font-size: 13px; background-color: var(--accent); border-color: var(--accent);" onclick="openModal('editQualificationModal-{{ item.id }}')">
+                  {{ icon('edit') }} 修改
+                </button>
+                <button type="button" class="btn btn-danger toolbar-btn" style="padding: 6px 12px; font-size: 13px; background-color: var(--error-color); border-color: var(--error-color); color: white;" onclick="deleteQualification({{ item.id }}, '{{ item.name }}')" title="删除资质">
+                  {{ icon('delete') }} 删除
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+            
+            <!-- Shared Empty State Row -->
+            <tr id="qualificationsEmptyRow" class="empty-row" style="display: none;">
+              <td colspan="7">
+                <div class="empty-state">
+                  <span class="empty-icon">{{ icon('qualification') }}</span>
+                  <span class="empty-text">该合作单位当前暂无任何已录入的基础证照或资质证书，请点击右上角录入</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Premium Digital Vault Card Grid View -->
+    <div id="qualificationsGridView" class="qualifications-grid">
+      {% for item in qualifications %}
+      
+      {% set item_icon = 'document' %}
+      {% set status_class = 'status-info' %}
+      {% if '营业执照' in item.name %}
+        {% set item_icon = 'company' %}
+        {% set status_class = 'status-success' %}
+      {% elif '开户' in item.name %}
+        {% set item_icon = 'bank-card' %}
+        {% set status_class = 'status-info' %}
+      {% elif '安全' in item.name %}
+        {% set item_icon = 'qualification' %}
+        {% set status_class = 'status-warning' %}
+      {% elif '建筑' in item.name %}
+        {% set item_icon = 'hardhat' %}
+        {% set status_class = 'status-success' %}
+      {% elif '人员' in item.name or '八大员' in item.name %}
+        {% set item_icon = 'hardhat' %}
+        {% set status_class = 'status-info' %}
+      {% elif '身份证' in item.name or '法人' in item.name %}
+        {% set item_icon = 'id-card' %}
+        {% set status_class = 'status-purple' %}
+      {% endif %}
+
+      <div class="qualification-card qualification-row {{ status_class }} animate-slide-up" data-company-id="{{ item.company_id }}" style="animation-delay: {{ loop.index0 * 0.03 }}s;">
+        <!-- Card Header -->
+        <div class="card-header">
+          <div class="card-title-area">
+            <span class="card-icon">{{ icon(item_icon) }}</span>
+            <div style="min-width: 0;">
+              <h3 class="card-name" title="{{ item.name }}">{{ item.name }}</h3>
+              <p class="card-company" title="{{ item.company_name }}">{{ item.company_name }}</p>
+            </div>
+          </div>
+          <div class="card-badge">
+            {% if item.is_long_term %}
+            <span class="badge badge-success">永久有效</span>
+            {% else %}
+            <span class="badge badge-info">正常服务中</span>
+            {% endif %}
+          </div>
+        </div>
+        
+        <!-- Card Body -->
+        <div class="card-body">
+          <div class="card-info-item">
+            <span class="card-info-label">证书/证照编号</span>
+            <span class="card-info-val font-mono">{{ item.certificate_no }}</span>
+          </div>
+          <div class="card-info-item">
+            <span class="card-info-label">发证日期</span>
+            <span class="card-info-val">{{ item.issue_date or '--' }}</span>
+          </div>
+          <div class="card-info-item">
+            <span class="card-info-label">证书到期日期</span>
+            <span class="card-info-val font-semibold">
               {% if item.is_long_term %}
               <span class="text-muted">长期有效</span>
               {% else %}
               {{ item.expiry_date or '--' }}
               {% endif %}
-            </td>
-            <td>
-              {% if item.is_long_term %}
-              <span class="badge badge-success">永久有效</span>
-              {% else %}
-              <span class="badge badge-info">正常服务中</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% else %}
-          <tr class="empty-row">
-            <td colspan="6">
-              <div class="empty-state">
-                <span class="empty-icon">🛡️</span>
-                <span class="empty-text">暂无企业资质记录，请在上方表单中录入第一项公司资质证书</span>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+            </span>
+          </div>
+          {% if item.notes %}
+          <div class="card-info-item" style="flex-direction: column; gap: 4px; margin-top: 4px; border-bottom: none; padding-bottom: 0;">
+            <span class="card-info-label" style="text-align: left;">核准范围/资质备注</span>
+            <span class="card-info-val" style="font-weight: 500; font-size: 12.5px; color: var(--muted); background: var(--bg); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line-light); max-height: 50px; overflow-y: auto; text-align: left; width: 100%;">
+              {{ item.notes }}
+            </span>
+          </div>
+          {% endif %}
+        </div>
+        
+        <!-- Card Actions -->
+        <div class="card-actions qualification-actions">
+          <button type="button" class="btn btn-secondary card-btn qualification-preview-btn" onclick='openDocumentPreview({
+            "id": "{{ item.id }}",
+            "company_name": "{{ item.company_name }}",
+            "name": "{{ item.name }}",
+            "certificate_no": "{{ item.certificate_no }}",
+            "issue_date": "{{ item.issue_date or "--" }}",
+            "expiry_date": "{% if item.is_long_term %}长期有效{% else %}{{ item.expiry_date or "--" }}{% endif %}",
+            "is_long_term": {{ 1 if item.is_long_term else 0 }},
+            "notes": "{{ item.notes or "暂无备注说明。" }}",
+            "attachment_path": "{{ item.attachment_path or "" }}"
+          })'>
+            {{ icon('preview') }} 预览下载
+          </button>
+          <button type="button" class="btn btn-primary card-btn qualification-edit-btn" style="background-color: var(--accent); border-color: var(--accent);" onclick="openModal('editQualificationModal-{{ item.id }}')">
+            {{ icon('edit') }} 修改
+          </button>
+          <button type="button" class="btn btn-danger qualification-delete-btn" onclick="deleteQualification({{ item.id }}, '{{ item.name }}')" title="删除资质" aria-label="删除资质">
+            {{ icon('delete') }}
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+      
+      <!-- Grid Empty State -->
+      <div id="qualificationsEmptyGrid" class="empty-state" style="grid-column: 1 / -1; display: none; padding: 56px 20px;">
+        <span class="empty-icon">{{ icon('qualification') }}</span>
+        <span class="empty-text">该合作单位当前暂无任何已录入的基础证照或资质证书，请点击右上角录入</span>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- Add Qualification Modal Dialog (Featuring standardized base document suggestions and AI OCR Tool) -->
+<div id="addQualificationModal" class="modal">
+  <div class="modal-content" style="max-width: 700px;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('qualification') }} 新增与维护企业资质</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addQualificationModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" enctype="multipart/form-data" class="premium-form">
+        <div class="form-grid">
+          <!-- Physical Attachment Upload Area & AI/OCR Parser Trigger -->
+          <div class="form-group full-width" style="margin-bottom: 8px;">
+            <label class="form-label" for="attachment">上传纸质/证件附件 (图片或PDF) 
+              <span class="text-muted" style="font-weight: 500; font-size: 12px;">(支持直接预览、下载及 AI 智能识别内容)</span>
+            </label>
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <input class="form-input" id="attachment" name="attachment" type="file" accept=".png,.jpg,.jpeg,.pdf" style="flex-grow: 1;">
+              <button type="button" id="btnRecognize" class="btn btn-accent" style="padding: 10px 16px; font-size: 13.5px; white-space: nowrap; display: none; border-radius: var(--radius-md);" onclick="runAiOcr()">
+                {{ icon('ai') }} AI 智能识别
+              </button>
+            </div>
+            <div id="ocrStatus" style="font-size: 13px; font-weight: 700; color: var(--accent); margin-top: 6px; display: none;"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="company_id">关联合作公司 <span class="required">*</span></label>
+            <select class="form-select" id="company_id" name="company_id" required>
+              {% for company in companies %}
+              <option value="{{ company.id }}">{{ company.name }} {% if company.is_main %}(主公司){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          
+          <!-- Standard Prepopulated Base Compliance Selector -->
+          <div class="form-group">
+            <label class="form-label" for="name_select">资质证书/基础证照名称 <span class="required">*</span></label>
+            <select class="form-select" id="name_select" onchange="handleQualificationNameChange()" required>
+              <option value="" disabled selected>-- 请选择基础资质或证照 --</option>
+              <option value="营业执照">营业执照</option>
+              <option value="开户证明">开户证明</option>
+              <option value="开票信息">开票信息</option>
+              <option value="建筑资质">建筑资质</option>
+              <option value="安全生产资质">安全生产资质</option>
+              <option value="八大员人员证书">八大员人员证书</option>
+              <option value="法人身份证">法人身份证</option>
+              <option value="CUSTOM">自定义输入新证书...</option>
+            </select>
+          </div>
+          
+          <!-- Hidden Custom input box, shown dynamically -->
+          <div class="form-group" id="name_custom_group" style="display: none;">
+            <label class="form-label" for="name_custom">自定义证照资质名称 <span class="required">*</span></label>
+            <input class="form-input" id="name_custom" type="text" placeholder="例如：电力工程施工总承包二级">
+          </div>
+          
+          <!-- Real submitted hidden field -->
+          <input type="hidden" id="name" name="name">
+
+          <div class="form-group">
+            <label class="form-label" for="certificate_no">资质证书/证照编号 <span class="required">*</span></label>
+            <input class="form-input font-mono font-semibold" id="certificate_no" name="certificate_no" type="text" placeholder="统一社会信用代码或证书正规统一编号" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="issue_date">发证日期</label>
+            <input class="form-input" id="issue_date" name="issue_date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="expiry_date">证书到期日期</label>
+            <input class="form-input" id="expiry_date" name="expiry_date" type="date">
+          </div>
+          
+          <div class="form-group" style="justify-content: center; padding-top: 24px;">
+            <label class="form-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input id="is_long_term" name="is_long_term" type="checkbox" value="1" onchange="toggleExpiryDateInput(this)" style="width: 18px; height: 18px; cursor: pointer;">
+              <span>证书长期有效</span>
+            </label>
+          </div>
+          
+
+          
+          <div class="form-group full-width">
+            <label class="form-label" for="notes">资质备注/核准范围</label>
+            <input class="form-input" id="notes" name="notes" type="text" placeholder="例：可承担单项合同额3000万元以下的建筑工程施工等...">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addQualificationModal')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存企业资质</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentActiveCompanyId = null;
+
+function switchCompanyQualifications(companyId) {
+  currentActiveCompanyId = companyId;
+  localStorage.setItem('active_company_id', companyId);
+  // 1. Update active state of company tabs
+  const tabs = document.querySelectorAll('.company-tab');
+  tabs.forEach(tab => {
+    if (parseInt(tab.getAttribute('data-target-company-id')) === companyId) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+
+  // 2. Filter table rows by data-company-id
+  const rows = document.querySelectorAll('.qualification-row');
+  let visibleCount = 0;
+  rows.forEach(row => {
+    if (parseInt(row.getAttribute('data-company-id')) === companyId) {
+      row.style.display = '';
+      visibleCount++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  // 3. Toggle empty state row and empty grid state
+  const emptyRow = document.getElementById('qualificationsEmptyRow');
+  const emptyGrid = document.getElementById('qualificationsEmptyGrid');
+  if (visibleCount === 0) {
+    if (emptyRow) emptyRow.style.display = '';
+    if (emptyGrid) emptyGrid.style.display = 'flex';
+  } else {
+    if (emptyRow) emptyRow.style.display = 'none';
+    if (emptyGrid) emptyGrid.style.display = 'none';
+  }
+}
+
+function openActiveCompanyModal() {
+  if (currentActiveCompanyId) {
+    openModal('editCompanyModal-' + currentActiveCompanyId);
+  }
+}
+
+function deleteCompany(companyId, companyName) {
+  if (confirm(`您确定要删除单位「${companyName}」吗？删除后将无法恢复。\n注意：如果该单位名下已有关联的项目或资质证书，将无法删除。`)) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = `/companies/${companyId}/delete`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+function deleteQualification(qualificationId, name) {
+  if (confirm(`您确定要删除资质证书「${name}」吗？删除后将无法恢复。`)) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = `/qualifications/${qualificationId}/delete`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+function handleQualificationNameChange() {
+  const select = document.getElementById('name_select');
+  const customGroup = document.getElementById('name_custom_group');
+  const customInput = document.getElementById('name_custom');
+  const hiddenInput = document.getElementById('name');
+  
+  if (select.value === 'CUSTOM') {
+    customGroup.style.display = '';
+    customInput.required = true;
+    hiddenInput.value = customInput.value;
+  } else {
+    customGroup.style.display = 'none';
+    customInput.required = false;
+    customInput.value = '';
+    hiddenInput.value = select.value;
+  }
+}
+
+function toggleExpiryDateInput(checkbox) {
+  const expiryInput = document.getElementById('expiry_date');
+  if (checkbox.checked) {
+    expiryInput.value = '';
+    expiryInput.disabled = true;
+    expiryInput.style.backgroundColor = 'var(--line-light)';
+    expiryInput.required = false;
+  } else {
+    expiryInput.disabled = false;
+    expiryInput.style.backgroundColor = '';
+  }
+}
+
+// AI OCR Recognition triggering async call
+function runAiOcr() {
+  const fileInput = document.getElementById('attachment');
+  const ocrStatus = document.getElementById('ocrStatus');
+  
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("请先选择您要识别的纸质附件文件！");
+    return;
+  }
+  
+  const file = fileInput.files[0];
+  const formData = new FormData();
+  formData.append('attachment', file);
+  
+  ocrStatus.style.display = 'block';
+  ocrStatus.innerHTML = '{{ icon('ai') }} AI 正在智能识别并自动提取资质证书内容，请稍候...';
+  ocrStatus.style.color = 'var(--accent)';
+  
+  // Disable recognize button to avoid multiple clicks
+  const btn = document.getElementById('btnRecognize');
+  btn.disabled = true;
+  
+  // Simulate natural delay for premium AI feeling (1.2 seconds)
+  setTimeout(() => {
+    fetch("{{ url_for('web.recognize_qualification') }}", {
+      method: "POST",
+      body: formData
+    })
+    .then(response => response.json())
+    .then(res => {
+      btn.disabled = false;
+      if (res.success) {
+        ocrStatus.innerHTML = '{{ icon('success') }} AI 智能分析提取成功，已为您在下方表单中自动填妥字段！';
+        ocrStatus.style.color = 'var(--success)';
+        
+        const data = res.data;
+        
+        // 1. Populate category select and trigger change
+        const nameSelect = document.getElementById('name_select');
+        nameSelect.value = data.name_select;
+        handleQualificationNameChange();
+        
+        // 2. Populate other inputs
+        document.getElementById('certificate_no').value = data.certificate_no || '';
+        if (document.getElementById('credit_code')) {
+          document.getElementById('credit_code').value = data.credit_code || '';
+        }
+        if (document.getElementById('legal_person')) {
+          document.getElementById('legal_person').value = data.legal_person || '';
+        }
+        document.getElementById('notes').value = data.notes || '';
+        
+        if (data.issue_date) {
+          document.getElementById('issue_date').value = data.issue_date;
+        }
+        
+        const isLongTermCheckbox = document.getElementById('is_long_term');
+        if (data.is_long_term) {
+          isLongTermCheckbox.checked = true;
+          toggleExpiryDateInput(isLongTermCheckbox);
+        } else {
+          isLongTermCheckbox.checked = false;
+          toggleExpiryDateInput(isLongTermCheckbox);
+          if (data.expiry_date) {
+            document.getElementById('expiry_date').value = data.expiry_date;
+          }
+        }
+        
+        // Sync real name hidden field
+        document.getElementById('name').value = data.name_select;
+        
+      } else {
+        ocrStatus.innerHTML = '{{ icon('error') }} 识别失败：' + (res.error || '未知错误');
+        ocrStatus.style.color = 'var(--danger)';
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      ocrStatus.innerHTML = '{{ icon('error') }} 网络请求错误，识别失败！';
+      ocrStatus.style.color = 'var(--danger)';
+    });
+  }, 1200);
+}
+
+// Set up event listeners for inputs
+document.addEventListener("DOMContentLoaded", function() {
+  // Bind company filter tabs initial activation
+  {% if companies %}
+  const savedCompanyId = localStorage.getItem('active_company_id');
+  let initialCompanyId = {{ companies[0].id }};
+  if (savedCompanyId) {
+    const parsed = parseInt(savedCompanyId);
+    const companyExists = [{% for c in companies %}{{ c.id }},{% endfor %}].includes(parsed);
+    if (companyExists) {
+      initialCompanyId = parsed;
+    }
+  }
+  switchCompanyQualifications(initialCompanyId);
+  {% endif %}
+
+  // Bind attachment upload change event to toggle AI button
+  document.getElementById('attachment').addEventListener('change', function() {
+    const btn = document.getElementById('btnRecognize');
+    const ocrStatus = document.getElementById('ocrStatus');
+    if (this.files && this.files.length > 0) {
+      btn.style.display = '';
+      ocrStatus.style.display = 'none'; // reset status
+    } else {
+      btn.style.display = 'none';
+      ocrStatus.style.display = 'none';
+    }
+  });
+
+  // Bind custom input change to hidden name field
+  const customInput = document.getElementById('name_custom');
+  customInput.addEventListener('input', function() {
+    document.getElementById('name').value = this.value;
+  });
+
+  // Form submission guard to set hidden name
+  const form = document.querySelector('#addQualificationModal form');
+  form.addEventListener('submit', function() {
+    const select = document.getElementById('name_select');
+    const hiddenInput = document.getElementById('name');
+    if (select.value !== 'CUSTOM') {
+      hiddenInput.value = select.value;
+    } else {
+      hiddenInput.value = document.getElementById('name_custom').value;
+    }
+  });
+
+  // 读取并应用用户偏好的视图配置（默认使用高级卡片视图）
+  const savedView = localStorage.getItem('qual_view') || 'grid';
+  toggleQualificationView(savedView);
+});
+</script>
+
+<!-- High-End Split-Screen Document Preview Modal -->
+<div id="documentPreviewModal" class="modal">
+  <div class="modal-content" style="max-width: 1000px; width: 95%; height: 85vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius-lg);">
+    <!-- Modal Header -->
+    <div class="modal-header" style="padding: 16px 24px; border-bottom: 1px solid var(--line-light);">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 22px;">{{ icon('qualification') }}</span>
+        <div>
+          <h3 class="modal-title" id="previewModalTitle" style="font-size: 18px; font-weight: 800;">证照资质在线查阅中心</h3>
+          <p class="panel-subtitle" id="previewModalSubtitle" style="margin: 2px 0 0 0; font-size: 12px; color: var(--muted);"></p>
+        </div>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal('documentPreviewModal')">&times;</button>
+    </div>
+    
+    <!-- Modal Body: Split Panels -->
+    <div class="modal-body" style="padding: 0; flex-grow: 1; display: flex; overflow: hidden;">
+      <!-- Left Panel: Large Document Viewport -->
+      <div class="preview-viewport" style="flex: 1.4; background-color: #0f172a; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <!-- Control Bar -->
+        <div class="zoom-controls" style="position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px); padding: 6px 12px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.15); z-index: 10;">
+          <button type="button" class="zoom-btn" onclick="adjustZoom(1.15)" title="放大" style="background: none; border: none; color: white; cursor: pointer; padding: 4px 8px; font-size: 14px; font-weight: bold;">{{ icon('add') }} 放大</button>
+          <button type="button" class="zoom-btn" onclick="adjustZoom(0.85)" title="缩小" style="background: none; border: none; color: white; cursor: pointer; padding: 4px 8px; font-size: 14px; font-weight: bold;">{{ icon('zoom-out') }} 缩小</button>
+          <button type="button" class="zoom-btn" onclick="rotateDoc()" title="旋转 90度" style="background: none; border: none; color: white; cursor: pointer; padding: 4px 8px; font-size: 14px; font-weight: bold;">{{ icon('rotate') }} 旋转</button>
+          <button type="button" class="zoom-btn" onclick="resetZoom()" title="重置" style="background: none; border: none; color: white; cursor: pointer; padding: 4px 8px; font-size: 14px; font-weight: bold;">{{ icon('home') }} 还原</button>
+        </div>
+        
+        <!-- Interactive Preview Container -->
+        <div id="previewDocContainer" style="transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: center center; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+          <img id="previewDocImage" src="" alt="证件载入中" style="max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); user-select: none;">
+          <iframe id="previewDocPdf" src="" style="width: 100%; height: 100%; border: none; display: none;"></iframe>
+        </div>
+      </div>
+      
+      <!-- Right Panel: Dynamic Metadata Card & Actions -->
+      <div class="preview-sidebar" style="flex: 0.8; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; border-left: 1px solid var(--line-light); background-color: var(--panel); overflow-y: auto;">
+        <div>
+          <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 800; border-bottom: 2px solid var(--primary); padding-bottom: 8px; display: flex; align-items: center; gap: 8px; color: var(--text);">
+            {{ icon('checklist') }} 证照核对详情
+          </h4>
+          
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div>
+              <span style="font-size: 12.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 3px;">关联合作单位</span>
+              <strong id="previewCompanyName" style="font-size: 14.5px; color: var(--text);">--</strong>
+            </div>
+            
+            <div>
+              <span style="font-size: 12.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 3px;">资质证照品类</span>
+              <strong id="previewDocName" style="font-size: 14.5px; color: var(--primary);">--</strong>
+            </div>
+            
+            <div>
+              <span style="font-size: 12.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 3px;">证书登记编号</span>
+              <strong id="previewCertNo" class="font-mono" style="font-size: 14.5px; color: var(--text);">--</strong>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <span style="font-size: 12.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 3px;">官方发证日期</span>
+                <strong id="previewIssueDate" class="font-mono" style="font-size: 13.5px; color: var(--text);">--</strong>
+              </div>
+              <div>
+                <span style="font-size: 12.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 3px;">有效截止期限</span>
+                <strong id="previewExpiryDate" class="font-mono" style="font-size: 13.5px; color: var(--text);">--</strong>
+              </div>
+            </div>
+            
+            <div>
+              <span style="font-size: 12.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 3px;">官方签章范围及备注说明</span>
+              <p id="previewNotes" style="font-size: 13px; color: var(--muted); line-height: 1.6; margin: 4px 0 0 0; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--line-light); max-height: 120px; overflow-y: auto;">
+                --
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Big Action Buttons -->
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 24px; border-top: 1px solid var(--line-light); padding-top: 16px;">
+          <a id="previewDownloadBtn" href="" class="btn btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; font-weight: 700; border-radius: var(--radius-md); box-shadow: var(--shadow-md);">
+            {{ icon('import') }} 立即下载此证照
+          </a>
+          <button type="button" onclick="printPreviewedDocument()" class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; font-weight: 600; border-radius: var(--radius-md);">
+            {{ icon('print') }} 打印证照原件
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Qualification Modals (Dynamic Loop) -->
+{% for item in qualifications %}
+<div id="editQualificationModal-{{ item.id }}" class="modal animate-fade-in">
+  <div class="modal-content" style="max-width: 700px;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('edit') }} 编辑企业资质 - {{ item.name }}</h3>
+      <button type="button" class="modal-close" onclick="closeModal('editQualificationModal-{{ item.id }}')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.edit_qualification', qualification_id=item.id) }}" enctype="multipart/form-data" class="premium-form">
+        <div class="form-grid">
+          
+          <div class="form-group">
+            <label class="form-label" for="edit-company-id-{{ item.id }}">关联合作公司 <span class="required">*</span></label>
+            <select class="form-select" id="edit-company-id-{{ item.id }}" name="company_id" required>
+              {% for company in companies %}
+              <option value="{{ company.id }}" {% if item.company_id == company.id %}selected{% endif %}>{{ company.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="edit-name-{{ item.id }}">资质/证照名称 <span class="required">*</span></label>
+            <input class="form-input" id="edit-name-{{ item.id }}" name="name" type="text" value="{{ item.name }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-certificate-no-{{ item.id }}">证书/证照编号 <span class="required">*</span></label>
+            <input class="form-input font-mono font-semibold" id="edit-certificate-no-{{ item.id }}" name="certificate_no" type="text" value="{{ item.certificate_no }}" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="edit-issue-date-{{ item.id }}">发证日期</label>
+            <input class="form-input" id="edit-issue-date-{{ item.id }}" name="issue_date" type="date" value="{{ item.issue_date }}">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="edit-expiry-date-{{ item.id }}">证书到期日期</label>
+            <input class="form-input" id="edit-expiry-date-{{ item.id }}" name="expiry_date" type="date" value="{{ item.expiry_date }}" {% if item.is_long_term %}disabled style="background-color: var(--line-light);"{% endif %}>
+          </div>
+          
+          <div class="form-group" style="justify-content: center; padding-top: 24px;">
+            <label class="form-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input id="edit-is-long-term-{{ item.id }}" name="is_long_term" type="checkbox" value="1" {% if item.is_long_term %}checked{% endif %} onchange="toggleEditExpiryDateInput(this, 'edit-expiry-date-{{ item.id }}')" style="width: 18px; height: 18px; cursor: pointer;">
+              <span>证书长期有效</span>
+            </label>
+          </div>
+          
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-attachment-{{ item.id }}">更新资质附件 <span class="text-muted">(若不修改则留空)</span></label>
+            <input class="form-input" id="edit-attachment-{{ item.id }}" name="attachment" type="file" accept=".png,.jpg,.jpeg,.pdf">
+          </div>
+          
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-notes-{{ item.id }}">资质备注/核准范围</label>
+            <input class="form-input" id="edit-notes-{{ item.id }}" name="notes" type="text" value="{{ item.notes or '' }}" placeholder="补充备注说明...">
+          </div>
+          
+        </div>
+        <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <button type="button" class="btn btn-danger" onclick="deleteQualification({{ item.id }}, '{{ item.name }}')" style="background-color: var(--error-color); color: #fff; border-color: var(--error-color); min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">{{ icon('delete') }} 删除资质</button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('editQualificationModal-{{ item.id }}')">取消</button>
+            <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存修改</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<!-- Add Company Modal Dialog -->
+<div id="addCompanyModal" class="modal animate-fade-in">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('add') }} 新增合作单位</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addCompanyModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.add_company') }}" class="premium-form">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label" for="add-company-name">单位/公司名称 <span class="required">*</span></label>
+            <input class="form-input" id="add-company-name" name="name" type="text" placeholder="例如：中建卓越劳务有限公司" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="add-company-credit">统一社会信用代码</label>
+            <input class="form-input font-mono" id="add-company-credit" name="credit_code" type="text" placeholder="18位社会信用代码">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="add-company-legal">法人代表</label>
+            <input class="form-input" id="add-company-legal" name="legal_person" type="text" placeholder="法人姓名">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="add-company-phone">联系电话</label>
+            <input class="form-input" id="add-company-phone" name="phone" type="tel" placeholder="座机或手机号码">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="add-company-notes">单位备注说明</label>
+            <input class="form-input" id="add-company-notes" name="notes" type="text" placeholder="补充备注说明...">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addCompanyModal')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存并新增</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Company Modals (Dynamic Loop) -->
+{% for company in companies %}
+<div id="editCompanyModal-{{ company.id }}" class="modal animate-fade-in">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('edit') }} 编辑单位信息 - {{ company.name }}</h3>
+      <button type="button" class="modal-close" onclick="closeModal('editCompanyModal-{{ company.id }}')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.edit_company', company_id=company.id) }}" class="premium-form">
+        <div class="form-grid">
+          
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-company-name-{{ company.id }}">单位/公司名称 <span class="required">*</span></label>
+            <input class="form-input" id="edit-company-name-{{ company.id }}" name="name" type="text" value="{{ company.name }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-company-credit-{{ company.id }}">统一社会信用代码</label>
+            <input class="form-input font-mono" id="edit-company-credit-{{ company.id }}" name="credit_code" type="text" value="{{ company.credit_code or '' }}" placeholder="18位社会信用代码">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="edit-company-legal-{{ company.id }}">法人代表</label>
+            <input class="form-input" id="edit-company-legal-{{ company.id }}" name="legal_person" type="text" value="{{ company.legal_person or '' }}" placeholder="法人姓名">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="edit-company-phone-{{ company.id }}">联系电话</label>
+            <input class="form-input" id="edit-company-phone-{{ company.id }}" name="phone" type="tel" value="{{ company.phone or '' }}" placeholder="座机或手机号码">
+          </div>
+          
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-company-notes-{{ company.id }}">单位备注说明</label>
+            <input class="form-input" id="edit-company-notes-{{ company.id }}" name="notes" type="text" value="{{ company.notes or '' }}" placeholder="补充备注说明...">
+          </div>
+
+        </div>
+        <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          {% if not company.is_main %}
+          <button type="button" class="btn btn-danger" onclick="deleteCompany({{ company.id }}, '{{ company.name }}')" style="background-color: var(--error-color); color: #fff; border-color: var(--error-color); min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">{{ icon('delete') }} 删除单位</button>
+          {% else %}
+          <div></div>
+          {% endif %}
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('editCompanyModal-{{ company.id }}')">取消</button>
+            <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存修改</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<script>
+// Interactive Preview State Variables
+let currentScale = 1.0;
+let currentRotation = 0;
+
+function isPdfPreviewFile(filename) {
+  const lower = (filename || '').toLowerCase();
+  return lower.endsWith('.pdf') || lower.endsWith('_pdf');
+}
+
+function openDocumentPreview(item) {
+  document.getElementById('previewModalSubtitle').innerText = `${item.company_name} / ${item.name}`;
+  document.getElementById('previewCompanyName').innerText = item.company_name;
+  document.getElementById('previewDocName').innerText = item.name;
+  document.getElementById('previewCertNo').innerText = item.certificate_no;
+  document.getElementById('previewIssueDate').innerText = item.issue_date || '--';
+  document.getElementById('previewExpiryDate').innerText = item.expiry_date || '长期有效';
+  document.getElementById('previewNotes').innerText = item.notes || '暂无备注说明。';
+  
+  const filename = item.attachment_path || `mock_qual_${item.id}.svg`;
+  const previewUrl = `/uploads/${filename}`;
+  const downloadUrl = `/uploads/${filename}?download=1`;
+  
+  document.getElementById('previewDownloadBtn').href = downloadUrl;
+  
+  resetZoom();
+  
+  const imgEl = document.getElementById('previewDocImage');
+  const pdfEl = document.getElementById('previewDocPdf');
+  
+  if (isPdfPreviewFile(filename)) {
+    imgEl.style.display = 'none';
+    pdfEl.style.display = 'block';
+    pdfEl.src = previewUrl;
+    document.querySelector('.zoom-controls').style.display = 'none';
+  } else {
+    imgEl.style.display = 'block';
+    pdfEl.style.display = 'none';
+    pdfEl.src = '';
+    imgEl.src = previewUrl;
+    document.querySelector('.zoom-controls').style.display = 'flex';
+  }
+  
+  openModal('documentPreviewModal');
+}
+
+function adjustZoom(factor) {
+  currentScale = Math.max(0.4, Math.min(4.0, currentScale * factor));
+  updatePreviewTransform();
+}
+
+function rotateDoc() {
+  currentRotation = (currentRotation + 90) % 360;
+  updatePreviewTransform();
+}
+
+function resetZoom() {
+  currentScale = 1.0;
+  currentRotation = 0;
+  updatePreviewTransform();
+}
+
+function updatePreviewTransform() {
+  const container = document.getElementById('previewDocContainer');
+  container.style.transform = `scale(${currentScale}) rotate(${currentRotation}deg)`;
+}
+
+function printPreviewedDocument() {
+  const filename = document.getElementById('previewDownloadBtn').href.replace('?download=1', '');
+  
+  const printIframe = document.createElement('iframe');
+  printIframe.style.position = 'fixed';
+  printIframe.style.right = '0';
+  printIframe.style.bottom = '0';
+  printIframe.style.width = '0';
+  printIframe.style.height = '0';
+  printIframe.style.border = '0';
+  printIframe.src = filename;
+  
+  document.body.appendChild(printIframe);
+  
+  printIframe.onload = function() {
+    try {
+      printIframe.contentWindow.focus();
+      printIframe.contentWindow.print();
+      setTimeout(() => {
+        document.body.removeChild(printIframe);
+      }, 1000);
+    } catch (e) {
+      alert("浏览器安全策略限制直接打印，已为您在新窗口打开，请按 Ctrl+P 打印！");
+      window.open(filename, '_blank');
+    }
+  };
+}
+
+function toggleEditExpiryDateInput(checkbox, inputId) {
+  const input = document.getElementById(inputId);
+  if (checkbox.checked) {
+    input.value = '';
+    input.disabled = true;
+    input.style.backgroundColor = 'var(--line-light)';
+    input.required = false;
+  } else {
+    input.disabled = false;
+    input.style.backgroundColor = '';
+  }
+}
+
+function toggleQualificationView(view) {
+  const gridView = document.getElementById('qualificationsGridView');
+  const listView = document.getElementById('qualificationsListView');
+  const btnGrid = document.getElementById('viewBtnGrid');
+  const btnList = document.getElementById('viewBtnList');
+  
+  if (view === 'grid') {
+    gridView.style.display = 'grid';
+    listView.style.display = 'none';
+    btnGrid.classList.add('active');
+    btnList.classList.remove('active');
+    localStorage.setItem('qual_view', 'grid');
+  } else {
+    gridView.style.display = 'none';
+    listView.style.display = 'block';
+    btnGrid.classList.remove('active');
+    btnList.classList.add('active');
+    localStorage.setItem('qual_view', 'list');
+  }
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+window.addEventListener('click', function(event) {
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (event.target === modal) {
+      closeModal(modal.id);
+    }
+  });
+});
+</script>
 {% endblock %}

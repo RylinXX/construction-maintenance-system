@@ -58,3 +58,80 @@ def test_create_batch_item(app):
 
     assert item_id > 0
     assert items[0]["source_filename"] == "pay.png"
+
+
+def test_update_batch_item_recognition(app):
+    with app.app_context():
+        item_id = repo.create_batch_item(
+            {
+                "item_type": "voucher",
+                "source_filename": "pay.png",
+                "stored_path": "pay.png",
+            }
+        )
+        repo.update_batch_item_recognition(
+            item_id,
+            status="已识别",
+            recognized_json='{"amount": 1200}',
+            confidence=0.86,
+        )
+        item = repo.list_batch_items("voucher")[0]
+
+    assert item["status"] == "已识别"
+    assert item["recognized_json"] == '{"amount": 1200}'
+    assert item["confidence"] == 0.86
+
+
+def test_expense_category_rename_updates_existing_vouchers(app):
+    with app.app_context():
+        category_id = repo.create_expense_category({"name": "机械租赁", "sort_order": 25})
+        main_company = repo.get_main_company()
+        project_id = repo.create_project(
+            {
+                "company_id": main_company["id"],
+                "name": "道路维修",
+            }
+        )
+        repo.create_voucher(
+            {
+                "project_id": project_id,
+                "voucher_date": "2026-05-29",
+                "voucher_type": "机械租赁",
+                "amount": 1200,
+            }
+        )
+
+        repo.update_expense_category(
+            category_id,
+            {"name": "设备租赁", "sort_order": 30, "is_active": 0},
+        )
+        active_names = repo.list_expense_category_names()
+        all_categories = repo.list_expense_categories(include_inactive=True)
+        voucher = repo.list_vouchers(project_id=project_id)[0]
+
+    assert "机械租赁" not in active_names
+    assert "设备租赁" not in active_names
+    assert next(row for row in all_categories if row["id"] == category_id)["name"] == "设备租赁"
+    assert voucher["voucher_type"] == "设备租赁"
+
+
+def test_person_id_card_path_can_be_saved_and_replaced(app):
+    with app.app_context():
+        person_id = repo.create_person(
+            {
+                "name": "李工",
+                "id_number": "410000199001019999",
+                "id_card_path": "old-id-card.jpg",
+            }
+        )
+        repo.update_person(
+            person_id,
+            {
+                "name": "李工",
+                "id_number": "410000199001019999",
+                "id_card_path": "new-id-card.jpg",
+            },
+        )
+        person = repo.list_people()[0]
+
+    assert person["id_card_path"] == "new-id-card.jpg"

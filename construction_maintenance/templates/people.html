@@ -1,146 +1,792 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}人员花名册 - CAM 建筑工程维护系统{% endblock %}
 {% block breadcrumb %}人员花名册{% endblock %}
 
 {% block content %}
 <div class="panel-section">
+  <!-- Main People Card -->
   <div class="panel-card animate-slide-up">
     <div class="panel-header">
-      <h2 class="panel-title">👥 新增员工/进场人员</h2>
-      <p class="panel-subtitle">登记施工现场人员、管理岗位工种信息，自动归档并保留 OCR 待确认凭证接口。</p>
-    </div>
-    <form method="post" class="premium-form">
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label" for="name">姓名 <span class="required">*</span></label>
-          <input class="form-input" id="name" name="name" type="text" placeholder="例如：李强" required autocomplete="off">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="id_number">身份证号 <span class="required">*</span></label>
-          <input class="form-input font-mono" id="id_number" name="id_number" type="text" placeholder="18位身份证号" required maxlength="18">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="gender">性别</label>
-          <select class="form-select" id="gender" name="gender">
-            <option value="男">男</option>
-            <option value="女">女</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="birth_date">出生日期</label>
-          <input class="form-input" id="birth_date" name="birth_date" type="date">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="age">年龄</label>
-          <input class="form-input" id="age" name="age" type="number" min="1" max="120" placeholder="例如：35">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="phone">联系电话</label>
-          <input class="form-input" id="phone" name="phone" type="tel" placeholder="11位手机号">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="job_type">岗位/工种</label>
-          <input class="form-input" id="job_type" name="job_type" type="text" placeholder="如：普工、架子工、安全员">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="entry_date">入职/进场日期</label>
-          <input class="form-input" id="entry_date" name="entry_date" type="date">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="bank_card">银行卡号</label>
-          <input class="form-input font-mono" id="bank_card" name="bank_card" type="text" placeholder="收款银行卡号">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="bank_name">开户行名称</label>
-          <input class="form-input" id="bank_name" name="bank_name" type="text" placeholder="如：中国建设银行郑州支行">
-        </div>
-        <div class="form-group full-width">
-          <label class="form-label" for="address">联系地址</label>
-          <input class="form-input" id="address" name="address" type="text" placeholder="员工身份证住址或常住地址...">
-        </div>
-        <div class="form-group full-width">
-          <label class="form-label" for="notes">备注说明</label>
-          <input class="form-input" id="notes" name="notes" type="text" placeholder="其它补充资质或合同相关的备注信息...">
-        </div>
+      <div>
+        <h2 class="panel-title">{{ icon('checklist') }} 基础人员花名册</h2>
+        <p class="panel-subtitle">公司已录入及进场的全体人员档案名册。点击卡片或列表行即可平滑展开/收起完整员工电子档案。</p>
       </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">💾 保存并录入</button>
+      <div class="toolbar-actions">
+        <!-- Unified Premium View Switcher -->
+        <div class="view-switcher">
+          <button type="button" class="view-btn active" id="viewBtnGrid" onclick="togglePeopleView('grid')">
+            {{ icon('card-view') }} 卡片视图
+          </button>
+          <button type="button" class="view-btn" id="viewBtnList" onclick="togglePeopleView('list')">
+            {{ icon('list-view') }} 列表视图
+          </button>
+        </div>
+        <a href="{{ url_for('web.download_export', export_type='people') }}" class="btn btn-secondary toolbar-btn">{{ icon('upload') }} 导出 Excel</a>
+        <button type="button" class="btn btn-secondary toolbar-btn" onclick="openModal('importPersonModal')">{{ icon('import') }} 批量导入</button>
+        <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addPersonModal')">{{ icon('add') }} 新增人员</button>
       </div>
-    </form>
-  </div>
-
-  <div class="panel-card animate-slide-up" style="animation-delay: 0.1s;">
-    <div class="panel-header">
-      <h2 class="panel-title">📋 基础人员花名册</h2>
-      <p class="panel-subtitle">公司已录入及进场的全体人员档案名册。</p>
     </div>
     
     <!-- Premium Interactive Live Search Bar -->
     <div class="search-bar">
-      <span class="search-icon">🔍</span>
-      <input type="text" id="peopleSearch" class="search-input" oninput="filterPeopleTable()" placeholder="输入人员姓名、身份证号或工种岗位进行快速智能检索...">
+      <span class="search-icon">{{ icon('search') }}</span>
+      <input type="text" id="peopleSearch" class="search-input" oninput="filterPeople()" placeholder="输入人员姓名、身份证号或工种岗位进行快速智能检索...">
     </div>
 
-    <div class="table-container">
-      <table class="premium-table">
-        <thead>
-          <tr>
-            <th>姓名</th>
-            <th>身份证号</th>
-            <th>电话</th>
-            <th>工种/岗位</th>
-            <th>银行卡</th>
-            <th>核实状态</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for person in people %}
-          <tr>
-            <td class="font-semibold text-dark">{{ person.name }}</td>
-            <td class="font-mono">{{ person.id_number }}</td>
-            <td>{{ person.phone or '--' }}</td>
-            <td>
-              {% if person.job_type %}
-              <span class="badge badge-info">{{ person.job_type }}</span>
-              {% else %}
-              <span class="text-muted">--</span>
-              {% endif %}
-            </td>
-            <td class="font-mono">{{ person.bank_card or '--' }} <span class="text-muted">({{ person.bank_name or '未指定开户行' }})</span></td>
-            <td>
-              {% if person.review_status == '已确认' %}
-              <span class="badge badge-success">{{ person.review_status }}</span>
-              {% else %}
-              <span class="badge badge-warning">{{ person.review_status }}</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% else %}
-          <tr class="empty-row">
-            <td colspan="6">
-              <div class="empty-state">
-                <span class="empty-icon">👥</span>
-                <span class="empty-text">暂无人员记录，请在上方表单中录入第一名施工人员档案</span>
+    <!-- Tradational List View -->
+    <div id="peopleListView" style="display: none;">
+      <div class="table-container">
+        <table class="premium-table">
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>身份证号</th>
+              <th>身份证附件</th>
+              <th>电话</th>
+              <th>工种/岗位</th>
+              <th>银行卡</th>
+              <th>核实状态</th>
+              <th class="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for person in people %}
+            <!-- Clickable Row for Expandable Accordion Drawer -->
+            <tr class="people-table-row" data-detail-id="emp-{{ person.id }}" onclick="toggleEmployeeDetails('emp-{{ person.id }}')" style="cursor: pointer;" title="点击展开/收起完整员工电子档案">
+              <td class="font-semibold text-dark">{{ icon('user') }} {{ person.name }}</td>
+              <td class="font-mono">{{ person.id_number }}</td>
+              <td>
+                {% if person.id_card_path %}
+                <button type="button" class="attachment-pill" data-person-name="{{ person.name }}" data-id-number="{{ person.id_number }}" data-filename="{{ person.id_card_path }}" onclick="event.stopPropagation(); openIdCardPreviewFromButton(this)">预览身份证</button>
+                {% else %}
+                <span class="text-muted">未上传</span>
+                {% endif %}
+              </td>
+              <td>{{ person.phone or '--' }}</td>
+              <td>
+                {% if person.job_type %}
+                <span class="badge badge-info">{{ person.job_type }}</span>
+                {% else %}
+                <span class="text-muted">--</span>
+                {% endif %}
+              </td>
+              <td class="font-mono">
+                {{ person.bank_card or '--' }} 
+                <span class="text-muted" style="font-size: 13px;">({{ person.bank_name or '未指定开户行' }})</span>
+              </td>
+              <td>
+                {% if person.review_status == '已确认' %}
+                <span class="badge badge-success">{{ person.review_status }}</span>
+                {% else %}
+                <span class="badge badge-warning">{{ person.review_status }}</span>
+                {% endif %}
+              </td>
+              <td class="text-right" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                <button type="button" class="btn btn-secondary toolbar-btn" style="padding: 6px 12px; font-size: 13px;" onclick="event.stopPropagation(); openModal('editPersonModal-{{ person.id }}')">编辑</button>
+                <button type="button" class="btn btn-danger toolbar-btn" style="padding: 6px 12px; font-size: 13px; background-color: var(--error-color); border-color: var(--error-color); color: white;" onclick="event.stopPropagation(); deletePerson({{ person.id }}, '{{ person.name }}')" title="删除人员">{{ icon('delete') }} 删除</button>
+              </td>
+            </tr>
+            
+            <!-- Expandable Detail Sub-Row (Premium Dashboard Layout) -->
+            <tr id="emp-{{ person.id }}" class="employee-details-row" style="display: none;">
+              <td colspan="8">
+                <div class="employee-profile-card">
+                  <div class="profile-grid">
+                    <div class="profile-item">
+                      <strong>性别</strong>
+                      <div class="profile-text">{{ person.gender or '未登记' }}</div>
+                    </div>
+                    <div class="profile-item">
+                      <strong>年龄</strong>
+                      <div class="profile-text">{{ person.age or '--' }} 岁</div>
+                    </div>
+                    <div class="profile-item">
+                      <strong>出生日期</strong>
+                      <div class="profile-text">{{ person.birth_date or '未登记' }}</div>
+                    </div>
+                    <div class="profile-item">
+                      <strong>进场日期</strong>
+                      <div class="profile-text">{{ person.entry_date or '未登记' }}</div>
+                    </div>
+                    <div class="profile-item">
+                      <strong>身份证号</strong>
+                      <div class="profile-text font-mono">{{ person.id_number }}</div>
+                    </div>
+                    <div class="profile-item">
+                      <strong>身份证附件</strong>
+                      <div class="profile-text">
+                        {% if person.id_card_path %}
+                        <button type="button" class="attachment-pill" data-person-name="{{ person.name }}" data-id-number="{{ person.id_number }}" data-filename="{{ person.id_card_path }}" onclick="event.stopPropagation(); openIdCardPreviewFromButton(this)">预览身份证</button>
+                        {% else %}
+                        未上传
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="profile-item">
+                      <strong>联系电话</strong>
+                      <div class="profile-text">{{ person.phone or '未登记' }}</div>
+                    </div>
+                    <div class="profile-item">
+                      <strong>岗位/工种</strong>
+                      <div class="profile-text">{{ person.job_type or '未登记' }}</div>
+                    </div>
+                    <div class="profile-item">
+                      <strong>银行开户行与卡号</strong>
+                      <div class="profile-text font-mono">
+                        {{ person.bank_card or '未登记卡号' }} {% if person.bank_name %}({{ person.bank_name }}){% endif %}
+                      </div>
+                    </div>
+                    <div class="profile-item full-width">
+                      <strong>完整联系/身份证地址</strong>
+                      <div class="profile-text">{{ person.address or '未登记详细居住或身份证地址。' }}</div>
+                    </div>
+                    <div class="profile-item full-width">
+                      <strong>特种资格证/合同备注说明</strong>
+                      <div class="profile-text" style="white-space: pre-wrap; font-weight: 500; line-height: 1.6; margin-bottom: 12px;">{{ person.notes or '暂无其它特殊资质、证书等级或劳动合同相关备注说明。' }}</div>
+                    </div>
+                    
+                    <div class="profile-item full-width" style="display: flex; justify-content: flex-end; border-top: 1px solid var(--line-light); padding-top: 16px; margin-top: 8px;">
+                      <button type="button" class="btn btn-primary" onclick="event.stopPropagation(); openModal('editPersonModal-{{ person.id }}')" style="font-size: 13px; padding: 8px 16px; background-color: var(--accent); border-color: var(--accent);">
+                        {{ icon('edit') }} 修改人员信息
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr id="peopleEmptyRow" class="empty-row" style="display: none;">
+              <td colspan="8">
+                <div class="empty-state">
+                  <span class="empty-icon">{{ icon('people') }}</span>
+                  <span class="empty-text">暂无人员记录，请点击右上角“新增人员”或“批量导入”录入数据</span>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Premium Digital Employee Badge Card Grid View -->
+    <div id="peopleGridView" class="people-grid">
+      {% for person in people %}
+      {% set is_verified = (person.review_status == '已确认') %}
+      {% set avatar_icon = 'user' %}
+      {% if person.gender == '男' %}
+        {% set avatar_icon = 'user' %}
+      {% elif person.gender == '女' %}
+        {% set avatar_icon = 'user' %}
+      {% endif %}
+
+      <div class="person-card {% if is_verified %}verified{% endif %} animate-slide-up" id="person-card-{{ person.id }}" onclick="toggleEmployeeCardDetails('{{ person.id }}')" style="animation-delay: {{ loop.index0 * 0.03 }}s;">
+        <div class="card-inner">
+          <!-- Front Side -->
+          <div class="card-front">
+            <!-- Card Header -->
+            <div class="card-header">
+              <div class="card-title-area">
+                <span class="card-avatar">{{ icon(avatar_icon) }}</span>
+                <div style="min-width: 0;">
+                  <h3 class="card-name" title="{{ person.name }}">{{ person.name }}</h3>
+                  <p class="card-meta">
+                    {% if person.gender %}{{ person.gender }}{% endif %}
+                    {% if person.age %} / {{ person.age }} 岁{% endif %}
+                  </p>
+                </div>
               </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+              <div class="card-badge">
+                {% if person.job_type %}
+                <span class="badge badge-info">{{ person.job_type }}</span>
+                {% endif %}
+              </div>
+            </div>
+            
+            <!-- Card Body -->
+            <div class="card-body">
+              <div class="card-info-item">
+                <span class="card-info-label">联系电话</span>
+                <span class="card-info-val">{{ person.phone or '--' }}</span>
+              </div>
+              <div class="card-info-item" style="border-bottom: none; padding-bottom: 0;">
+                <span class="card-info-label">身份证号</span>
+                <span class="card-info-val font-mono">{{ person.id_number }}</span>
+              </div>
+              
+              <!-- Tap indicator for premium UX -->
+              <div class="card-flip-hint">
+                点击查看完整档案 {{ icon('rotate') }}
+              </div>
+            </div>
+          </div>
+          
+          <!-- Back Side (Detailed info) -->
+          <div class="card-back" onclick="event.stopPropagation();">
+            <!-- Back Header -->
+            <div class="back-header">
+              <h4 class="back-title">{{ icon('checklist') }} {{ person.name }} 电子档案</h4>
+              <button type="button" class="back-close-btn" onclick="toggleEmployeeCardDetails('{{ person.id }}'); event.stopPropagation();" title="返回">{{ icon('close') }}</button>
+            </div>
+            
+            <!-- Back Body -->
+            <div class="back-body">
+              <div class="card-info-item">
+                <span class="card-info-label">出生/进场</span>
+                <span class="card-info-val" style="font-size: 11px;">{{ person.birth_date or '--' }} / {{ person.entry_date or '--' }}</span>
+              </div>
+              <div class="card-info-item">
+                <span class="card-info-label">银行/卡号</span>
+                <span class="card-info-val font-mono" style="font-size: 11px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 140px;" title="{{ person.bank_name or '--' }}: {{ person.bank_card or '--' }}">
+                  {{ person.bank_name or '--' }} / {{ person.bank_card or '--' }}
+                </span>
+              </div>
+
+
+              {% if person.notes %}
+              <div class="card-info-item" style="flex-direction: column; gap: 2px; border-bottom: none; padding-bottom: 0; margin-top: 4px;">
+                <span class="card-info-label" style="text-align: left;">备注说明</span>
+                <span class="card-info-val" style="font-weight: 500; font-size: 11.5px; color: var(--muted); background: var(--bg); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--line-light); text-align: left; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ person.notes }}">
+                  {{ person.notes }}
+                </span>
+              </div>
+              {% endif %}
+            </div>
+            
+            <!-- Back Actions -->
+            <div class="back-actions">
+              {% if person.id_card_path %}
+              <button type="button" class="btn btn-secondary card-btn" style="padding: 5px 8px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; gap: 2px;" data-person-name="{{ person.name }}" data-id-number="{{ person.id_number }}" data-filename="{{ person.id_card_path }}" onclick="openIdCardPreviewFromButton(this)">
+                {{ icon('id-card') }} 证照
+              </button>
+              {% else %}
+              <div></div>
+              {% endif %}
+              <button type="button" class="btn btn-primary card-btn" style="padding: 5px 8px; font-size: 11px; background-color: var(--accent); border-color: var(--accent);" onclick="openModal('editPersonModal-{{ person.id }}')">
+                {{ icon('edit') }} 修改
+              </button>
+              <button type="button" class="btn btn-danger" style="padding: 5px 8px; font-size: 11px; background-color: var(--error-color); border-color: var(--error-color); color: white; display: flex; align-items: center; justify-content: center; max-width: 32px; min-width: 32px; border-radius: var(--radius-sm);" onclick="deletePerson({{ person.id }}, '{{ person.name }}')" title="删除人员">
+                {{ icon('delete') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <!-- Grid Empty State -->
+      <div id="peopleEmptyGrid" class="empty-state" style="grid-column: 1 / -1; display: none; padding: 56px 20px;">
+        <span class="empty-icon">{{ icon('people') }}</span>
+        <span class="empty-text">暂无人员记录，请点击右上角“新增人员”或“批量导入”录入数据</span>
+      </div>
+      {% endfor %}
     </div>
   </div>
 </div>
 
+<!-- Add Person Modal Dialog -->
+<div id="addPersonModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('people') }} 新增员工/进场人员</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addPersonModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" enctype="multipart/form-data" class="premium-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="name">姓名 <span class="required">*</span></label>
+            <input class="form-input" id="name" name="name" type="text" placeholder="例如：李强" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_number">身份证号 <span class="required">*</span></label>
+            <input class="form-input font-mono" id="id_number" name="id_number" type="text" placeholder="18位身份证号" required maxlength="18">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_card_attachment">身份证附件</label>
+            <input class="form-input" id="id_card_attachment" name="id_card_attachment" type="file" accept=".png,.jpg,.jpeg,.pdf">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="gender">性别</label>
+            <select class="form-select" id="gender" name="gender">
+              <option value="男">男</option>
+              <option value="女">女</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="birth_date">出生日期</label>
+            <input class="form-input" id="birth_date" name="birth_date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="age">年龄</label>
+            <input class="form-input" id="age" name="age" type="number" min="1" max="120" placeholder="例如：35">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="phone">联系电话</label>
+            <input class="form-input" id="phone" name="phone" type="tel" placeholder="11位手机号">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="job_type">岗位/工种</label>
+            <input class="form-input" id="job_type" name="job_type" type="text" placeholder="如：普工、架子工、安全员">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="entry_date">入职/进场日期</label>
+            <input class="form-input" id="entry_date" name="entry_date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bank_card">银行卡号</label>
+            <input class="form-input font-mono" id="bank_card" name="bank_card" type="text" placeholder="收款银行卡号">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bank_name">开户行名称</label>
+            <input class="form-input" id="bank_name" name="bank_name" type="text" placeholder="如：中国建设银行郑州支行">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="address">联系地址</label>
+            <input class="form-input" id="address" name="address" type="text" placeholder="员工身份证住址或常住地址...">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="notes">备注说明</label>
+            <input class="form-input" id="notes" name="notes" type="text" placeholder="其它补充资质或合同相关的备注信息...">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addPersonModal')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存并录入</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Import Person Modal (Batch Upload Excel) -->
+<div id="importPersonModal" class="modal modal-lg">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('import') }} 批量导入施工人员</h3>
+      <button type="button" class="modal-close" onclick="closeModal('importPersonModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.batch') }}" enctype="multipart/form-data" class="premium-form">
+        <input type="hidden" name="item_type" value="person">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <div class="dropzone-area">
+              <span class="dropzone-icon">{{ icon('upload') }}</span>
+              <span class="dropzone-text">点击选择或拖拽花名册 Excel 或身份证件文件至此区域</span>
+              <span class="dropzone-subtext">支持多选，允许上传 .xlsx, .xls, .png, .jpg 等格式</span>
+              <input class="dropzone-input" id="files" name="files" type="file" multiple required>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 16px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('importPersonModal')">关闭</button>
+          <button type="submit" class="btn btn-primary">{{ icon('ai') }} 上传并提交解析队列</button>
+        </div>
+      </form>
+
+      <!-- Current Personnel Batch Queue -->
+      <h4 style="margin: 28px 0 12px 0; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px;">
+        {{ icon('checklist') }} 待确认人员导入解析队列
+      </h4>
+      <div class="table-container">
+        <table class="premium-table" style="font-size: 13.5px;">
+          <thead>
+            <tr>
+              <th>原始文件名</th>
+              <th>当前状态</th>
+              <th>自动识别结果</th>
+              <th>上传时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in batch_items %}
+            <tr>
+              <td>
+                <div class="font-semibold text-dark">{{ item.source_filename }}</div>
+                {% if item.stored_path %}
+                <a class="attachment-pill" href="{{ url_for('web.download_attachment', filename=item.stored_path|upload_name) }}" target="_blank">查看文件</a>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.status == '待确认' %}
+                <span class="badge badge-warning">{{ item.status }}</span>
+                {% else %}
+                <span class="badge badge-success">{{ item.status }}</span>
+                {% endif %}
+              </td>
+              <td class="font-mono text-muted">
+                {% if item.recognized_json == '{}' %}
+                <span class="text-muted">已上传，待人工确认</span>
+                {% else %}
+                {{ item.recognized_json }}
+                {% endif %}
+              </td>
+              <td class="font-mono">{{ item.created_at }}</td>
+            </tr>
+            {% else %}
+            <tr class="empty-row">
+              <td colspan="4">
+                <div class="empty-state" style="padding: 28px 0;">
+                  <span class="empty-icon" style="font-size: 24px;">{{ icon('empty-inbox') }}</span>
+                  <span class="empty-text" style="font-size: 13px;">暂无待确认的花名册任务，上传花名册 Excel 后即可在此查看进度</span>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ID Card Preview Modal -->
+<div id="idCardPreviewModal" class="modal">
+  <div class="modal-content" style="max-width: 1000px; width: 95%; height: 85vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius-lg);">
+    <div class="modal-header" style="padding: 16px 24px; border-bottom: 1px solid var(--line-light);">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 22px;">{{ icon('id-card') }}</span>
+        <div>
+          <h3 class="modal-title" style="font-size: 18px; font-weight: 800;">员工身份证在线预览</h3>
+          <p class="panel-subtitle" id="idCardPreviewSubtitle" style="margin: 2px 0 0 0; font-size: 12px; color: var(--muted);"></p>
+        </div>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal('idCardPreviewModal')">&times;</button>
+    </div>
+
+    <div class="modal-body" style="padding: 0; flex-grow: 1; display: flex; overflow: hidden;">
+      <div class="preview-viewport" style="flex: 1.4; background-color: #0f172a; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <div id="idCardZoomControls" class="zoom-controls" style="position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px); padding: 6px 12px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.15); z-index: 10;">
+          <button type="button" class="zoom-btn" onclick="adjustIdCardZoom(1.15)" title="放大" style="background: none; border: none; color: white; cursor: pointer; padding: 4px 8px; font-size: 14px; font-weight: bold;">{{ icon('add') }} 放大</button>
+          <button type="button" class="zoom-btn" onclick="adjustIdCardZoom(0.85)" title="缩小" style="background: none; border: none; color: white; cursor: pointer; padding: 4px 8px; font-size: 14px; font-weight: bold;">{{ icon('zoom-out') }} 缩小</button>
+          <button type="button" class="zoom-btn" onclick="rotateIdCardPreview()" title="旋转 90 度" style="background: none; border: none; color: white; cursor: pointer; padding: 4px 8px; font-size: 14px; font-weight: bold;">{{ icon('rotate') }} 旋转</button>
+          <button type="button" class="zoom-btn" onclick="resetIdCardPreview()" title="还原" style="background: none; border: none; color: white; cursor: pointer; padding: 4px 8px; font-size: 14px; font-weight: bold;">{{ icon('home') }} 还原</button>
+        </div>
+
+        <div id="idCardPreviewContainer" style="transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: center center; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+          <img id="idCardPreviewImage" src="" alt="身份证载入中" style="max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); user-select: none;">
+          <iframe id="idCardPreviewPdf" src="" style="width: 100%; height: 100%; border: none; display: none;"></iframe>
+        </div>
+      </div>
+
+      <div class="preview-sidebar" style="flex: 0.8; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; border-left: 1px solid var(--line-light); background-color: var(--panel); overflow-y: auto;">
+        <div>
+          <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 800; border-bottom: 2px solid var(--primary); padding-bottom: 8px; display: flex; align-items: center; gap: 8px; color: var(--text);">
+            {{ icon('checklist') }} 身份证信息核对
+          </h4>
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div>
+              <span style="font-size: 12.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 3px;">人员姓名</span>
+              <strong id="idCardPreviewPersonName" style="font-size: 14.5px; color: var(--text);">--</strong>
+            </div>
+            <div>
+              <span style="font-size: 12.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 3px;">身份证号</span>
+              <strong id="idCardPreviewNumber" class="font-mono" style="font-size: 14.5px; color: var(--text);">--</strong>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 24px; border-top: 1px solid var(--line-light); padding-top: 16px;">
+          <a id="idCardPreviewDownloadBtn" href="" class="btn btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; font-weight: 700; border-radius: var(--radius-md); box-shadow: var(--shadow-md);">
+            {{ icon('import') }} 立即下载身份证
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Person Modals (Dynamic Loop) -->
+{% for person in people %}
+<div id="editPersonModal-{{ person.id }}" class="modal">
+  <div class="modal-content" style="max-width: 750px;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('edit') }} 修改人员信息 ({{ person.name }})</h3>
+      <button type="button" class="modal-close" onclick="closeModal('editPersonModal-{{ person.id }}')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.edit_person', person_id=person.id) }}" enctype="multipart/form-data" class="premium-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="edit-name-{{ person.id }}">姓名 <span class="required">*</span></label>
+            <input class="form-input" id="edit-name-{{ person.id }}" name="name" type="text" value="{{ person.name }}" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-id_number-{{ person.id }}">身份证号 <span class="required">*</span></label>
+            <input class="form-input font-mono" id="edit-id_number-{{ person.id }}" name="id_number" type="text" value="{{ person.id_number }}" required maxlength="18">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-id-card-{{ person.id }}">身份证附件</label>
+            <input class="form-input" id="edit-id-card-{{ person.id }}" name="id_card_attachment" type="file" accept=".png,.jpg,.jpeg,.pdf">
+            {% if person.id_card_path %}
+            <a class="attachment-pill" href="{{ url_for('web.download_attachment', filename=person.id_card_path) }}" target="_blank">当前身份证</a>
+            {% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-gender-{{ person.id }}">性别</label>
+            <select class="form-select" id="edit-gender-{{ person.id }}" name="gender">
+              <option value="男" {% if person.gender == '男' %}selected{% endif %}>男</option>
+              <option value="女" {% if person.gender == '女' %}selected{% endif %}>女</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-birth_date-{{ person.id }}">出生日期</label>
+            <input class="form-input" id="edit-birth_date-{{ person.id }}" name="birth_date" type="date" value="{{ person.birth_date }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-age-{{ person.id }}">年龄</label>
+            <input class="form-input" id="edit-age-{{ person.id }}" name="age" type="number" min="1" max="120" value="{{ person.age or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-phone-{{ person.id }}">联系电话</label>
+            <input class="form-input" id="edit-phone-{{ person.id }}" name="phone" type="tel" value="{{ person.phone or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-job_type-{{ person.id }}">岗位/工种</label>
+            <input class="form-input" id="edit-job_type-{{ person.id }}" name="job_type" type="text" value="{{ person.job_type or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-entry_date-{{ person.id }}">入职/进场日期</label>
+            <input class="form-input" id="edit-entry_date-{{ person.id }}" name="entry_date" type="date" value="{{ person.entry_date }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-bank_card-{{ person.id }}">银行卡号</label>
+            <input class="form-input font-mono" id="edit-bank_card-{{ person.id }}" name="bank_card" type="text" value="{{ person.bank_card or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-bank_name-{{ person.id }}">开户行名称</label>
+            <input class="form-input" id="edit-bank_name-{{ person.id }}" name="bank_name" type="text" value="{{ person.bank_name or '' }}">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-address-{{ person.id }}">联系地址</label>
+            <input class="form-input" id="edit-address-{{ person.id }}" name="address" type="text" value="{{ person.address or '' }}">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-notes-{{ person.id }}">备注说明</label>
+            <input class="form-input" id="edit-notes-{{ person.id }}" name="notes" type="text" value="{{ person.notes or '' }}">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <button type="button" class="btn btn-danger" onclick="deletePerson({{ person.id }}, '{{ person.name }}')" style="background-color: var(--error-color); color: #fff; border-color: var(--error-color); min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">{{ icon('delete') }} 删除人员</button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('editPersonModal-{{ person.id }}')">取消</button>
+            <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存修改</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
 <script>
-function filterPeopleTable() {
-  const query = document.getElementById('peopleSearch').value.toLowerCase();
-  const rows = document.querySelectorAll('.premium-table tbody tr');
-  rows.forEach(row => {
-    if (row.classList.contains('empty-row')) return;
-    const text = row.innerText.toLowerCase();
-    row.style.display = text.includes(query) ? '' : 'none';
+let idCardPreviewScale = 1.0;
+let idCardPreviewRotation = 0;
+
+function deletePerson(personId, name) {
+  if (confirm(`您确定要删除人员电子档案「${name}」吗？删除后将无法恢复。`)) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = `/people/${personId}/delete`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+function openIdCardPreviewFromButton(button) {
+  openIdCardPreview({
+    personName: button.dataset.personName,
+    idNumber: button.dataset.idNumber,
+    filename: button.dataset.filename
   });
 }
+
+function isPdfIdCard(filename) {
+  const lower = (filename || '').toLowerCase();
+  return lower.endsWith('.pdf') || lower.endsWith('_pdf');
+}
+
+function openIdCardPreview(item) {
+  if (!item.filename) return;
+
+  document.getElementById('idCardPreviewSubtitle').innerText = `${item.personName || '--'} / ${item.idNumber || '--'}`;
+  document.getElementById('idCardPreviewPersonName').innerText = item.personName || '--';
+  document.getElementById('idCardPreviewNumber').innerText = item.idNumber || '--';
+
+  const previewUrl = `/uploads/${encodeURIComponent(item.filename)}`;
+  const downloadUrl = `${previewUrl}?download=1`;
+  document.getElementById('idCardPreviewDownloadBtn').href = downloadUrl;
+
+  resetIdCardPreview();
+
+  const image = document.getElementById('idCardPreviewImage');
+  const pdf = document.getElementById('idCardPreviewPdf');
+
+  if (isPdfIdCard(item.filename)) {
+    image.style.display = 'none';
+    image.src = '';
+    pdf.style.display = 'block';
+    pdf.src = previewUrl;
+    document.getElementById('idCardZoomControls').style.display = 'none';
+  } else {
+    image.style.display = 'block';
+    image.src = previewUrl;
+    pdf.style.display = 'none';
+    pdf.src = '';
+    document.getElementById('idCardZoomControls').style.display = 'flex';
+  }
+
+  openModal('idCardPreviewModal');
+}
+
+function adjustIdCardZoom(factor) {
+  idCardPreviewScale = Math.max(0.4, Math.min(4.0, idCardPreviewScale * factor));
+  updateIdCardPreviewTransform();
+}
+
+function rotateIdCardPreview() {
+  idCardPreviewRotation = (idCardPreviewRotation + 90) % 360;
+  updateIdCardPreviewTransform();
+}
+
+function resetIdCardPreview() {
+  idCardPreviewScale = 1.0;
+  idCardPreviewRotation = 0;
+  updateIdCardPreviewTransform();
+}
+
+function updateIdCardPreviewTransform() {
+  const container = document.getElementById('idCardPreviewContainer');
+  if (container) {
+    container.style.transform = `scale(${idCardPreviewScale}) rotate(${idCardPreviewRotation}deg)`;
+  }
+}
+
+function filterPeople() {
+  const query = document.getElementById('peopleSearch').value.toLowerCase();
+  
+  // 1. 过滤列表视图的行
+  const tableRows = document.querySelectorAll('.people-table-row');
+  tableRows.forEach(row => {
+    const text = row.innerText.toLowerCase();
+    const detailId = row.getAttribute('data-detail-id');
+    const detailsRow = document.getElementById(detailId);
+    
+    if (text.includes(query)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+      if (detailsRow) detailsRow.style.display = 'none';
+    }
+  });
+  
+  // 2. 过滤卡片视图的卡片
+  const cards = document.querySelectorAll('.person-card');
+  cards.forEach(card => {
+    const text = card.innerText.toLowerCase();
+    
+    if (text.includes(query)) {
+      card.style.display = 'flex';
+    } else {
+      card.style.display = 'none';
+      card.classList.remove('expanded');
+    }
+  });
+  
+  // 3. 统计并触发空状态提示
+  let visibleCount = 0;
+  const isGrid = document.getElementById('viewBtnGrid').classList.contains('active');
+  if (isGrid) {
+    cards.forEach(c => { if (c.style.display !== 'none') visibleCount++; });
+  } else {
+    tableRows.forEach(r => { if (r.style.display !== 'none') visibleCount++; });
+  }
+  
+  const emptyRow = document.getElementById('peopleEmptyRow');
+  const emptyGrid = document.getElementById('peopleEmptyGrid');
+  
+  if (visibleCount === 0) {
+    if (emptyRow) emptyRow.style.display = '';
+    if (emptyGrid) emptyGrid.style.display = 'flex';
+  } else {
+    if (emptyRow) emptyRow.style.display = 'none';
+    if (emptyGrid) emptyGrid.style.display = 'none';
+  }
+}
+
+function toggleEmployeeDetails(id) {
+  const row = document.getElementById(id);
+  if (row.style.display === 'none') {
+    // 关闭其他打开的详情行以保持整洁
+    document.querySelectorAll('.employee-details-row').forEach(r => {
+      r.style.display = 'none';
+    });
+    row.style.display = '';
+  } else {
+    row.style.display = 'none';
+  }
+}
+
+function toggleEmployeeCardDetails(id) {
+  const card = document.getElementById('person-card-' + id);
+  
+  if (!card.classList.contains('flipped')) {
+    // Close other flipped cards to maintain focus and cleanliness
+    document.querySelectorAll('.person-card.flipped').forEach(c => {
+      c.classList.remove('flipped');
+    });
+    card.classList.add('flipped');
+  } else {
+    card.classList.remove('flipped');
+  }
+}
+
+function togglePeopleView(view) {
+  const gridView = document.getElementById('peopleGridView');
+  const listView = document.getElementById('peopleListView');
+  const btnGrid = document.getElementById('viewBtnGrid');
+  const btnList = document.getElementById('viewBtnList');
+  
+  if (view === 'grid') {
+    gridView.style.display = 'grid';
+    listView.style.display = 'none';
+    btnGrid.classList.add('active');
+    btnList.classList.remove('active');
+    localStorage.setItem('people_view', 'grid');
+  } else {
+    gridView.style.display = 'none';
+    listView.style.display = 'block';
+    btnGrid.classList.remove('active');
+    btnList.classList.add('active');
+    localStorage.setItem('people_view', 'list');
+  }
+  
+  // 重新计算并同步搜索过滤与空状态
+  filterPeople();
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  const savedView = localStorage.getItem('people_view') || 'grid';
+  togglePeopleView(savedView);
+});
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+window.addEventListener('click', function(event) {
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (event.target === modal) {
+      closeModal(modal.id);
+    }
+  });
+});
 </script>
 
 <style>
@@ -149,7 +795,7 @@ function filterPeopleTable() {
   align-items: center;
   gap: 10px;
   background: #f8fafc;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-light);
   border-radius: 8px;
   padding: 10px 16px;
   margin-bottom: 18px;
@@ -169,6 +815,333 @@ function filterPeopleTable() {
 }
 .search-input::placeholder {
   color: #94a3b8;
+}
+
+/* Dropzone UI inside Modal */
+.dropzone-area {
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  background-color: #f8fafc;
+  padding: 36px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition);
+}
+.dropzone-area:hover {
+  border-color: var(--primary);
+  background-color: var(--primary-light);
+}
+.dropzone-icon {
+  font-size: 36px;
+  transition: var(--transition);
+}
+.dropzone-area:hover .dropzone-icon {
+  transform: translateY(-4px);
+}
+.dropzone-text {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dropzone-subtext {
+  font-size: 12px;
+  color: var(--muted);
+}
+.dropzone-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* View Switcher Tabs */
+.view-switcher {
+  display: inline-flex;
+  background: var(--bg);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-light);
+}
+
+.view-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+}
+
+.view-btn:hover {
+  color: var(--text);
+}
+
+.view-btn.active {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+/* People Grid View Layout */
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.person-card {
+  perspective: 1000px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: 230px;
+  cursor: pointer;
+  position: relative;
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: left;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+/* Flipped state */
+.person-card.flipped .card-inner {
+  transform: rotateY(180deg);
+}
+
+/* Front & Back Sides */
+.card-front, .card-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden; /* Safari */
+  backface-visibility: hidden;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--line-light);
+  background: var(--panel);
+  box-shadow: var(--shadow-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Front side specific style */
+.card-front {
+  justify-content: space-between;
+}
+
+.card-front::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--warning);
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+
+.person-card.verified .card-front::before {
+  background: var(--success);
+}
+
+/* Back side specific style */
+.card-back {
+  transform: rotateY(180deg);
+  justify-content: space-between;
+  background: var(--panel-hover, var(--panel));
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.person-card.flipped:hover .card-back {
+  box-shadow: var(--shadow-md);
+}
+
+.card-inner:hover .card-front {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+  transition: var(--transition);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.card-title-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.card-avatar {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.card-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 600;
+  margin: 2px 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-badge {
+  flex-shrink: 0;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-grow: 1;
+}
+
+.card-info-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: 500;
+  border-bottom: 1px dashed var(--line-light);
+  padding-bottom: 6px;
+}
+
+.card-info-item:last-of-type {
+  border-bottom: none;
+}
+
+.card-info-label {
+  color: var(--muted);
+}
+
+.card-info-val {
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+}
+
+.card-info-val.font-mono {
+  font-family: Consolas, Monaco, monospace;
+  font-size: 12px;
+}
+
+.card-flip-hint {
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: auto;
+  border-top: 1px dashed var(--line-light);
+  padding-top: 8px;
+  opacity: 0.75;
+  transition: var(--transition);
+}
+
+.person-card:hover .card-flip-hint {
+  opacity: 1;
+  color: var(--primary);
+}
+
+.back-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px dashed var(--line-light);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+
+.back-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+}
+
+.back-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 4px;
+  transition: var(--transition);
+}
+
+.back-close-btn:hover {
+  color: var(--danger);
+}
+
+.back-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-grow: 1;
+}
+
+.back-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px dashed var(--line-light);
+  padding-top: 8px;
+  margin-top: auto;
+}
+
+.dark-theme .card-avatar {
+  background: #1e293b;
 }
 </style>
 {% endblock %}

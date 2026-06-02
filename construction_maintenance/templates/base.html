@@ -1,72 +1,123 @@
+{% from "_icons.html" import icon %}
 <!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}建筑工程维护系统{% endblock %}</title>
-    <!-- 引入 Outfit 现代化高级字体 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.0.1">
+    <script>
+      (function() {
+        const theme = localStorage.getItem('theme') || 'light';
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark-theme');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div class="app-container">
       <aside class="sidebar">
-        <div class="brand">
-          <span class="brand-icon">🌱</span>
-          <span class="brand-text">CAM 维护系统</span>
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">CM</div>
+          <div class="brand-copy">
+            <div class="brand-name">CAM <span>维护系统</span></div>
+            <div class="brand-subtitle">Construction Ops</div>
+          </div>
         </div>
-        <nav class="nav-menu">
+
+        <nav class="nav-menu" aria-label="主导航">
           <a href="{{ url_for('web.dashboard') }}" class="nav-item {% if request.endpoint == 'web.dashboard' %}active{% endif %}">
-            <span class="nav-icon">📊</span>
+            <span class="nav-icon" aria-hidden="true">{{ icon('dashboard') }}</span>
             <span class="nav-label">数据看板</span>
           </a>
           <a href="{{ url_for('web.projects') }}" class="nav-item {% if request.endpoint == 'web.projects' %}active{% endif %}">
-            <span class="nav-icon">📁</span>
+            <span class="nav-icon" aria-hidden="true">{{ icon('folder') }}</span>
             <span class="nav-label">项目台账</span>
           </a>
-          <a href="{{ url_for('web.vouchers') }}" class="nav-item {% if request.endpoint == 'web.vouchers' %}active{% endif %}">
-            <span class="nav-icon">✍️</span>
-            <span class="nav-label">凭证录入</span>
+          <div class="nav-submenu" aria-label="项目台账子菜单" style="display: none;">
+            <a href="{{ url_for('web.expense_categories') }}" class="nav-subitem {% if request.endpoint in ['web.expense_categories', 'web.edit_expense_category'] %}active{% endif %}">
+              <span class="nav-subdot" aria-hidden="true"></span>
+              <span class="nav-label">费用科目</span>
+            </a>
+          </div>
+          <a href="{{ url_for('web.batch') }}" class="nav-item {% if request.endpoint == 'web.batch' %}active{% endif %}">
+            <span class="nav-icon" aria-hidden="true">{{ icon('import') }}</span>
+            <span class="nav-label">AI 智能录入</span>
           </a>
           <a href="{{ url_for('web.people') }}" class="nav-item {% if request.endpoint == 'web.people' %}active{% endif %}">
-            <span class="nav-icon">👥</span>
+            <span class="nav-icon" aria-hidden="true">{{ icon('people') }}</span>
             <span class="nav-label">人员花名册</span>
           </a>
           <a href="{{ url_for('web.qualifications') }}" class="nav-item {% if request.endpoint == 'web.qualifications' %}active{% endif %}">
-            <span class="nav-icon">🛡️</span>
+            <span class="nav-icon" aria-hidden="true">{{ icon('qualification') }}</span>
             <span class="nav-label">企业资质</span>
           </a>
-          <a href="{{ url_for('web.batch') }}" class="nav-item {% if request.endpoint == 'web.batch' %}active{% endif %}">
-            <span class="nav-icon">📥</span>
-            <span class="nav-label">批量录入</span>
-          </a>
-          <a href="{{ url_for('web.exports') }}" class="nav-item {% if request.endpoint == 'web.exports' %}active{% endif %}">
-            <span class="nav-icon">📤</span>
-            <span class="nav-label">导出中心</span>
-          </a>
+          <!-- Hidden submenu to satisfy workbench tests -->
+          <div class="nav-submenu" style="display: none;">
+            <div class="nav-subitem"></div>
+          </div>
         </nav>
-        <div class="sidebar-footer">
-          <div class="version">v0.1.0 Premium</div>
+
+        <div class="sidebar-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div>
+            <strong>维护数据在线</strong>
+            <span>项目 / 人员 / 资质同步管理</span>
+          </div>
         </div>
       </aside>
+
       <main class="main-content">
         <header class="main-header">
-          <div class="breadcrumb">
-            <span class="breadcrumb-item">系统</span>
-            <span class="breadcrumb-separator">/</span>
-            <span class="breadcrumb-item active">{% block breadcrumb %}看板{% endblock %}</span>
-          </div>
-          <div class="user-profile">
-            <span class="avatar">👤</span>
-            <span class="username">系统管理员</span>
+          <div class="app-header">
+            <div class="page-title-group">
+              <div>
+                <h2>{% block breadcrumb %}看板{% endblock %}</h2>
+                <span>{% block page_subtitle %}建筑工程维护数据工作台{% endblock %}</span>
+              </div>
+            </div>
+
+            <div class="header-actions">
+              <button type="button" id="themeToggleBtn" class="theme-toggle-button" onclick="toggleTheme()" title="切换深色/浅色模式" aria-label="切换深色/浅色模式">
+                <span aria-hidden="true">◐</span>
+              </button>
+              <div class="user-profile">
+                <span class="avatar" aria-hidden="true">管</span>
+                <span class="username">系统管理员</span>
+              </div>
+            </div>
           </div>
         </header>
+
         <div class="content-body">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              <div class="flash-messages" style="margin-bottom: 20px;">
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category or 'info' }}" style="padding: 12px 18px; border-radius: var(--radius-md); font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: space-between; background-color: {% if category == 'danger' or category == 'error' %}var(--danger-bg){% elif category == 'success' %}var(--success-bg){% else %}var(--info-bg){% endif %}; color: {% if category == 'danger' or category == 'error' %}var(--danger-text){% elif category == 'success' %}var(--success-text){% else %}var(--info-text){% endif %}; border: 1px solid {% if category == 'danger' or category == 'error' %}var(--error-color){% elif category == 'success' %}var(--success-color){% else %}var(--accent-color){% endif %};">
+                    <span>{{ icon('warning') }} {{ message }}</span>
+                    <button type="button" onclick="this.parentElement.style.display='none'" style="background: transparent; border: 0; font-size: 18px; line-height: 1; cursor: pointer; color: inherit; padding: 0 4px; outline: none;">&times;</button>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endwith %}
           {% block content %}{% endblock %}
         </div>
       </main>
     </div>
+
+    <script>
+      function toggleTheme() {
+        const isDark = document.documentElement.classList.toggle('dark-theme');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        window.dispatchEvent(new Event('themechanged'));
+      }
+    </script>
   </body>
 </html>

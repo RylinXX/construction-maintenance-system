@@ -1,67 +1,27 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}凭证录入 - CAM 建筑工程维护系统{% endblock %}
 {% block breadcrumb %}凭证录入{% endblock %}
 
 {% block content %}
 <div class="panel-section">
+  <!-- Main Vouchers Table Card -->
   <div class="panel-card animate-slide-up">
     <div class="panel-header">
-      <h2 class="panel-title">✍️ 录入费用凭证</h2>
-      <p class="panel-subtitle">在此记录每笔项目支出的详细费用明细，自动关联并汇总至项目台账中。</p>
-    </div>
-    <form method="post" class="premium-form">
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label" for="voucher_date">凭证日期 <span class="required">*</span></label>
-          <input class="form-input" id="voucher_date" name="voucher_date" type="date" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="project_id">关联项目工程 <span class="required">*</span></label>
-          <select class="form-select" id="project_id" name="project_id" required>
-            <option value="" disabled selected>-- 请选择所属项目 --</option>
-            {% for project in projects %}
-            <option value="{{ project.id }}">{{ project.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="voucher_type">费用科目/类型 <span class="required">*</span></label>
-          <select class="form-select" id="voucher_type" name="voucher_type" required>
-            <option value="" disabled selected>-- 请选择科目类型 --</option>
-            {% for item in voucher_types %}
-            <option value="{{ item }}">{{ item }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="amount">支出金额 (¥) <span class="required">*</span></label>
-          <input class="form-input font-mono font-semibold" id="amount" name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="entry_user">经办/录入人</label>
-          <input class="form-input" id="entry_user" name="entry_user" type="text" placeholder="例如：出纳王小姐">
-        </div>
-        <div class="form-group full-width">
-          <label class="form-label" for="notes">费用备注/详情</label>
-          <input class="form-input" id="notes" name="notes" type="text" placeholder="例：采购五金配件、加油发票等...">
-        </div>
+      <div>
+        <h2 class="panel-title">{{ icon('checklist') }} 凭证费用明细</h2>
+        <p class="panel-subtitle">最近记录的各项项目工程费用凭证明细。</p>
       </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">💾 保存并记录</button>
+      <div class="toolbar-actions">
+        <button type="button" class="btn btn-secondary toolbar-btn" onclick="openModal('importVoucherModal')">{{ icon('import') }} 批量导入</button>
+        <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addVoucherModal')">{{ icon('add') }} 录入凭证</button>
       </div>
-    </form>
-  </div>
-
-  <div class="panel-card animate-slide-up" style="animation-delay: 0.1s;">
-    <div class="panel-header">
-      <h2 class="panel-title">📋 凭证费用明细</h2>
-      <p class="panel-subtitle">最近记录的各项项目工程费用凭证明细。</p>
     </div>
     
     <!-- Premium Project Filter Bar -->
     <div class="filter-bar">
       <form method="get" action="{{ url_for('web.vouchers') }}" class="filter-form">
-        <label class="filter-label">🔍 按项目检索过滤：
+        <label class="filter-label">{{ icon('search') }} 按项目检索过滤：
           <select name="project_id" class="filter-select" onchange="this.form.submit()">
             <option value="">-- 显示所有项目凭证明细 --</option>
             {% for p in projects %}
@@ -110,8 +70,8 @@
           <tr class="empty-row">
             <td colspan="6">
               <div class="empty-state">
-                <span class="empty-icon">💸</span>
-                <span class="empty-text">暂无费用支出记录，请在上方表单中录入第一笔凭证</span>
+                <span class="empty-icon">{{ icon('money') }}</span>
+                <span class="empty-text">暂无费用支出记录，请点击右上角“录入凭证”录入数据</span>
               </div>
             </td>
           </tr>
@@ -122,10 +82,146 @@
   </div>
 </div>
 
+<!-- Add Voucher Modal Dialog -->
+<div id="addVoucherModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('receipt') }} 录入费用凭证</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addVoucherModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" class="premium-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="voucher_date">凭证日期 <span class="required">*</span></label>
+            <input class="form-input" id="voucher_date" name="voucher_date" type="date" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="project_id">关联项目工程 <span class="required">*</span></label>
+            <select class="form-select" id="project_id" name="project_id" required>
+              <option value="" disabled selected>-- 请选择所属项目 --</option>
+              {% for project in projects %}
+              <option value="{{ project.id }}">{{ project.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="voucher_type">费用科目/类型 <span class="required">*</span></label>
+            <select class="form-select" id="voucher_type" name="voucher_type" required>
+              <option value="" disabled selected>-- 请选择科目类型 --</option>
+              {% for item in voucher_types %}
+              <option value="{{ item }}">{{ item }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="amount">支出金额 (¥) <span class="required">*</span></label>
+            <input class="form-input font-mono font-semibold" id="amount" name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="entry_user">经办/录入人</label>
+            <input class="form-input" id="entry_user" name="entry_user" type="text" placeholder="例如：出纳王小姐">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="notes">费用备注/详情</label>
+            <input class="form-input" id="notes" name="notes" type="text" placeholder="例：采购五金配件、加油发票等...">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addVoucherModal')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存并记录</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Import Voucher Modal (Batch Upload Queue) -->
+<div id="importVoucherModal" class="modal modal-lg">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('import') }} 批量上传费用凭证</h3>
+      <button type="button" class="modal-close" onclick="closeModal('importVoucherModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.batch') }}" enctype="multipart/form-data" class="premium-form">
+        <input type="hidden" name="item_type" value="voucher">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <div class="dropzone-area">
+              <span class="dropzone-icon">{{ icon('upload') }}</span>
+              <span class="dropzone-text">点击选择或拖拽凭证/发票文件至此区域进行上传</span>
+              <span class="dropzone-subtext">支持多选，允许上传 .png, .jpg, .jpeg, .pdf 等格式</span>
+              <input class="dropzone-input" id="files" name="files" type="file" multiple required>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 16px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('importVoucherModal')">关闭</button>
+          <button type="submit" class="btn btn-primary">{{ icon('ai') }} 上传并提交 AI 队列</button>
+        </div>
+      </form>
+
+      <!-- Current Batch Queue in page -->
+      <h4 style="margin: 28px 0 12px 0; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px;">
+        {{ icon('checklist') }} 待确认凭证解析队列
+      </h4>
+      <div class="table-container">
+        <table class="premium-table" style="font-size: 13.5px;">
+          <thead>
+            <tr>
+              <th>原始文件名</th>
+              <th>当前状态</th>
+              <th>自动识别结果</th>
+              <th>上传时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in batch_items %}
+            <tr>
+              <td>
+                <div class="font-semibold text-dark">{{ item.source_filename }}</div>
+                {% if item.stored_path %}
+                <a class="attachment-pill" href="{{ url_for('web.download_attachment', filename=item.stored_path|upload_name) }}" target="_blank">查看文件</a>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.status == '待确认' %}
+                <span class="badge badge-warning">{{ item.status }}</span>
+                {% else %}
+                <span class="badge badge-success">{{ item.status }}</span>
+                {% endif %}
+              </td>
+              <td class="font-mono text-muted">
+                {% if item.recognized_json == '{}' %}
+                <span class="text-muted">已上传，待人工确认</span>
+                {% else %}
+                {{ item.recognized_json }}
+                {% endif %}
+              </td>
+              <td class="font-mono">{{ item.created_at }}</td>
+            </tr>
+            {% else %}
+            <tr class="empty-row">
+              <td colspan="4">
+                <div class="empty-state" style="padding: 28px 0;">
+                  <span class="empty-icon" style="font-size: 24px;">{{ icon('empty-inbox') }}</span>
+                  <span class="empty-text" style="font-size: 13px;">暂无待复核的批量录入，上传凭证文件后即可在此查看</span>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <style>
 .filter-bar {
   background: #f8fafc;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-light);
   border-radius: 8px;
   padding: 12px 16px;
   margin-bottom: 16px;
@@ -143,7 +239,7 @@
   gap: 8px;
 }
 .filter-select {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 6px 12px;
   font-family: var(--font-family);
@@ -157,5 +253,69 @@
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-glow);
 }
+
+/* Dropzone UI inside Modal */
+.dropzone-area {
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  background-color: #f8fafc;
+  padding: 36px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition);
+}
+.dropzone-area:hover {
+  border-color: var(--primary);
+  background-color: var(--primary-light);
+}
+.dropzone-icon {
+  font-size: 36px;
+  transition: var(--transition);
+}
+.dropzone-area:hover .dropzone-icon {
+  transform: translateY(-4px);
+}
+.dropzone-text {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dropzone-subtext {
+  font-size: 12px;
+  color: var(--muted);
+}
+.dropzone-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
 </style>
+
+<script>
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+window.addEventListener('click', function(event) {
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (event.target === modal) {
+      closeModal(modal.id);
+    }
+  });
+});
+</script>
 {% endblock %}

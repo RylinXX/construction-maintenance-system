@@ -1,9 +1,17 @@
+# 依赖与环境
 .venv/
 __pycache__/
 .pytest_cache/
 *.pyc
-*.sqlite3
-instance/
-uploads/
-exports/
+dist/
+build/
+*.egg-info/
+.superpowers/
 .env
+
+# 本地数据库与临时文件
+instance/
+exports/
+uploads/
+*.sqlite3
+*.log

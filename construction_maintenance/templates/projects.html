@@ -1,56 +1,23 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}项目台账 - CAM 建筑工程维护系统{% endblock %}
 {% block breadcrumb %}项目台账{% endblock %}
 
 {% block content %}
 <div class="panel-section">
+  <!-- Main Project List Card -->
   <div class="panel-card animate-slide-up">
     <div class="panel-header">
-      <h2 class="panel-title">📂 新增项目工程</h2>
-      <p class="panel-subtitle">在此创建新的建筑项目，用以跟踪管理后续所有的支出凭证明细。</p>
-    </div>
-    <form method="post" class="premium-form">
-      <div class="form-grid">
-        <div class="form-group full-width">
-          <label class="form-label" for="name">项目名称 <span class="required">*</span></label>
-          <input class="form-input" id="name" name="name" type="text" placeholder="例如：新城区土方挖掘工程" required autocomplete="off">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="owner">项目负责人</label>
-          <input class="form-input" id="owner" name="owner" type="text" placeholder="例如：张工">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="status">当前状态</label>
-          <select class="form-select" id="status" name="status">
-            <option value="进行中">进行中</option>
-            <option value="已完工">已完工</option>
-            <option value="已暂停">已暂停</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="start_date">开工时间</label>
-          <input class="form-input" id="start_date" name="start_date" type="date">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="end_date">预估完工</label>
-          <input class="form-input" id="end_date" name="end_date" type="date">
-        </div>
-        <div class="form-group full-width">
-          <label class="form-label" for="notes">备注说明</label>
-          <input class="form-input" id="notes" name="notes" type="text" placeholder="关于该项目的背景或概算注释...">
-        </div>
+      <div>
+        <h2 class="panel-title">{{ icon('checklist') }} 现有项目列表</h2>
+        <p class="panel-subtitle">当前正在执行或已结项的全部工程项目总览。</p>
       </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">💾 保存项目</button>
+      <div class="toolbar-actions">
+        <a href="{{ url_for('web.download_export', export_type='project-ledger') }}" class="btn btn-secondary toolbar-btn">{{ icon('upload') }} 导出 Excel</a>
+        <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addProjectModal')">{{ icon('add') }} 新增项目</button>
       </div>
-    </form>
-  </div>
-
-  <div class="panel-card animate-slide-up" style="animation-delay: 0.1s;">
-    <div class="panel-header">
-      <h2 class="panel-title">📋 现有项目列表</h2>
-      <p class="panel-subtitle">当前正在执行或已结项的全部工程项目总览。</p>
     </div>
+    
     <div class="table-container">
       <table class="premium-table">
         <thead>
@@ -61,12 +28,17 @@
             <th>状态</th>
             <th>所属公司</th>
             <th>备注信息</th>
+            <th class="text-right">管理操作</th>
           </tr>
         </thead>
         <tbody>
           {% for project in projects %}
           <tr>
-            <td class="font-semibold text-dark"><a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="project-link" title="点击查看项目专属费用台账">📂 {{ project.name }}</a></td>
+            <td class="font-semibold text-dark">
+              <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="project-link" title="点击查看项目专属费用台账">
+                {{ icon('folder') }} {{ project.name }}
+              </a>
+            </td>
             <td>{{ project.owner or '--' }}</td>
             <td class="font-mono">{{ project.start_date or '--' }}</td>
             <td>
@@ -80,13 +52,22 @@
             </td>
             <td>{{ project.company_name }}</td>
             <td class="text-muted">{{ project.notes or '--' }}</td>
+            <td class="text-right" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+              <!-- Edit Action Trigger Button -->
+              <button type="button" class="btn btn-secondary toolbar-btn" style="padding: 6px 12px; font-size: 13px;" onclick="openModal('editProjectModal-{{ project.id }}')">
+                {{ icon('edit') }} 编辑
+              </button>
+              <button type="button" class="btn btn-danger toolbar-btn" style="padding: 6px 12px; font-size: 13px; background-color: var(--error-color); border-color: var(--error-color); color: white;" onclick="deleteProject({{ project.id }}, '{{ project.name }}')" title="删除项目">
+                {{ icon('delete') }} 删除
+              </button>
+            </td>
           </tr>
           {% else %}
           <tr class="empty-row">
-            <td colspan="6">
+            <td colspan="7">
               <div class="empty-state">
-                <span class="empty-icon">📭</span>
-                <span class="empty-text">暂无项目，请在上方表单中录入您的第一个工程项目</span>
+                <span class="empty-icon">{{ icon('empty-inbox') }}</span>
+                <span class="empty-text">暂无项目，请点击右上角“新增项目”按钮创建工程</span>
               </div>
             </td>
           </tr>
@@ -96,6 +77,107 @@
     </div>
   </div>
 </div>
+
+<!-- Add Project Modal Dialog -->
+<div id="addProjectModal" class="modal animate-fade-in">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('folder') }} 新增项目工程</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addProjectModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" class="premium-form">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label" for="name">项目名称 <span class="required">*</span></label>
+            <input class="form-input" id="name" name="name" type="text" placeholder="例如：新城区土方挖掘工程" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="owner">项目负责人</label>
+            <input class="form-input" id="owner" name="owner" type="text" placeholder="例如：张工">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="status">当前状态</label>
+            <select class="form-select" id="status" name="status">
+              <option value="进行中">进行中</option>
+              <option value="已完工">已完工</option>
+              <option value="已暂停">已暂停</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="start_date">开工时间</label>
+            <input class="form-input" id="start_date" name="start_date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="end_date">预估完工</label>
+            <input class="form-input" id="end_date" name="end_date" type="date">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="notes">备注说明</label>
+            <input class="form-input" id="notes" name="notes" type="text" placeholder="关于该项目的背景或概算注释...">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addProjectModal')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存项目</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Project Modal Dialogs (Generated dynamically for each project) -->
+{% for project in projects %}
+<div id="editProjectModal-{{ project.id }}" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('edit') }} 编辑项目信息</h3>
+      <button type="button" class="modal-close" onclick="closeModal('editProjectModal-{{ project.id }}')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.edit_project', project_id=project.id) }}" class="premium-form">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-name-{{ project.id }}">项目名称 <span class="required">*</span></label>
+            <input class="form-input" id="edit-name-{{ project.id }}" name="name" type="text" value="{{ project.name }}" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-owner-{{ project.id }}">项目负责人</label>
+            <input class="form-input" id="edit-owner-{{ project.id }}" name="owner" type="text" value="{{ project.owner or '' }}" placeholder="如：张工">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-status-{{ project.id }}">当前状态</label>
+            <select class="form-select" id="edit-status-{{ project.id }}" name="status">
+              <option value="进行中" {% if project.status == '进行中' %}selected{% endif %}>进行中</option>
+              <option value="已完工" {% if project.status == '已完工' %}selected{% endif %}>已完工</option>
+              <option value="已暂停" {% if project.status == '已暂停' %}selected{% endif %}>已暂停</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-start-{{ project.id }}">开工时间</label>
+            <input class="form-input" id="edit-start-{{ project.id }}" name="start_date" type="date" value="{{ project.start_date }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-end-{{ project.id }}">预估完工</label>
+            <input class="form-input" id="edit-end-{{ project.id }}" name="end_date" type="date" value="{{ project.end_date }}">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-notes-{{ project.id }}">备注说明</label>
+            <input class="form-input" id="edit-notes-{{ project.id }}" name="notes" type="text" value="{{ project.notes or '' }}" placeholder="关于该项目的背景或概算注释...">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <button type="button" class="btn btn-danger" onclick="deleteProject({{ project.id }}, '{{ project.name }}')" style="background-color: var(--error-color); color: #fff; border-color: var(--error-color); min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">{{ icon('delete') }} 删除项目</button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('editProjectModal-{{ project.id }}')">取消</button>
+            <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存修改</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
 
 <style>
 .project-link {
@@ -110,4 +192,34 @@
   border-bottom-color: var(--primary);
 }
 </style>
+
+<script>
+function deleteProject(projectId, name) {
+  if (confirm(`您确定要删除项目「${name}」吗？\n警告：删除项目将同时删除该项目关联的所有费用凭证，此操作不可恢复！`)) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = `/projects/${projectId}/delete`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+// Close modal when clicking outside
+window.addEventListener('click', function(event) {
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (event.target === modal) {
+      closeModal(modal.id);
+    }
+  });
+});
+</script>
 {% endblock %}

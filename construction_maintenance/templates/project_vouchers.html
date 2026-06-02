@@ -1,58 +1,82 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ project.name }} - 费用台账 - CAM 建筑工程维护系统{% endblock %}
 {% block breadcrumb %}项目台账 / 专属费用台账{% endblock %}
 
 {% block content %}
+<!-- Compact Premium Project Header Panel (Extremely Space Efficient) -->
+<div class="project-header-panel animate-slide-up">
+  <div class="project-header-left">
+    <!-- Sleek Back Button -->
+    <a href="{{ url_for('web.projects') }}" class="btn btn-secondary" style="padding: 10px 14px; border-radius: 50%; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px;" title="返回项目列表">
+      {{ icon('back') }}
+    </a>
+    <div class="project-header-details">
+      <h1 class="project-header-title">{{ icon('folder') }} {{ project.name }}</h1>
+      <div class="project-header-meta">
+        <span>{{ icon('user') }} 负责人：<strong>{{ project.owner or '未分配' }}</strong></span>
+        <span>|</span>
+        <span>{{ icon('ai') }} 状态：
+          {% if project.status == '进行中' %}
+          <span class="badge badge-success" style="padding: 3px 10px; font-size: 11.5px;">{{ project.status }}</span>
+          {% elif project.status == '已完工' %}
+          <span class="badge badge-secondary" style="padding: 3px 10px; font-size: 11.5px;">{{ project.status }}</span>
+          {% else %}
+          <span class="badge badge-warning" style="padding: 3px 10px; font-size: 11.5px;">{{ project.status }}</span>
+          {% endif %}
+        </span>
+        <span>|</span>
+        <span>{{ icon('company') }} 所属单位：{{ project.company_name }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="project-header-right">
+    <!-- Compact Mini Metrics Pills -->
+    <div class="mini-metric-pill blue">
+      <span>累计支出:</span>
+      <span class="mini-metric-pill-val">¥{{ total_spending|money_short }}</span>
+    </div>
+    <div class="mini-metric-pill amber">
+      <span>凭证记录:</span>
+      <span class="mini-metric-pill-val">{{ vouchers|length }} 张</span>
+    </div>
+  </div>
+</div>
+
 <div class="panel-section">
-  <!-- Back Button Row -->
-  <div class="back-row animate-slide-up">
-    <a href="{{ url_for('web.projects') }}" class="btn btn-secondary">🔙 返回项目列表</a>
-  </div>
-
-  <div class="welcome-banner animate-slide-up" style="animation-delay: 0.05s; background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);">
-    <div class="welcome-text">
-      <h1>📂 {{ project.name }}</h1>
-      <p>负责人：{{ project.owner or '未分配' }} &nbsp;|&nbsp; 状态：
-        {% if project.status == '进行中' %}
-        <span class="badge badge-success" style="vertical-align: middle;">{{ project.status }}</span>
-        {% elif project.status == '已完工' %}
-        <span class="badge badge-secondary" style="vertical-align: middle;">{{ project.status }}</span>
-        {% else %}
-        <span class="badge badge-warning" style="vertical-align: middle;">{{ project.status }}</span>
-        {% endif %}
-        &nbsp;|&nbsp; 所属公司：{{ project.company_name }}
-      </p>
-      {% if project.notes %}
-      <p style="margin-top: 8px; opacity: 0.8; font-size: 13.5px;">备注：{{ project.notes }}</p>
-      {% endif %}
-    </div>
-  </div>
-
-  <section class="metric-grid animate-slide-up" style="animation-delay: 0.1s;">
-    <div class="metric-card emerald">
-      <div class="metric-info">
-        <span class="metric-title">累计费用支出总额</span>
-        <strong class="metric-value" style="color: var(--primary);">¥{{ total_spending|money }}</strong>
+  <!-- Main Vouchers Table Card with Search & Filters -->
+  <div class="panel-card animate-slide-up" style="animation-delay: 0.05s;">
+    <div class="panel-header" style="margin-bottom: 20px;">
+      <div>
+        <h2 class="panel-title">{{ icon('checklist') }} 专属凭证流水台账</h2>
+        <p class="panel-subtitle">该工程项目已归档记录的全部明细流水账目。</p>
       </div>
-      <div class="metric-icon">💰</div>
+      <div class="toolbar-actions">
+        <button type="button" class="btn btn-secondary toolbar-btn" onclick="openModal('manageCategoriesModal')">{{ icon('checklist') }} 科目管理</button>
+        <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addVoucherModal')">{{ icon('add') }} 录入凭证</button>
+      </div>
+    </div>
+
+    <!-- Premium Interactive Search & Filter Bar (Max Space Efficiency) -->
+    <div class="search-filter-row">
+      <div class="search-bar-container">
+        <span class="search-icon">{{ icon('search') }}</span>
+        <input type="text" id="voucherSearch" class="search-input" oninput="filterVouchersTable()" placeholder="输入经办人、费用备注或日期进行快速搜索过滤...">
+      </div>
+      
+      <div class="filter-select-container">
+        <label class="filter-label" for="categoryFilter">费用科目：</label>
+        <select id="categoryFilter" class="filter-select" onchange="filterVouchersTable()">
+          <option value="">-- 全部费用科目 --</option>
+          {% for item in filter_voucher_types %}
+          <option value="{{ item }}">{{ item }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
     
-    <div class="metric-card gold">
-      <div class="metric-info">
-        <span class="metric-title">已登记凭证记录</span>
-        <strong class="metric-value">{{ vouchers|length }} 张</strong>
-      </div>
-      <div class="metric-icon">📄</div>
-    </div>
-  </section>
-
-  <div class="panel-card animate-slide-up" style="animation-delay: 0.15s; margin-top: 24px;">
-    <div class="panel-header">
-      <h2 class="panel-title">📋 专属凭证流水台账</h2>
-      <p class="panel-subtitle">该工程项目已归档记录的全部明细流水账目。</p>
-    </div>
-    
-    <div class="table-container">
+    <div class="table-container" style="margin-top: 16px;">
       <table class="premium-table">
         <thead>
           <tr>
@@ -61,11 +85,12 @@
             <th class="text-right">支出金额 (元)</th>
             <th>经办人</th>
             <th>备注信息</th>
+            <th class="text-right">操作</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="vouchersTableBody">
           {% for voucher in vouchers %}
-          <tr>
+          <tr class="voucher-row" data-category="{{ voucher.voucher_type }}">
             <td class="font-mono text-dark">{{ voucher.voucher_date }}</td>
             <td>
               {% if voucher.voucher_type == '材料费用' %}
@@ -83,36 +108,458 @@
             <td class="text-right font-mono font-semibold text-primary">¥{{ voucher.amount|money }}</td>
             <td>{{ voucher.entry_user or '--' }}</td>
             <td class="text-muted">{{ voucher.notes or '--' }}</td>
-          </tr>
-          {% else %}
-          <tr class="empty-row">
-            <td colspan="5">
-              <div class="empty-state">
-                <span class="empty-icon">💸</span>
-                <span class="empty-text">该项目当前暂无任何相关的费用支出账目。</span>
-              </div>
+            <td class="text-right">
+              <button type="button" class="btn btn-secondary toolbar-btn" style="padding: 6px 12px; font-size: 13px;" onclick="openModal('editVoucherModal-{{ voucher.id }}')">
+                {{ icon('edit') }} 编辑
+              </button>
             </td>
           </tr>
           {% endfor %}
+          
+          <!-- Shared Empty State Row -->
+          <tr id="vouchersEmptyRow" class="empty-row" style="display: none;">
+            <td colspan="6">
+              <div class="empty-state">
+                <span class="empty-icon">{{ icon('money') }}</span>
+                <span class="empty-text">未能检索到匹配的费用流水记录，请更换搜索词或选择其他科目</span>
+              </div>
+            </td>
+          </tr>
+          
+          {% if not vouchers %}
+          <tr class="initial-empty-row">
+            <td colspan="6">
+              <div class="empty-state" style="padding: 48px 0;">
+                <span class="empty-icon">{{ icon('money') }}</span>
+                <span class="empty-text">该项目当前暂无任何相关的费用支出账目，请点击右上角录入第一笔凭证</span>
+              </div>
+            </td>
+          </tr>
+          {% endif %}
         </tbody>
       </table>
     </div>
   </div>
 </div>
 
+<!-- Add Voucher Modal Dialog -->
+<div id="addVoucherModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('receipt') }} 录入费用凭证 ({{ project.name }})</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addVoucherModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.vouchers') }}" class="premium-form">
+        <!-- Automatically link voucher to current project context -->
+        <input type="hidden" name="project_id" value="{{ project.id }}">
+        
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="voucher_date">凭证日期 <span class="required">*</span></label>
+            <input class="form-input" id="voucher_date" name="voucher_date" type="date" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="voucher_type">费用科目/类型 <span class="required">*</span></label>
+            <select class="form-select" id="voucher_type" name="voucher_type" required>
+              <option value="" disabled selected>-- 请选择科目类型 --</option>
+              {% for item in voucher_types %}
+              <option value="{{ item }}">{{ item }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="amount">支出金额 (¥) <span class="required">*</span></label>
+            <input class="form-input font-mono font-semibold" id="amount" name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="entry_user">经办/录入人</label>
+            <input class="form-input" id="entry_user" name="entry_user" type="text" placeholder="例如：出纳王小姐">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="notes">费用备注/详情</label>
+            <input class="form-input" id="notes" name="notes" type="text" placeholder="例：采购五金配件、电缆线、吊车租赁款...">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addVoucherModal')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存并记录</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Centralized Central AI Batch processing replaces local upload modal -->
+
 <style>
-.back-row {
-  margin-bottom: 4px;
+/* Modern Compact Search & Filter Toolbar Layout */
+.search-filter-row {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  background: #f8fafc;
+  border: 1px solid var(--line-light);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
 }
-.btn-secondary {
-  background: #f1f5f9;
-  color: #334155;
-  border: 1px solid #cbd5e1;
+
+@media (max-width: 768px) {
+  .search-filter-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 }
-.btn-secondary:hover {
-  background: #e2e8f0;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+.search-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+}
+.search-icon {
+  font-size: 15px;
+  color: var(--muted);
+}
+.search-input {
+  flex-grow: 1;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-family);
+  font-size: 13.5px;
+  outline: none;
+  color: var(--text);
+}
+.search-input::placeholder {
+  color: #94a3b8;
+}
+
+.filter-select-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.filter-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.filter-select {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  min-width: 180px;
+  transition: var(--transition);
+}
+.filter-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* Dropzone UI inside Modal */
+.dropzone-area {
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  background-color: #f8fafc;
+  padding: 36px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition);
+}
+.dropzone-area:hover {
+  border-color: var(--primary);
+  background-color: var(--primary-light);
+}
+.dropzone-icon {
+  font-size: 36px;
+  transition: var(--transition);
+}
+.dropzone-area:hover .dropzone-icon {
+  transform: translateY(-4px);
+}
+.dropzone-text {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dropzone-subtext {
+  font-size: 12px;
+  color: var(--muted);
+}
+.dropzone-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 </style>
+
+<script>
+function filterVouchersTable() {
+  const searchQuery = document.getElementById('voucherSearch').value.toLowerCase();
+  const categoryQuery = document.getElementById('categoryFilter').value;
+  const rows = document.querySelectorAll('.voucher-row');
+  
+  let visibleCount = 0;
+  rows.forEach(row => {
+    const text = row.innerText.toLowerCase();
+    const category = row.getAttribute('data-category');
+    
+    const matchesSearch = text.includes(searchQuery);
+    const matchesCategory = (categoryQuery === "" || category === categoryQuery);
+    
+    if (matchesSearch && matchesCategory) {
+      row.style.display = '';
+      visibleCount++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  // Toggle empty states
+  const emptyRow = document.getElementById('vouchersEmptyRow');
+  const initialEmptyRow = document.querySelector('.initial-empty-row');
+  
+  if (visibleCount === 0) {
+    if (initialEmptyRow) {
+      // If there are no vouchers at all in the database
+      initialEmptyRow.style.display = '';
+      emptyRow.style.display = 'none';
+    } else {
+      // If we filtered out all existing vouchers
+      emptyRow.style.display = '';
+    }
+  } else {
+    if (initialEmptyRow) initialEmptyRow.style.display = 'none';
+    emptyRow.style.display = 'none';
+  }
+}
+
+// Dropzone selection feedback
+document.querySelectorAll('.dropzone-input').forEach(input => {
+  input.addEventListener('change', function(e) {
+    const files = e.target.files;
+    const dropzoneArea = e.target.closest('.dropzone-area');
+    const textSpan = dropzoneArea.querySelector('.dropzone-text');
+    const subtextSpan = dropzoneArea.querySelector('.dropzone-subtext');
+    
+    if (files && files.length > 0) {
+      if (files.length === 1) {
+        textSpan.textContent = `已选择文件: ${files[0].name}`;
+      } else {
+        textSpan.textContent = `已选择 ${files.length} 个文件`;
+      }
+      subtextSpan.textContent = Array.from(files).map(f => f.name).join(', ');
+      dropzoneArea.style.borderColor = 'var(--secondary-color)';
+    } else {
+      textSpan.textContent = "点击选择或拖拽凭证/发票文件至此区域进行上传";
+      subtextSpan.textContent = "支持多选，允许上传 .png, .jpg, .jpeg, .pdf 等格式";
+      dropzoneArea.style.borderColor = '';
+    }
+  });
+});
+
+// Form submission loading state
+document.querySelectorAll('form').forEach(form => {
+  if (form.getAttribute('enctype') === 'multipart/form-data') {
+    form.addEventListener('submit', function(e) {
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.7';
+        submitBtn.textContent = '正在上传并提交 AI 队列，请稍候...';
+      }
+    });
+  }
+});
+</script>
+
+<!-- Edit Voucher Modals (Dynamic Loop) -->
+{% for voucher in vouchers %}
+<div id="editVoucherModal-{{ voucher.id }}" class="modal animate-fade-in">
+  <div class="modal-content" style="max-width: 650px;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('edit') }} 修改费用凭证</h3>
+      <button type="button" class="modal-close" onclick="closeModal('editVoucherModal-{{ voucher.id }}')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.edit_voucher', voucher_id=voucher.id) }}" class="premium-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="edit-date-{{ voucher.id }}">凭证日期 <span class="required">*</span></label>
+            <input class="form-input" id="edit-date-{{ voucher.id }}" name="voucher_date" type="date" value="{{ voucher.voucher_date }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-type-{{ voucher.id }}">费用科目/类型 <span class="required">*</span></label>
+            <select class="form-select" id="edit-type-{{ voucher.id }}" name="voucher_type" required>
+              {% if voucher.voucher_type not in voucher_types %}
+              <option value="{{ voucher.voucher_type }}" selected>{{ voucher.voucher_type }}</option>
+              {% endif %}
+              {% for item in voucher_types %}
+              <option value="{{ item }}" {% if voucher.voucher_type == item %}selected{% endif %}>{{ item }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-amount-{{ voucher.id }}">支出金额 (¥) <span class="required">*</span></label>
+            <input class="form-input font-mono font-semibold" id="edit-amount-{{ voucher.id }}" name="amount" type="number" min="0.01" step="0.01" value="{{ voucher.amount }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-user-{{ voucher.id }}">经办/录入人</label>
+            <input class="form-input" id="edit-user-{{ voucher.id }}" name="entry_user" type="text" value="{{ voucher.entry_user or '' }}">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-notes-{{ voucher.id }}">费用备注/详情</label>
+            <input class="form-input" id="edit-notes-{{ voucher.id }}" name="notes" type="text" value="{{ voucher.notes or '' }}">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('editVoucherModal-{{ voucher.id }}')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存修改</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+<!-- Add Category Modal Dialog -->
+<div id="addCategoryModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('add') }} 新增费用科目</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addCategoryModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.expense_categories') }}" class="premium-form">
+        <!-- Redirect to stay on project vouchers page -->
+        <input type="hidden" name="redirect" value="{{ request.url }}">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="new_category_name">科目名称 <span class="required">*</span></label>
+            <input class="form-input" id="new_category_name" name="name" type="text" placeholder="例如：机械租赁" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="new_category_sort_order">排序权重</label>
+            <input class="form-input" id="new_category_sort_order" name="sort_order" type="number" step="1" value="80">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addCategoryModal')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存科目</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Categories Modal Dialog -->
+<div id="manageCategoriesModal" class="modal modal-lg">
+  <div class="modal-content" style="max-width: 800px; width: 95%;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('checklist') }} 费用科目管理</h3>
+      <button type="button" class="modal-close" onclick="closeModal('manageCategoriesModal')">&times;</button>
+    </div>
+    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px;">
+        <p class="panel-subtitle" style="margin: 0;">启用中的科目会出现在凭证录入下拉框中。您可以直接修改名称、状态与排序。</p>
+        <button type="button" class="btn btn-primary toolbar-btn" style="padding: 6px 12px; font-size: 13px; white-space: nowrap;" onclick="openModal('addCategoryModal')">{{ icon('add') }} 新增科目</button>
+      </div>
+
+      <div class="table-container">
+        <table class="premium-table" style="font-size: 13.5px; table-layout: fixed; width: 100%; min-width: auto;">
+          <colgroup>
+            <col style="width: 42%;">
+            <col style="width: 20%;">
+            <col style="width: 22%;">
+            <col style="width: 16%;">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>科目名称</th>
+              <th>排序权重</th>
+              <th>状态</th>
+              <th class="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for category in categories %}
+            <tr>
+              <td>
+                <form id="edit-category-{{ category.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=category.id) }}">
+                  <input type="hidden" name="redirect" value="{{ request.url }}">
+                </form>
+                <input form="edit-category-{{ category.id }}" class="form-input" style="width: 100%; padding: 6px 12px; font-size: 13px;" name="name" type="text" value="{{ category.name }}" required>
+              </td>
+              <td>
+                <input form="edit-category-{{ category.id }}" class="form-input" style="width: 80px; padding: 6px 12px; font-size: 13px;" name="sort_order" type="number" step="1" value="{{ category.sort_order }}">
+              </td>
+              <td>
+                <label class="status-toggle" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input form="edit-category-{{ category.id }}" type="checkbox" name="is_active" value="1" {% if category.is_active %}checked{% endif %} style="width: 14px; height: 14px; accent-color: var(--accent);">
+                  {% if category.is_active %}
+                  <span class="badge badge-success" style="font-size: 11px; padding: 2px 6px;">启用中</span>
+                  {% else %}
+                  <span class="badge badge-secondary" style="font-size: 11px; padding: 2px 6px;">已停用</span>
+                  {% endif %}
+                </label>
+              </td>
+              <td class="text-right">
+                <button form="edit-category-{{ category.id }}" type="submit" class="btn btn-secondary toolbar-btn" style="padding: 5px 12px; font-size: 12.5px; white-space: nowrap;">{{ icon('save') }} 保存</button>
+              </td>
+            </tr>
+            {% else %}
+            <tr class="empty-row">
+              <td colspan="4">
+                <div class="empty-state" style="padding: 20px 0;">
+                  <span class="empty-text" style="font-size: 13px;">暂无费用科目，请点击右上角新增。</span>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--line-light); display: flex; justify-content: flex-end; background-color: var(--panel);">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('manageCategoriesModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+window.addEventListener('click', function(event) {
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (event.target === modal) {
+      closeModal(modal.id);
+    }
+  });
+});
+</script>
 {% endblock %}

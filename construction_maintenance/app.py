@@ -7,6 +7,7 @@ from flask import Flask
 
 from . import db
 from .config import DEFAULT_DATABASE, DEFAULT_UPLOAD_FOLDER
+from .config import ARK_API_KEY, ARK_BASE_URL, ARK_MODEL
 from .web.routes import bp as web_bp
 
 
@@ -16,6 +17,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         SECRET_KEY="dev",
         DATABASE=DEFAULT_DATABASE,
         UPLOAD_FOLDER=DEFAULT_UPLOAD_FOLDER,
+        ARK_BASE_URL=ARK_BASE_URL,
+        ARK_MODEL=ARK_MODEL,
+        ARK_API_KEY=ARK_API_KEY,
     )
     if test_config:
         app.config.update(test_config)

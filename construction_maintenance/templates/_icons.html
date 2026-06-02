@@ -1,0 +1,3 @@
+{% macro icon(name, class_name='inline-icon') -%}
+<img class="{{ class_name }}" src="{{ url_for('static', filename='icons/' ~ name ~ '.png') }}?v=3" alt="" aria-hidden="true" decoding="async">
+{%- endmacro %}

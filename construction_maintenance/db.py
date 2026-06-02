@@ -8,6 +8,17 @@ from flask import current_app
 from flask import g
 
 
+DEFAULT_EXPENSE_CATEGORIES = [
+    "员工报销",
+    "转账凭证",
+    "材料费用",
+    "油费",
+    "电费",
+    "人工工资",
+    "其它",
+]
+
+
 def get_db() -> sqlite3.Connection:
     if "db" not in g:
         database = Path(current_app.config["DATABASE"])
@@ -68,10 +79,19 @@ def init_db() -> None:
             created_at text not null default current_timestamp
         );
 
+        create table if not exists expense_categories (
+            id integer primary key autoincrement,
+            name text not null unique,
+            sort_order integer not null default 0,
+            is_active integer not null default 1,
+            created_at text not null default current_timestamp
+        );
+
         create table if not exists people (
             id integer primary key autoincrement,
             name text not null,
             id_number text not null unique,
+            id_card_path text not null default '',
             gender text not null default '',
             birth_date text not null default '',
             age integer,
@@ -111,11 +131,33 @@ def init_db() -> None:
         );
         """
     )
+    people_columns = {
+        row["name"] for row in db.execute("pragma table_info(people)").fetchall()
+    }
+    if "id_card_path" not in people_columns:
+        db.execute("alter table people add column id_card_path text not null default ''")
+
     db.execute(
         """
         insert into companies (name, is_main)
         select '主公司', 1
         where not exists (select 1 from companies where is_main = 1)
+        """
+    )
+    category_count = db.execute("select count(*) from expense_categories").fetchone()[0]
+    if category_count == 0:
+        db.executemany(
+            """
+            insert into expense_categories (name, sort_order, is_active)
+            values (?, ?, 1)
+            """,
+            [(name, index * 10) for index, name in enumerate(DEFAULT_EXPENSE_CATEGORIES, start=1)],
+        )
+    db.execute(
+        """
+        update batch_items
+        set status = '待确认'
+        where status not in ('待确认', '已识别', '已确认')
         """
     )
     db.commit()

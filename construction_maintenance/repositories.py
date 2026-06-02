@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from typing import Any
 
 from .db import get_db
@@ -13,6 +14,105 @@ def normalize_amount(value: Any) -> float:
     if amount <= 0:
         raise ValueError("金额必须大于 0")
     return amount
+
+
+def normalize_expense_category_name(value: Any) -> str:
+    name = str(value or "").strip()
+    if not name:
+        raise ValueError("费用科目名称不能为空")
+    return name
+
+
+def normalize_sort_order(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def list_expense_categories(include_inactive: bool = False):
+    where = "" if include_inactive else "where is_active = 1"
+    return get_db().execute(
+        f"""
+        select *
+        from expense_categories
+        {where}
+        order by sort_order, id
+        """
+    ).fetchall()
+
+
+def list_expense_category_names(include_inactive: bool = False) -> list[str]:
+    return [row["name"] for row in list_expense_categories(include_inactive=include_inactive)]
+
+
+def list_voucher_type_names(project_id: int | None = None) -> list[str]:
+    params: list[Any] = []
+    where = ""
+    if project_id:
+        where = "where project_id = ?"
+        params.append(project_id)
+    rows = get_db().execute(
+        f"""
+        select distinct voucher_type
+        from vouchers
+        {where}
+        order by voucher_type
+        """,
+        params,
+    ).fetchall()
+    return [row["voucher_type"] for row in rows]
+
+
+def create_expense_category(data: dict[str, Any]) -> int:
+    name = normalize_expense_category_name(data["name"])
+    sort_order = normalize_sort_order(data.get("sort_order"))
+    try:
+        cursor = get_db().execute(
+            """
+            insert into expense_categories (name, sort_order, is_active)
+            values (?, ?, 1)
+            """,
+            (name, sort_order),
+        )
+    except sqlite3.IntegrityError as exc:
+        raise ValueError("费用科目名称不能重复") from exc
+    get_db().commit()
+    return int(cursor.lastrowid)
+
+
+def update_expense_category(category_id: int, data: dict[str, Any]) -> None:
+    db = get_db()
+    existing = db.execute("select * from expense_categories where id = ?", (category_id,)).fetchone()
+    if existing is None:
+        raise ValueError("费用科目不存在")
+
+    name = normalize_expense_category_name(data["name"])
+    sort_order = normalize_sort_order(data.get("sort_order"))
+    is_active = 1 if data.get("is_active") else 0
+
+    try:
+        db.execute(
+            """
+            update expense_categories
+            set name = ?, sort_order = ?, is_active = ?
+            where id = ?
+            """,
+            (name, sort_order, is_active, category_id),
+        )
+    except sqlite3.IntegrityError as exc:
+        raise ValueError("费用科目名称不能重复") from exc
+
+    if existing["name"] != name:
+        db.execute(
+            """
+            update vouchers
+            set voucher_type = ?
+            where voucher_type = ?
+            """,
+            (name, existing["name"]),
+        )
+    db.commit()
 
 
 def get_main_company():
@@ -40,6 +140,30 @@ def create_company(data: dict[str, Any]) -> int:
     )
     get_db().commit()
     return int(cursor.lastrowid)
+
+
+def update_company(company_id: int, data: dict[str, Any]) -> None:
+    get_db().execute(
+        """
+        update companies
+        set name = ?, credit_code = ?, legal_person = ?, phone = ?, notes = ?
+        where id = ?
+        """,
+        (
+            data["name"],
+            data.get("credit_code", ""),
+            data.get("legal_person", ""),
+            data.get("phone", ""),
+            data.get("notes", ""),
+            company_id,
+        ),
+    )
+    get_db().commit()
+
+
+def delete_company(company_id: int) -> None:
+    get_db().execute("delete from companies where id = ?", (company_id,))
+    get_db().commit()
 
 
 def list_projects():
@@ -121,13 +245,14 @@ def create_person(data: dict[str, Any]) -> int:
     cursor = get_db().execute(
         """
         insert into people
-          (name, id_number, gender, birth_date, age, phone, address, job_type,
+          (name, id_number, id_card_path, gender, birth_date, age, phone, address, job_type,
            bank_card, bank_name, entry_date, notes, review_status)
-        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             data["name"],
             data["id_number"],
+            data.get("id_card_path", ""),
             data.get("gender", ""),
             data.get("birth_date", ""),
             data.get("age"),
@@ -206,3 +331,158 @@ def list_batch_items(item_type: str | None = None):
             (item_type,),
         ).fetchall()
     return get_db().execute("select * from batch_items order by created_at desc").fetchall()
+
+
+def get_batch_item(item_id: int):
+    return get_db().execute(
+        "select * from batch_items where id = ?",
+        (item_id,),
+    ).fetchone()
+
+
+def delete_batch_item(item_id: int) -> None:
+    get_db().execute("delete from batch_items where id = ?", (item_id,))
+    get_db().commit()
+
+
+def update_batch_item_status(item_id: int, status: str) -> None:
+    get_db().execute(
+        "update batch_items set status = ? where id = ?",
+        (status, item_id),
+    )
+    get_db().commit()
+
+
+def update_batch_item_recognition(
+    item_id: int,
+    *,
+    status: str,
+    recognized_json: str,
+    confidence: float | None,
+) -> None:
+    get_db().execute(
+        """
+        update batch_items
+        set status = ?, recognized_json = ?, confidence = ?
+        where id = ?
+        """,
+        (status, recognized_json, confidence, item_id),
+    )
+    get_db().commit()
+
+
+def update_project(project_id: int, data: dict[str, Any]) -> None:
+    get_db().execute(
+        """
+        update projects
+        set name = ?, status = ?, owner = ?, start_date = ?, end_date = ?, notes = ?
+        where id = ?
+        """,
+        (
+            data["name"],
+            data.get("status", "进行中"),
+            data.get("owner", ""),
+            data.get("start_date", ""),
+            data.get("end_date", ""),
+            data.get("notes", ""),
+            project_id,
+        ),
+    )
+    get_db().commit()
+
+
+def update_voucher(voucher_id: int, data: dict[str, Any]) -> None:
+    amount = normalize_amount(data["amount"])
+    get_db().execute(
+        """
+        update vouchers
+        set voucher_date = ?, voucher_type = ?, amount = ?, notes = ?, entry_user = ?
+        where id = ?
+        """,
+        (
+            data["voucher_date"],
+            data["voucher_type"],
+            amount,
+            data.get("notes", ""),
+            data.get("entry_user", ""),
+            voucher_id,
+        ),
+    )
+    get_db().commit()
+
+
+def update_person(person_id: int, data: dict[str, Any]) -> None:
+    set_clause = """
+        name = ?, id_number = ?, gender = ?, birth_date = ?, age = ?, phone = ?,
+        address = ?, job_type = ?, bank_card = ?, bank_name = ?, entry_date = ?, notes = ?
+    """
+    params: list[Any] = [
+        data["name"],
+        data["id_number"],
+        data.get("gender", ""),
+        data.get("birth_date", ""),
+        data.get("age"),
+        data.get("phone", ""),
+        data.get("address", ""),
+        data.get("job_type", ""),
+        data.get("bank_card", ""),
+        data.get("bank_name", ""),
+        data.get("entry_date", ""),
+        data.get("notes", ""),
+    ]
+
+    if data.get("id_card_path"):
+        set_clause += ", id_card_path = ?"
+        params.append(data["id_card_path"])
+
+    params.append(person_id)
+    get_db().execute(
+        f"update people set {set_clause} where id = ?",
+        tuple(params),
+    )
+    get_db().commit()
+
+
+def update_qualification(qualification_id: int, data: dict[str, Any]) -> None:
+    set_clause = """
+        company_id = ?, name = ?, certificate_no = ?, issue_date = ?, expiry_date = ?,
+        is_long_term = ?, notes = ?
+    """
+    params = [
+        data["company_id"],
+        data["name"],
+        data["certificate_no"],
+        data.get("issue_date", ""),
+        data.get("expiry_date", ""),
+        int(data.get("is_long_term", 0)),
+        data.get("notes", ""),
+    ]
+    
+    if "attachment_path" in data and data["attachment_path"]:
+        set_clause += ", attachment_path = ?"
+        params.append(data["attachment_path"])
+        
+    params.append(qualification_id)
+    
+    get_db().execute(
+        f"update qualifications set {set_clause} where id = ?",
+        tuple(params)
+    )
+    get_db().commit()
+
+
+def delete_qualification(qualification_id: int) -> None:
+    get_db().execute("delete from qualifications where id = ?", (qualification_id,))
+    get_db().commit()
+
+
+def delete_person(person_id: int) -> None:
+    get_db().execute("delete from people where id = ?", (person_id,))
+    get_db().commit()
+
+
+def delete_project(project_id: int) -> None:
+    db = get_db()
+    db.execute("delete from vouchers where project_id = ?", (project_id,))
+    db.execute("delete from projects where id = ?", (project_id,))
+    db.commit()

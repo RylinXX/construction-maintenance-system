@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}导出中心 - CAM 建筑工程维护系统{% endblock %}
 {% block breadcrumb %}导出中心{% endblock %}
 
@@ -6,36 +7,36 @@
 <div class="panel-section">
   <div class="panel-card animate-slide-up">
     <div class="panel-header">
-      <h2 class="panel-title">📤 Excel 报表导出中心</h2>
+      <h2 class="panel-title">{{ icon('upload') }} Excel 报表导出中心</h2>
       <p class="panel-subtitle">导出系统里各类底层项目台账、花名册与资质明细为规范的 Microsoft Excel 文件以方便后续呈报、报税或打印。</p>
     </div>
     
     <div class="exports-grid">
       <div class="export-card">
-        <div class="export-icon">📁</div>
+        <div class="export-icon">{{ icon('folder') }}</div>
         <div class="export-info">
           <h3>项目工程台账 Excel</h3>
           <p>导出所有已录入凭证的流水清单，自动对关联项目的费用明细按日期降序排列。</p>
         </div>
-        <a class="btn btn-primary" href="{{ url_for('web.download_export', export_type='project-ledger') }}">📥 立即导出</a>
+        <a class="btn btn-primary" href="{{ url_for('web.download_export', export_type='project-ledger') }}">{{ icon('import') }} 立即导出</a>
       </div>
 
       <div class="export-card">
-        <div class="export-icon">👥</div>
+        <div class="export-icon">{{ icon('people') }}</div>
         <div class="export-info">
           <h3>基础人员信息表 Excel</h3>
           <p>导出公司名下录入的所有进场施工人员花名册，包含身份证、电话、工种以及收款卡号。</p>
         </div>
-        <a class="btn btn-primary" href="{{ url_for('web.download_export', export_type='people') }}">📥 立即导出</a>
+        <a class="btn btn-primary" href="{{ url_for('web.download_export', export_type='people') }}">{{ icon('import') }} 立即导出</a>
       </div>
 
       <div class="export-card">
-        <div class="export-icon">🛡️</div>
+        <div class="export-icon">{{ icon('qualification') }}</div>
         <div class="export-info">
           <h3>企业资质证书清单 Excel</h3>
           <p>导出各合作公司关联的全部证书详情，包括证书编号、发证机关、有效到期期限状态。</p>
         </div>
-        <a class="btn btn-primary" href="{{ url_for('web.download_export', export_type='qualifications') }}">📥 立即导出</a>
+        <a class="btn btn-primary" href="{{ url_for('web.download_export', export_type='qualifications') }}">{{ icon('import') }} 立即导出</a>
       </div>
     </div>
   </div>
