@@ -22,44 +22,47 @@
       <table class="premium-table">
         <thead>
           <tr>
-            <th>项目名称</th>
-            <th>负责人</th>
-            <th>开工日期</th>
-            <th>状态</th>
-            <th>所属公司</th>
-            <th>备注信息</th>
-            <th class="text-right">管理操作</th>
+            <th style="min-width: 250px; white-space: nowrap;">项目名称</th>
+            <th style="min-width: 120px; white-space: nowrap;">负责人</th>
+            <th style="min-width: 120px; white-space: nowrap;">开工日期</th>
+            <th style="min-width: 100px; white-space: nowrap;">状态</th>
+            <th style="min-width: 200px; white-space: nowrap;">所属公司</th>
+            <th style="min-width: 250px; white-space: nowrap;">备注信息</th>
+            <th class="text-right" style="min-width: 180px; width: 180px; white-space: nowrap;">管理操作</th>
           </tr>
         </thead>
         <tbody>
           {% for project in projects %}
           <tr>
-            <td class="font-semibold text-dark">
-              <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="project-link" title="点击查看项目专属费用台账">
-                {{ icon('folder') }} {{ project.name }}
-              </a>
+            <td class="font-semibold text-dark" style="vertical-align: middle; white-space: nowrap;">
+              <span style="display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;">
+                <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="project-link" title="点击查看项目专属费用台账">
+                  {{ icon('folder') }} {{ project.name }}
+                </a>
+              </span>
             </td>
-            <td>{{ project.owner or '--' }}</td>
-            <td class="font-mono">{{ project.start_date or '--' }}</td>
-            <td>
+            <td style="vertical-align: middle; white-space: nowrap;">{{ project.owner or '--' }}</td>
+            <td class="font-mono" style="vertical-align: middle; white-space: nowrap;">{{ project.start_date or '--' }}</td>
+            <td style="vertical-align: middle; white-space: nowrap;">
               {% if project.status == '进行中' %}
-              <span class="badge badge-success">{{ project.status }}</span>
+              <span class="badge badge-success" style="display: inline-flex; white-space: nowrap;">{{ project.status }}</span>
               {% elif project.status == '已完工' %}
-              <span class="badge badge-secondary">{{ project.status }}</span>
+              <span class="badge badge-secondary" style="display: inline-flex; white-space: nowrap;">{{ project.status }}</span>
               {% else %}
-              <span class="badge badge-warning">{{ project.status }}</span>
+              <span class="badge badge-warning" style="display: inline-flex; white-space: nowrap;">{{ project.status }}</span>
               {% endif %}
             </td>
-            <td>{{ project.company_name }}</td>
-            <td class="text-muted">{{ project.notes or '--' }}</td>
-            <td class="text-right" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
-              <!-- Edit Action Trigger Button -->
-              <button type="button" class="btn btn-secondary toolbar-btn" style="padding: 6px 12px; font-size: 13px;" onclick="openModal('editProjectModal-{{ project.id }}')">
-                {{ icon('edit') }} 编辑
-              </button>
-              <button type="button" class="btn btn-danger toolbar-btn" style="padding: 6px 12px; font-size: 13px; background-color: var(--error-color); border-color: var(--error-color); color: white;" onclick="deleteProject({{ project.id }}, '{{ project.name }}')" title="删除项目">
-                {{ icon('delete') }} 删除
-              </button>
+            <td style="vertical-align: middle; white-space: nowrap;">{{ project.company_name }}</td>
+            <td class="text-muted" style="vertical-align: middle; white-space: nowrap;">{{ project.notes or '--' }}</td>
+            <td class="text-right" style="white-space: nowrap; width: 180px; min-width: 180px; vertical-align: middle;" onclick="event.stopPropagation();">
+              <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
+                <button type="button" class="btn-action-edit" onclick="openModal('editProjectModal-{{ project.id }}')">
+                  {{ icon('edit') }} 编辑
+                </button>
+                <button type="button" class="btn-action-delete" onclick="deleteProject({{ project.id }}, '{{ project.name }}')" title="删除项目">
+                  {{ icon('delete') }} 删除
+                </button>
+              </div>
             </td>
           </tr>
           {% else %}
