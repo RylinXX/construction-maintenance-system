@@ -113,8 +113,8 @@
               </a>
             </td>
             <td style="vertical-align: middle; white-space: nowrap;">
-              <div style="display: inline-flex; gap: 8px; align-items: center;">
-                <button type="button" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;" onclick='openDocumentPreview({
+              <div style="display: inline-flex; gap: 10px; align-items: center;">
+                <button type="button" class="btn-link-action preview" onclick='openDocumentPreview({
                   "id": "{{ contract.id }}",
                   "project_name": "{{ contract.project_name }}",
                   "name": "{{ contract.name }}",
@@ -125,7 +125,8 @@
                   {{ icon('preview') }} 预览
                 </button>
                 {% if contract.attachment_path %}
-                <a href="{{ url_for('web.download_attachment', filename=contract.attachment_path, download=1) }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; text-decoration: none;" title="立即下载">
+                <span style="color: var(--line-light); font-size: 11px;">|</span>
+                <a href="{{ url_for('web.download_attachment', filename=contract.attachment_path, download=1) }}" class="btn-link-action download" title="立即下载">
                   {{ icon('import') }} 下载
                 </a>
                 {% endif %}
@@ -369,6 +370,80 @@
 </div>
 
 <style>
+/* 自定义页面布局微调，增强整体设计的呼吸感与高级感 */
+.metric-grid {
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 20px !important;
+  margin-bottom: 32px !important; /* 让指标卡片和下方列表拉开距离 */
+}
+
+.metric-card {
+  min-height: auto !important;
+  height: 96px !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 18px !important;
+  padding: 16px 24px !important;
+}
+
+.metric-icon {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: var(--radius-md) !important;
+  flex-shrink: 0 !important;
+}
+
+.metric-icon svg {
+  width: 22px !important;
+  height: 22px !important;
+}
+
+.metric-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  justify-content: center !important;
+}
+
+.metric-title {
+  font-size: 13px !important;
+  color: var(--text-secondary) !important;
+  line-height: 1.2 !important;
+  margin-bottom: 2px;
+}
+
+.metric-value {
+  font-size: 26px !important;
+  line-height: 1.1 !important;
+}
+
+.metric-baseline {
+  margin-top: 0 !important;
+  font-size: 11px !important;
+  color: var(--text-tertiary) !important;
+  line-height: 1.2 !important;
+}
+
+.panel-card {
+  padding: 30px 32px !important; /* 加大卡片内边距，使内部元素更显宽敞舒适 */
+}
+
+.panel-header {
+  margin-bottom: 28px !important; /* 拉开筛选工具栏与下方数据表格的距离 */
+}
+
+.toolbar-filters {
+  gap: 16px !important; /* 增加筛选控件之间的间隙，避免挤作一团 */
+}
+
+.premium-table th {
+  padding: 16px 18px !important; /* 稍微拉宽表格行间距 */
+}
+
+.premium-table td {
+  padding: 18px 18px !important;
+}
+
 .project-link {
   color: var(--text);
   text-decoration: none;
@@ -380,6 +455,37 @@
   color: var(--primary);
   border-bottom-color: var(--primary);
 }
+
+/* 轻量级文本链接按钮，减轻表格内视觉压力 */
+.btn-link-action {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  color: var(--primary) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.btn-link-action.download {
+  color: var(--text-secondary) !important;
+}
+
+.btn-link-action:hover {
+  opacity: 0.8 !important;
+  text-decoration: underline !important;
+}
+
+.btn-link-action svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
 /* Preview controls style */
 .zoom-btn {
   background: none;
