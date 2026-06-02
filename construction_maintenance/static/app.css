@@ -7,37 +7,37 @@
   --background-color: #F7F4EE;
 
   /* Actual active corporate blue theme values */
-  --primary-color: #1e3a8a;
+  --primary-color: #1e3a8a;         /* 深商务蓝 */
   --primary-hover: #1d4ed8;
-  --secondary-color: #0284c7;
-  --success-color: #059669;
-  --warning-color: #D97706;
-  --error-color: #DC2626;
-  --accent-color: #3b82f6;
+  --secondary-color: #0284c7;       /* 天蓝主色 */
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --accent-color: #0ea5e9;          /* 科技天蓝 */
 
-  --background-color: #f8fafc;
-  --surface-color: #ffffff;
-  --surface-elevated: #ffffff;
-  --surface-muted: #f1f5f9;
-  --surface-subtle: #e2e8f0;
-  --surface-inset: #cbd5e1;
-  --header-bg: rgba(255, 255, 255, 0.92);
+  --background-color: #f0f5ff;      /* 高雅黑浅天蓝底色 */
+  --surface-color: rgba(255, 255, 255, 0.8);  /* 玻璃拟态半透明 */
+  --surface-elevated: rgba(255, 255, 255, 0.95);
+  --surface-muted: rgba(219, 234, 254, 0.45);
+  --surface-subtle: rgba(219, 234, 254, 0.7);
+  --surface-inset: rgba(147, 197, 253, 0.2);
+  --header-bg: rgba(255, 255, 255, 0.75);
   --menu-selected-bg: rgba(2, 132, 199, 0.12);
   --hover-bg: rgba(2, 132, 199, 0.06);
-  --chart-grid: #e2e8f0;
+  --chart-grid: rgba(0, 0, 0, 0.06);
 
-  --text-primary: #0f172a;
+  --text-primary: #1e293b;
   --text-secondary: #475569;
-  --text-tertiary: #94a3b8;
-  --border-color: #e2e8f0;
+  --text-tertiary: #64748b;
+  --border-color: rgba(147, 197, 253, 0.35); /* 冰蓝半透边界 */
 
-  --success-bg: rgba(5, 150, 105, 0.12);
-  --success-text: #047857;
-  --warning-bg: rgba(217, 119, 6, 0.12);
-  --warning-text: #92400E;
-  --danger-bg: rgba(220, 38, 38, 0.1);
-  --danger-text: #B91C1C;
-  --info-bg: rgba(2, 132, 199, 0.12);
+  --success-bg: rgba(16, 185, 129, 0.12);
+  --success-text: #059669;
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --warning-text: #B45309;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --danger-text: #C2410C;
+  --info-bg: rgba(14, 165, 233, 0.12);
   --info-text: #0369a1;
 
   --font-family: 'Inter', 'Segoe UI', 'Microsoft YaHei', -apple-system, sans-serif;
@@ -73,42 +73,42 @@
 :root.dark-theme {
   color-scheme: dark;
 
-  --primary-color: #f1f5f9;
+  --primary-color: #f8fafc;
   --primary-hover: #ffffff;
-  --secondary-color: #38bdf8;
-  --success-color: #34D399;
-  --warning-color: #FBBF24;
-  --error-color: #F87171;
-  --accent-color: #60a5fa;
+  --secondary-color: #38bdf8;       /* 亮天蓝 */
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --accent-color: #60a5fa;          /* 科技蓝色 */
 
-  --background-color: #0b0f19;
-  --surface-color: #111827;
-  --surface-elevated: #1e293b;
-  --surface-muted: #1e293b;
-  --surface-subtle: #334155;
-  --surface-inset: #0f172a;
-  --header-bg: rgba(15, 23, 42, 0.9);
+  --background-color: #060813;      /* 极夜黑 */
+  --surface-color: rgba(15, 22, 42, 0.55);     /* 深色半透玻璃 */
+  --surface-elevated: rgba(22, 32, 60, 0.65);
+  --surface-muted: rgba(255, 255, 255, 0.02);
+  --surface-subtle: rgba(255, 255, 255, 0.05);
+  --surface-inset: rgba(0, 0, 0, 0.3);
+  --header-bg: rgba(15, 22, 42, 0.7);
   --menu-selected-bg: rgba(56, 189, 248, 0.16);
   --hover-bg: rgba(148, 163, 184, 0.1);
-  --chart-grid: #334155;
+  --chart-grid: rgba(255, 255, 255, 0.05);
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #94A3B8;
-  --text-tertiary: #64748B;
-  --border-color: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #64748b;
+  --border-color: rgba(255, 255, 255, 0.07);
 
-  --success-bg: rgba(52, 211, 153, 0.14);
+  --success-bg: rgba(16, 185, 129, 0.14);
   --success-text: #6EE7B7;
-  --warning-bg: rgba(251, 191, 36, 0.14);
+  --warning-bg: rgba(255, 158, 11, 0.14);
   --warning-text: #FCD34D;
-  --danger-bg: rgba(248, 113, 113, 0.14);
+  --danger-bg: rgba(239, 68, 68, 0.14);
   --danger-text: #FCA5A5;
   --info-bg: rgba(56, 189, 248, 0.16);
   --info-text: #bae6fd;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
-  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.34);
-  --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.42);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.6);
 }
 
 * {
@@ -123,8 +123,10 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(241, 245, 249, 0.95)),
+    radial-gradient(at 0% 0%, rgba(2, 132, 199, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
     var(--background-color);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-family);
   line-height: 1.6;
@@ -134,9 +136,10 @@ body {
 
 .dark-theme body {
   background:
-    radial-gradient(circle at 18% 18%, rgba(56, 189, 248, 0.12), transparent 28%),
-    radial-gradient(circle at 74% 68%, rgba(124, 160, 198, 0.1), transparent 32%),
+    radial-gradient(at 10% 20%, rgba(56, 189, 248, 0.1) 0px, transparent 50%),
+    radial-gradient(at 90% 80%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
     var(--background-color);
+  background-attachment: fixed;
 }
 
 ::-webkit-scrollbar {
@@ -1017,6 +1020,66 @@ textarea.form-input:focus {
   font-size: 12px;
   font-weight: 650;
   line-height: 1;
+  white-space: nowrap; /* 确保徽章文本绝对不换行 */
+}
+
+/* 精致表格操作按钮 */
+.btn-action-edit,
+.btn-action-delete,
+.btn-action-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 32px;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+/* 浅色/深色自适应预览下载按钮 */
+.btn-action-preview {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--success-color);
+}
+.btn-action-preview:hover {
+  background: var(--success-color);
+  border-color: var(--success-color);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* 浅色/深色自适应编辑按钮 */
+.btn-action-edit {
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid rgba(2, 132, 199, 0.2);
+  color: var(--secondary-color);
+}
+.btn-action-edit:hover {
+  background: var(--secondary-color);
+  border-color: var(--secondary-color);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* 浅色/深色自适应删除按钮 */
+.btn-action-delete {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--error-color);
+}
+.btn-action-delete:hover {
+  background: var(--error-color);
+  border-color: var(--error-color);
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 
 .badge-success { background: var(--success-bg); color: var(--success-text); }

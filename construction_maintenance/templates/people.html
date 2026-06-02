@@ -40,51 +40,57 @@
         <table class="premium-table">
           <thead>
             <tr>
-              <th>姓名</th>
-              <th>身份证号</th>
-              <th>身份证附件</th>
-              <th>电话</th>
-              <th>工种/岗位</th>
-              <th>银行卡</th>
-              <th>核实状态</th>
-              <th class="text-right">操作</th>
+              <th style="min-width: 120px; white-space: nowrap;">姓名</th>
+              <th style="min-width: 165px; white-space: nowrap;">身份证号</th>
+              <th style="min-width: 110px; white-space: nowrap;">身份证附件</th>
+              <th style="min-width: 120px; white-space: nowrap;">电话</th>
+              <th style="min-width: 110px; white-space: nowrap;">工种/岗位</th>
+              <th style="min-width: 250px; white-space: nowrap;">银行卡</th>
+              <th style="min-width: 100px; white-space: nowrap;">核实状态</th>
+              <th class="text-right" style="min-width: 180px; width: 180px; white-space: nowrap;">操作</th>
             </tr>
           </thead>
           <tbody>
             {% for person in people %}
             <!-- Clickable Row for Expandable Accordion Drawer -->
             <tr class="people-table-row" data-detail-id="emp-{{ person.id }}" onclick="toggleEmployeeDetails('emp-{{ person.id }}')" style="cursor: pointer;" title="点击展开/收起完整员工电子档案">
-              <td class="font-semibold text-dark">{{ icon('user') }} {{ person.name }}</td>
-              <td class="font-mono">{{ person.id_number }}</td>
-              <td>
+              <td class="font-semibold text-dark" style="vertical-align: middle; white-space: nowrap;">
+                <span style="display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;">
+                  {{ icon('user') }} <span>{{ person.name }}</span>
+                </span>
+              </td>
+              <td class="font-mono" style="white-space: nowrap; vertical-align: middle;">{{ person.id_number }}</td>
+              <td style="white-space: nowrap; vertical-align: middle;">
                 {% if person.id_card_path %}
                 <button type="button" class="attachment-pill" data-person-name="{{ person.name }}" data-id-number="{{ person.id_number }}" data-filename="{{ person.id_card_path }}" onclick="event.stopPropagation(); openIdCardPreviewFromButton(this)">预览身份证</button>
                 {% else %}
                 <span class="text-muted">未上传</span>
                 {% endif %}
               </td>
-              <td>{{ person.phone or '--' }}</td>
-              <td>
+              <td style="white-space: nowrap; vertical-align: middle;">{{ person.phone or '--' }}</td>
+              <td style="white-space: nowrap; vertical-align: middle;">
                 {% if person.job_type %}
                 <span class="badge badge-info">{{ person.job_type }}</span>
                 {% else %}
                 <span class="text-muted">--</span>
                 {% endif %}
               </td>
-              <td class="font-mono">
+              <td class="font-mono" style="white-space: nowrap; vertical-align: middle;">
                 {{ person.bank_card or '--' }} 
                 <span class="text-muted" style="font-size: 13px;">({{ person.bank_name or '未指定开户行' }})</span>
               </td>
-              <td>
+              <td style="white-space: nowrap; vertical-align: middle;">
                 {% if person.review_status == '已确认' %}
-                <span class="badge badge-success">{{ person.review_status }}</span>
+                <span class="badge badge-success" style="display: inline-flex; white-space: nowrap;">{{ person.review_status }}</span>
                 {% else %}
-                <span class="badge badge-warning">{{ person.review_status }}</span>
+                <span class="badge badge-warning" style="display: inline-flex; white-space: nowrap;">{{ person.review_status }}</span>
                 {% endif %}
               </td>
-              <td class="text-right" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
-                <button type="button" class="btn btn-secondary toolbar-btn" style="padding: 6px 12px; font-size: 13px;" onclick="event.stopPropagation(); openModal('editPersonModal-{{ person.id }}')">编辑</button>
-                <button type="button" class="btn btn-danger toolbar-btn" style="padding: 6px 12px; font-size: 13px; background-color: var(--error-color); border-color: var(--error-color); color: white;" onclick="event.stopPropagation(); deletePerson({{ person.id }}, '{{ person.name }}')" title="删除人员">{{ icon('delete') }} 删除</button>
+              <td class="text-right" style="white-space: nowrap; width: 180px; min-width: 180px; vertical-align: middle;" onclick="event.stopPropagation();">
+                <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
+                  <button type="button" class="btn-action-edit" onclick="openModal('editPersonModal-{{ person.id }}')">{{ icon('edit') }} 编辑</button>
+                  <button type="button" class="btn-action-delete" onclick="deletePerson({{ person.id }}, '{{ person.name }}')" title="删除人员">{{ icon('delete') }} 删除</button>
+                </div>
               </td>
             </tr>
             

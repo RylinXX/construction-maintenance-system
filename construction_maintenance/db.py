@@ -237,4 +237,85 @@ def init_db() -> None:
                     "insert into attendance (person_id, work_date, shift_type) values (?, ?, ?)",
                     [(person_id, date, shift) for date, shift in attendance_dates],
                 )
+
+        # 扩充项目、资质、企业与费用凭证演示数据 (用于全系统演示)
+        # 1. 升级公司名称及插入关联外包企业
+        db.execute("update companies set name = '河南建工第八建设集团有限公司' where is_main = 1 and name = '主公司'")
+        company_exists = db.execute("select 1 from companies where name = '商丘市瑞隆土石方工程有限公司'").fetchone()
+        if not company_exists:
+            db.execute(
+                """
+                insert into companies (name, credit_code, legal_person, phone, notes, is_main)
+                values ('商丘市瑞隆土石方工程有限公司', '91411402MAD31X8L9Y', '瑞德隆', '15837012345', '土石方专业分包合作商', 0)
+                """
+            )
+
+        # 2. 插入精美演示项目
+        project_count = db.execute("select count(*) from projects").fetchone()[0]
+        if project_count == 0:
+            main_company_id = db.execute("select id from companies where is_main = 1").fetchone()[0]
+            db.execute(
+                """
+                insert into projects (company_id, name, status, owner, start_date, end_date, notes)
+                values (?, '郑州地铁6号线二期机电维保工程', '进行中', '郑州地铁集团', '2026-01-01', '2026-12-31', '包含地铁站点区间内机电与管线常规维护')
+                """,
+                (main_company_id,)
+            )
+            db.execute(
+                """
+                insert into projects (company_id, name, status, owner, start_date, end_date, notes)
+                values (?, '郑州市中原路绿化提升改造项目', '进行中', '郑州市市政管理局', '2026-03-15', '2026-08-30', '中原路主干道绿化补植与灌溉系统升级')
+                """,
+                (main_company_id,)
+            )
+
+        # 3. 插入精美资质数据
+        qualification_count = db.execute("select count(*) from qualifications").fetchone()[0]
+        if qualification_count == 0:
+            main_company_id = db.execute("select id from companies where is_main = 1").fetchone()[0]
+            sub_company_id = db.execute("select id from companies where name = '商丘市瑞隆土石方工程有限公司'").fetchone()[0]
+            
+            db.execute(
+                """
+                insert into qualifications (company_id, name, certificate_no, issue_date, expiry_date, is_long_term, notes)
+                values (?, '建筑工程施工总承包一级', 'D241098765', '2023-05-10', '2028-12-31', 0, '集团主项资质')
+                """,
+                (main_company_id,)
+            )
+            db.execute(
+                """
+                insert into qualifications (company_id, name, certificate_no, issue_date, expiry_date, is_long_term, notes)
+                values (?, '环保工程专业承包一级', 'D341054321', '2024-02-15', '2029-02-14', 0, '合作分包商专业资质')
+                """,
+                (sub_company_id,)
+            )
+
+        # 4. 插入精美财务凭证数据
+        voucher_count = db.execute("select count(*) from vouchers").fetchone()[0]
+        if voucher_count == 0:
+            project_1 = db.execute("select id from projects where name = '郑州地铁6号线二期机电维保工程'").fetchone()
+            project_2 = db.execute("select id from projects where name = '郑州市中原路绿化提升改造项目'").fetchone()
+            
+            if project_1 and project_2:
+                db.execute(
+                    """
+                    insert into vouchers (project_id, voucher_date, voucher_type, amount, notes, entry_user)
+                    values (?, '2026-05-20', '材料费用', 15200.00, '地铁6号线区间站采购阻燃铜芯电缆一批', '系统管理员')
+                    """,
+                    (project_1[0],)
+                )
+                db.execute(
+                    """
+                    insert into vouchers (project_id, voucher_date, voucher_type, amount, notes, entry_user)
+                    values (?, '2026-05-24', '转账凭证', 4800.00, '中原路绿化工程 - 苗木运输运费报销', '系统管理员')
+                    """,
+                    (project_2[0],)
+                )
+                db.execute(
+                    """
+                    insert into vouchers (project_id, voucher_date, voucher_type, amount, notes, entry_user)
+                    values (?, '2026-05-28', '油费', 2400.00, '项目车辆5月油卡充值报销凭证', '系统管理员')
+                    """,
+                    (project_1[0],)
+                )
     db.commit()

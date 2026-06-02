@@ -289,8 +289,8 @@
                 <span class="badge badge-info">正常服务中</span>
                 {% endif %}
               </td>
-              <td class="text-right" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
-                <button type="button" class="btn btn-secondary toolbar-btn" style="padding: 6px 12px; font-size: 13px;" onclick='openDocumentPreview({
+              <td class="text-right" style="white-space: nowrap; width: 310px;">
+                <button type="button" class="btn-action-preview" onclick='openDocumentPreview({
                   "id": "{{ item.id }}",
                   "company_name": "{{ item.company_name }}",
                   "name": "{{ item.name }}",
@@ -301,12 +301,12 @@
                   "notes": "{{ item.notes or '暂无备注说明。' }}",
                   "attachment_path": "{{ item.attachment_path or '' }}"
                 })'>
-                  {{ icon('preview') }} 预览 / {{ icon('import') }} 下载
+                  {{ icon('preview') }} 预览下载
                 </button>
-                <button type="button" class="btn btn-primary toolbar-btn" style="padding: 6px 12px; font-size: 13px; background-color: var(--accent); border-color: var(--accent);" onclick="openModal('editQualificationModal-{{ item.id }}')">
+                <button type="button" class="btn-action-edit" onclick="openModal('editQualificationModal-{{ item.id }}')">
                   {{ icon('edit') }} 修改
                 </button>
-                <button type="button" class="btn btn-danger toolbar-btn" style="padding: 6px 12px; font-size: 13px; background-color: var(--error-color); border-color: var(--error-color); color: white;" onclick="deleteQualification({{ item.id }}, '{{ item.name }}')" title="删除资质">
+                <button type="button" class="btn-action-delete" onclick="deleteQualification({{ item.id }}, '{{ item.name }}')" title="删除资质">
                   {{ icon('delete') }} 删除
                 </button>
               </td>
