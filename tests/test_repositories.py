@@ -166,3 +166,54 @@ def test_attendance_operations(app):
         records = repo.list_attendance_by_month("2026-06")
         assert len(records) == 0
 
+
+def test_contract_repository_crud(app):
+    with app.app_context():
+        # 先创建测试公司和项目
+        main_company = repo.get_main_company()
+        proj_id = repo.create_project({
+            "company_id": main_company["id"],
+            "name": "测试合同项目",
+            "status": "进行中"
+        })
+        
+        # 1. 创建合同
+        contract_id = repo.create_contract({
+            "project_id": proj_id,
+            "name": "单元测试合同",
+            "contract_type": "劳务合同",
+            "attachment_path": "test_contract.pdf",
+            "notes": "单元测试备注"
+        })
+        assert contract_id > 0
+        
+        # 2. 查询单个合同
+        contract = repo.get_contract(contract_id)
+        assert contract is not None
+        assert contract["name"] == "单元测试合同"
+        assert contract["contract_type"] == "劳务合同"
+        
+        # 3. 列表查询及过滤
+        all_contracts = repo.list_contracts()
+        assert len(all_contracts) >= 1
+        
+        filtered = repo.list_contracts(project_id=proj_id, contract_type="劳务合同", query="单元测试")
+        assert len(filtered) >= 1
+        
+        # 4. 更新合同
+        repo.update_contract(contract_id, {
+            "project_id": proj_id,
+            "name": "更新后的单元测试合同",
+            "contract_type": "材料商合同",
+            "notes": "更新后的备注"
+        })
+        updated_contract = repo.get_contract(contract_id)
+        assert updated_contract["name"] == "更新后的单元测试合同"
+        assert updated_contract["contract_type"] == "材料商合同"
+        
+        # 5. 删除合同
+        repo.delete_contract(contract_id)
+        assert repo.get_contract(contract_id) is None
+
+
+

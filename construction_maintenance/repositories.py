@@ -533,3 +533,93 @@ def update_people_attendance_status(status_map: dict[int, int]) -> None:
         )
     db.commit()
 
+
+def list_contracts(project_id: int | None = None, contract_type: str | None = None, query: str | None = None):
+    db = get_db()
+    params: list[Any] = []
+    where_clauses: list[str] = []
+    
+    if project_id:
+        where_clauses.append("contracts.project_id = ?")
+        params.append(project_id)
+    if contract_type:
+        where_clauses.append("contracts.contract_type = ?")
+        params.append(contract_type)
+    if query:
+        where_clauses.append("(contracts.name like ? or contracts.notes like ?)")
+        params.append(f"%{query}%")
+        params.append(f"%{query}%")
+        
+    where = f"where {' and '.join(where_clauses)}" if where_clauses else ""
+    
+    return db.execute(
+        f"""
+        select contracts.*, projects.name as project_name
+        from contracts
+        join projects on projects.id = contracts.project_id
+        {where}
+        order by contracts.created_at desc, contracts.id desc
+        """,
+        params,
+    ).fetchall()
+
+
+def get_contract(contract_id: int):
+    return get_db().execute(
+        """
+        select contracts.*, projects.name as project_name
+        from contracts
+        join projects on projects.id = contracts.project_id
+        where contracts.id = ?
+        """,
+        (contract_id,),
+    ).fetchone()
+
+
+def create_contract(data: dict[str, Any]) -> int:
+    cursor = get_db().execute(
+        """
+        insert into contracts (project_id, name, contract_type, attachment_path, notes)
+        values (?, ?, ?, ?, ?)
+        """,
+        (
+            data["project_id"],
+            data["name"],
+            data.get("contract_type", "其它"),
+            data.get("attachment_path", ""),
+            data.get("notes", ""),
+        ),
+    )
+    get_db().commit()
+    return int(cursor.lastrowid)
+
+
+def update_contract(contract_id: int, data: dict[str, Any]) -> None:
+    set_clause = """
+        project_id = ?, name = ?, contract_type = ?, notes = ?
+    """
+    params = [
+        data["project_id"],
+        data["name"],
+        data.get("contract_type", "其它"),
+        data.get("notes", ""),
+    ]
+    
+    if "attachment_path" in data and data["attachment_path"]:
+        set_clause += ", attachment_path = ?"
+        params.append(data["attachment_path"])
+        
+    params.append(contract_id)
+    
+    get_db().execute(
+        f"update contracts set {set_clause} where id = ?",
+        tuple(params)
+    )
+    get_db().commit()
+
+
+def delete_contract(contract_id: int) -> None:
+    get_db().execute("delete from contracts where id = ?", (contract_id,))
+    get_db().commit()
+
+
