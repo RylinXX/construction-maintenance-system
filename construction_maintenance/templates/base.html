@@ -53,6 +53,10 @@
             <span class="nav-icon" aria-hidden="true">{{ icon('people') }}</span>
             <span class="nav-label">人员花名册</span>
           </a>
+          <a href="{{ url_for('web.attendance') }}" class="nav-item {% if request.endpoint == 'web.attendance' %}active{% endif %}">
+            <span class="nav-icon" aria-hidden="true">{{ icon('checklist') }}</span>
+            <span class="nav-label">人员考勤</span>
+          </a>
           <a href="{{ url_for('web.qualifications') }}" class="nav-item {% if request.endpoint == 'web.qualifications' %}active{% endif %}">
             <span class="nav-icon" aria-hidden="true">{{ icon('qualification') }}</span>
             <span class="nav-label">企业资质</span>

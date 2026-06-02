@@ -242,12 +242,13 @@ def list_people():
 
 
 def create_person(data: dict[str, Any]) -> int:
+    is_att = int(data.get("is_attendance", 1))
     cursor = get_db().execute(
         """
         insert into people
           (name, id_number, id_card_path, gender, birth_date, age, phone, address, job_type,
-           bank_card, bank_name, entry_date, notes, review_status)
-        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           bank_card, bank_name, entry_date, notes, review_status, is_attendance)
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             data["name"],
@@ -264,6 +265,7 @@ def create_person(data: dict[str, Any]) -> int:
             data.get("entry_date", ""),
             data.get("notes", ""),
             data.get("review_status", "已确认"),
+            is_att,
         ),
     )
     get_db().commit()
@@ -414,7 +416,8 @@ def update_voucher(voucher_id: int, data: dict[str, Any]) -> None:
 def update_person(person_id: int, data: dict[str, Any]) -> None:
     set_clause = """
         name = ?, id_number = ?, gender = ?, birth_date = ?, age = ?, phone = ?,
-        address = ?, job_type = ?, bank_card = ?, bank_name = ?, entry_date = ?, notes = ?
+        address = ?, job_type = ?, bank_card = ?, bank_name = ?, entry_date = ?, notes = ?,
+        is_attendance = ?
     """
     params: list[Any] = [
         data["name"],
@@ -429,6 +432,7 @@ def update_person(person_id: int, data: dict[str, Any]) -> None:
         data.get("bank_name", ""),
         data.get("entry_date", ""),
         data.get("notes", ""),
+        int(data.get("is_attendance", 1)),
     ]
 
     if data.get("id_card_path"):
@@ -486,3 +490,46 @@ def delete_project(project_id: int) -> None:
     db.execute("delete from vouchers where project_id = ?", (project_id,))
     db.execute("delete from projects where id = ?", (project_id,))
     db.commit()
+
+
+def list_attendance_by_month(year_month: str):
+    return get_db().execute(
+        "select * from attendance where work_date like ? order by work_date, person_id",
+        (f"{year_month}%",),
+    ).fetchall()
+
+
+def save_attendance(person_id: int, work_date: str, shift_type: str | None) -> None:
+    db = get_db()
+    if not shift_type:
+        db.execute(
+            "delete from attendance where person_id = ? and work_date = ?",
+            (person_id, work_date),
+        )
+    else:
+        db.execute(
+            """
+            insert into attendance (person_id, work_date, shift_type)
+            values (?, ?, ?)
+            on conflict(person_id, work_date) do update set shift_type = excluded.shift_type
+            """,
+            (person_id, work_date, shift_type),
+        )
+    db.commit()
+
+
+def list_attendance_people():
+    return get_db().execute(
+        "select * from people where is_attendance = 1 order by created_at desc"
+    ).fetchall()
+
+
+def update_people_attendance_status(status_map: dict[int, int]) -> None:
+    db = get_db()
+    for person_id, is_att in status_map.items():
+        db.execute(
+            "update people set is_attendance = ? where id = ?",
+            (is_att, person_id),
+        )
+    db.commit()
+

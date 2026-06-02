@@ -241,6 +241,7 @@ def people():
                 "entry_date": text_value(request.form, "entry_date"),
                 "notes": text_value(request.form, "notes"),
                 "id_card_path": _save_form_upload("id_card_attachment"),
+                "is_attendance": 1 if request.form.get("is_attendance") else 0,
             }
         )
         return redirect(url_for("web.people"))
@@ -249,6 +250,117 @@ def people():
         people=repo.list_people(),
         batch_items=repo.list_batch_items(item_type="person"),
     )
+
+
+@bp.route("/attendance", methods=["GET"])
+def attendance():
+    import datetime
+    import calendar
+
+    now = datetime.datetime.now()
+    current_month_str = now.strftime("%Y-%m")
+    month = request.args.get("month", current_month_str)
+
+    try:
+        year, month_num = map(int, month.split("-"))
+    except (ValueError, TypeError):
+        month = current_month_str
+        year, month_num = map(int, month.split("-"))
+
+    _, total_days = calendar.monthrange(year, month_num)
+
+    days = []
+    weekdays = ["一", "二", "三", "四", "五", "六", "日"]
+    for d in range(1, total_days + 1):
+        dt = datetime.date(year, month_num, d)
+        day_str = f"{d:02d}"
+        weekday = weekdays[dt.weekday()]
+        days.append({
+            "day": d,
+            "day_str": day_str,
+            "date_str": f"{month}-{day_str}",
+            "weekday": weekday,
+            "is_weekend": dt.weekday() in (5, 6),
+        })
+
+    people = repo.list_attendance_people()
+    all_people = repo.list_people()
+    raw_attendance = repo.list_attendance_by_month(month)
+
+    attendance_dict = {}
+    for record in raw_attendance:
+        p_id = record["person_id"]
+        date_str = record["work_date"]
+        shift = record["shift_type"]
+        if p_id not in attendance_dict:
+            attendance_dict[p_id] = {}
+        attendance_dict[p_id][date_str] = shift
+
+    person_stats = {}
+    for p in people:
+        p_id = p["id"]
+        p_att = attendance_dict.get(p_id, {})
+        p_day = sum(1 for s in p_att.values() if s == "白班")
+        p_night = sum(1 for s in p_att.values() if s == "夜班")
+        person_stats[p_id] = {
+            "day": p_day,
+            "night": p_night,
+            "total": p_day + p_night,
+        }
+
+    total_shifts = len(raw_attendance)
+    day_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "白班")
+    night_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "夜班")
+
+    return render_template(
+        "attendance.html",
+        people=people,
+        all_people=all_people,
+        days=days,
+        month=month,
+        attendance_dict=attendance_dict,
+        person_stats=person_stats,
+        metrics={
+            "total_people": len(people),
+            "total_shifts": total_shifts,
+            "day_shifts": day_shifts,
+            "night_shifts": night_shifts,
+        },
+    )
+
+
+@bp.post("/attendance/update")
+def update_attendance():
+    data = request.get_json() or {}
+    person_id = data.get("person_id")
+    date = data.get("date")
+    shift_type = data.get("shift_type")
+
+    if not person_id or not date:
+        return {"status": "error", "message": "缺失必要参数"}, 400
+
+    try:
+        repo.save_attendance(int(person_id), date, shift_type)
+        return {"status": "success"}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}, 500
+
+
+@bp.post("/attendance/settings/update")
+def update_attendance_settings():
+    data = request.get_json() or {}
+    is_attendance_map = data.get("is_attendance_map", {})
+    status_map = {}
+    for p_id_str, is_att in is_attendance_map.items():
+        try:
+            status_map[int(p_id_str)] = int(is_att)
+        except (ValueError, TypeError):
+            continue
+    try:
+        repo.update_people_attendance_status(status_map)
+        return {"status": "success"}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}, 500
 
 
 @bp.route("/qualifications", methods=["GET", "POST"])
@@ -589,7 +701,7 @@ def download_attachment(filename):
         notes = qual["notes"] or "经核准，该合作单位此项企业资质证照合法合规，准予在此工程维护系统归档备案。"
         
     expiry_text = "长期有效" if is_long_term else (expiry_date or "长期有效")
-    expiry_color = "#059669" if is_long_term else "#dc2626"
+    expiry_color = "#2563eb" if is_long_term else "#dc2626"
     
     # Golden and Navy Elegant Vector SVG
     svg_content = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
@@ -713,6 +825,7 @@ def edit_person(person_id: int):
             "entry_date": text_value(request.form, "entry_date"),
             "notes": text_value(request.form, "notes"),
             "id_card_path": _save_form_upload("id_card_attachment"),
+            "is_attendance": 1 if request.form.get("is_attendance") else 0,
         }
     )
     return redirect(url_for("web.people"))

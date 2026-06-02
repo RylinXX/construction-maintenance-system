@@ -103,6 +103,7 @@ def init_db() -> None:
             entry_date text not null default '',
             notes text not null default '',
             review_status text not null default '已确认',
+            is_attendance integer not null default 1,
             created_at text not null default current_timestamp
         );
 
@@ -129,6 +130,16 @@ def init_db() -> None:
             confidence real,
             created_at text not null default current_timestamp
         );
+
+        create table if not exists attendance (
+            id integer primary key autoincrement,
+            person_id integer not null references people(id) on delete cascade,
+            work_date text not null,
+            shift_type text not null,
+            notes text not null default '',
+            created_at text not null default current_timestamp,
+            unique(person_id, work_date)
+        );
         """
     )
     people_columns = {
@@ -136,6 +147,8 @@ def init_db() -> None:
     }
     if "id_card_path" not in people_columns:
         db.execute("alter table people add column id_card_path text not null default ''")
+    if "is_attendance" not in people_columns:
+        db.execute("alter table people add column is_attendance integer not null default 1")
 
     db.execute(
         """
@@ -160,4 +173,58 @@ def init_db() -> None:
         where status not in ('待确认', '已识别', '已确认')
         """
     )
+    
+    # 自动生成精美施工人员和考勤测试数据 (用于演示及易用性验证)
+    if not current_app.config.get("TESTING"):
+        people_count = db.execute("select count(*) from people").fetchone()[0]
+        if people_count == 0:
+            test_people = [
+                ("李建国", "410101199001011234", "男", 36, "13800138001", "安全员", "6222021702019988771", "中国工商银行郑州支行", "2026-05-10"),
+                ("王强", "410101199202022345", "男", 34, "13900139002", "架子工", "6228481234567890123", "中国农业银行郑州分行", "2026-05-12"),
+                ("张梅", "410101199504044567", "女", 31, "13600136004", "资料员", "6217001234567890456", "中国建设银行郑州金水支行", "2026-05-15"),
+                ("徐伟", "410101198505055678", "男", 41, "13500135005", "普工", "6222601234567890789", "交通银行郑州分行", "2026-05-18"),
+                ("刘超", "410101198803033456", "男", 38, "13700137003", "水泥工", "6230521234567890987", "中国邮政储蓄银行郑州支行", "2026-05-20"),
+            ]
+            for p in test_people:
+                cursor = db.execute(
+                    """
+                    insert into people (name, id_number, gender, age, phone, job_type, bank_card, bank_name, entry_date, review_status)
+                    values (?, ?, ?, ?, ?, ?, ?, ?, ?, '已确认')
+                    """,
+                    p,
+                )
+                person_id = cursor.lastrowid
+                
+                # 为该人员生成 2026-06 月份的错落出勤数据
+                attendance_dates = []
+                if p[5] == "安全员":
+                    for d in range(1, 13):
+                        attendance_dates.append((f"2026-06-{d:02d}", "白班"))
+                    for d in range(13, 17):
+                        attendance_dates.append((f"2026-06-{d:02d}", "夜班"))
+                elif p[5] == "架子工":
+                    for d in range(1, 6):
+                        attendance_dates.append((f"2026-06-{d:02d}", "白班"))
+                    for d in range(10, 16):
+                        attendance_dates.append((f"2026-06-{d:02d}", "夜班"))
+                elif p[5] == "资料员":
+                    # 避开周六日：06 (周六), 07 (周日)
+                    for d in range(1, 13):
+                        if d not in (6, 7):
+                            attendance_dates.append((f"2026-06-{d:02d}", "白班"))
+                elif p[5] == "普工":
+                    for d in range(1, 9):
+                        attendance_dates.append((f"2026-06-{d:02d}", "夜班"))
+                    for d in range(12, 16):
+                        attendance_dates.append((f"2026-06-{d:02d}", "白班"))
+                elif p[5] == "水泥工":
+                    for d in range(1, 8):
+                        attendance_dates.append((f"2026-06-{d:02d}", "白班"))
+                    for d in range(8, 16):
+                        attendance_dates.append((f"2026-06-{d:02d}", "夜班"))
+                
+                db.executemany(
+                    "insert into attendance (person_id, work_date, shift_type) values (?, ?, ?)",
+                    [(person_id, date, shift) for date, shift in attendance_dates],
+                )
     db.commit()

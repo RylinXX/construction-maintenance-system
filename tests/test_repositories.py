@@ -135,3 +135,34 @@ def test_person_id_card_path_can_be_saved_and_replaced(app):
         person = repo.list_people()[0]
 
     assert person["id_card_path"] == "new-id-card.jpg"
+
+
+def test_attendance_operations(app):
+    with app.app_context():
+        # 1. 创建测试人员
+        person_id = repo.create_person(
+            {
+                "name": "王大锤",
+                "id_number": "410000199001018888",
+            }
+        )
+        
+        # 2. 保存白班考勤
+        repo.save_attendance(person_id, "2026-06-02", "白班")
+        records = repo.list_attendance_by_month("2026-06")
+        assert len(records) == 1
+        assert records[0]["person_id"] == person_id
+        assert records[0]["work_date"] == "2026-06-02"
+        assert records[0]["shift_type"] == "白班"
+
+        # 3. 幂等更新为夜班考勤
+        repo.save_attendance(person_id, "2026-06-02", "夜班")
+        records = repo.list_attendance_by_month("2026-06")
+        assert len(records) == 1
+        assert records[0]["shift_type"] == "夜班"
+
+        # 4. 删除考勤记录
+        repo.save_attendance(person_id, "2026-06-02", None)
+        records = repo.list_attendance_by_month("2026-06")
+        assert len(records) == 0
+
