@@ -222,3 +222,94 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
 
     return workbook
 
+
+def build_contract_workbook(path: Path) -> Path:
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "项目合同台账"
+    
+    # 启用网格线显示
+    sheet.views.sheetView[0].showGridLines = True
+
+    # 表头定义
+    headers = ["合同ID", "归属项目", "合同名称", "合同分类", "备注", "创建时间"]
+    sheet.append(headers)
+
+    # 样式配置
+    emerald_color = "0F766E"      # 深邃翠绿表头
+    zebra_color = "F0FDF4"        # 浅绿斑马纹
+    border_color = "CBD5E1"
+
+    font_header = Font(name="微软雅黑", size=11, bold=True, color="FFFFFF")
+    font_body = Font(name="微软雅黑", size=10)
+    
+    fill_header = PatternFill(start_color=emerald_color, end_color=emerald_color, fill_type="solid")
+    fill_zebra = PatternFill(start_color=zebra_color, end_color=zebra_color, fill_type="solid")
+    
+    align_center = Alignment(horizontal="center", vertical="center")
+    align_left = Alignment(horizontal="left", vertical="center")
+    
+    thin_side = Side(border_style="thin", color=border_color)
+    grid_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+
+    # 设置表头样式
+    sheet.row_dimensions[1].height = 28
+    for col_idx, _ in enumerate(headers, start=1):
+        cell = sheet.cell(row=1, column=col_idx)
+        cell.font = font_header
+        cell.fill = fill_header
+        cell.alignment = align_center
+        cell.border = grid_border
+
+    # 写入数据
+    contracts = repo.list_contracts()
+    for row_idx, contract in enumerate(contracts, start=2):
+        sheet.row_dimensions[row_idx].height = 22
+        
+        # 数据准备
+        row_data = [
+            contract["id"],
+            contract["project_name"],
+            contract["name"],
+            contract["contract_type"],
+            contract["notes"],
+            contract["created_at"][:19] if contract["created_at"] else ""
+        ]
+        
+        for col_idx, val in enumerate(row_data, start=1):
+            cell = sheet.cell(row=row_idx, column=col_idx, value=val)
+            cell.font = font_body
+            cell.border = grid_border
+            
+            # 斑马纹交替行
+            if row_idx % 2 == 1:
+                cell.fill = fill_zebra
+                
+            # 对齐
+            if col_idx in (1, 4, 6):
+                cell.alignment = align_center
+            else:
+                cell.alignment = align_left
+
+    # 自动调整列宽
+    for col in sheet.columns:
+        max_len = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            val_str = str(cell.value or "")
+            byte_len = len(val_str.encode("utf-8"))
+            char_len = len(val_str)
+            approx_len = char_len + (byte_len - char_len) // 2
+            if approx_len > max_len:
+                max_len = approx_len
+        sheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    workbook.save(path)
+    return path
+
+

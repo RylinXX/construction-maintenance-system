@@ -706,7 +706,8 @@ def download_export(export_type: str):
     from construction_maintenance.services.exports import (
         build_people_workbook,
         build_project_ledger_workbook,
-        build_qualification_workbook
+        build_qualification_workbook,
+        build_contract_workbook
     )
 
     export_dir = Path(current_app.root_path).parent / "exports"
@@ -714,6 +715,7 @@ def download_export(export_type: str):
         "project-ledger": ("项目台账.xlsx", build_project_ledger_workbook),
         "people": ("基础人员信息表.xlsx", build_people_workbook),
         "qualifications": ("企业资质清单.xlsx", build_qualification_workbook),
+        "contracts": ("项目合同台账.xlsx", build_contract_workbook),
     }
     if export_type not in builders:
         return "Unknown export type", 404

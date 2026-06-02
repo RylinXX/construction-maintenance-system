@@ -96,3 +96,42 @@ def test_build_attendance_workbook(app, tmp_path):
     # D2 (2日) 应该是 "假"
     assert sheet["D2"].value == "假"
 
+
+def test_build_contract_workbook(app, tmp_path):
+    with app.app_context():
+        # 先创建一个测试项目
+        main_company = repo.get_main_company()
+        proj_id = repo.create_project({
+            "company_id": main_company["id"],
+            "name": "导出测试项目",
+            "status": "进行中"
+        })
+        
+        # 创建一个测试合同
+        repo.create_contract({
+            "project_id": proj_id,
+            "name": "导出测试合同",
+            "contract_type": "材料商合同",
+            "notes": "导出备注"
+        })
+        
+        from construction_maintenance.services.exports import build_contract_workbook
+        output = tmp_path / "contracts.xlsx"
+        build_contract_workbook(output)
+        
+    workbook = load_workbook(output)
+    sheet = workbook.active
+    assert sheet.cell(1, 1).value == "合同ID"
+    assert sheet.cell(1, 2).value == "归属项目"
+    assert sheet.cell(1, 3).value == "合同名称"
+    assert sheet.cell(1, 4).value == "合同分类"
+    assert sheet.cell(1, 5).value == "备注"
+    assert sheet.cell(1, 6).value == "创建时间"
+    
+    # 检查写入的数据
+    assert sheet.cell(2, 2).value == "导出测试项目"
+    assert sheet.cell(2, 3).value == "导出测试合同"
+    assert sheet.cell(2, 4).value == "材料商合同"
+    assert sheet.cell(2, 5).value == "导出备注"
+
+
