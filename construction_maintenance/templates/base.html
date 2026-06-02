@@ -57,6 +57,10 @@
             <span class="nav-icon" aria-hidden="true">{{ icon('qualification') }}</span>
             <span class="nav-label">企业资质</span>
           </a>
+          <a href="{{ url_for('web.contracts') }}" class="nav-item {% if request.endpoint in ['web.contracts'] %}active{% endif %}">
+            <span class="nav-icon" aria-hidden="true">{{ icon('contract') }}</span>
+            <span class="nav-label">合同管理</span>
+          </a>
           <a href="{{ url_for('web.batch') }}" class="nav-item {% if request.endpoint == 'web.batch' %}active{% endif %}">
             <span class="nav-icon" aria-hidden="true">{{ icon('import') }}</span>
             <span class="nav-label">AI 智能录入</span>

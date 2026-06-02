@@ -38,6 +38,15 @@
         </div>
         <a class="btn btn-primary" href="{{ url_for('web.download_export', export_type='qualifications') }}">{{ icon('import') }} 立即导出</a>
       </div>
+
+      <div class="export-card">
+        <div class="export-icon">{{ icon('contract') }}</div>
+        <div class="export-info">
+          <h3>项目合同台账 Excel</h3>
+          <p>一键导出全系统登记的项目合同，包括归属项目、分类、签署时间及备注说明等。</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('web.download_export', export_type='contracts') }}">{{ icon('import') }} 立即导出</a>
+      </div>
     </div>
   </div>
 </div>

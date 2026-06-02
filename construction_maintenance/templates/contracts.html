@@ -1,17 +1,315 @@
-<!DOCTYPE html>
-<html>
-<head><title>合同管理</title></head>
-<body>
-    <h1>合同</h1>
-    <!-- 极简模板，以满足路由测试 -->
-    <div id="contracts-list">
-        {% for contract in contracts %}
-            <div>
-                <h3>{{ contract.name }}</h3>
-                <p>{{ contract.contract_type }}</p>
-                <p>{{ contract.notes }}</p>
-            </div>
-        {% endfor %}
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}合同管理 - CAM 建筑工程维护系统{% endblock %}
+{% block breadcrumb %}合同管理{% endblock %}
+{% block page_subtitle %}管理和归档项目中的总包、劳务、材料商及人员合同，支持多条件检索与存证预览。{% endblock %}
+
+{% block content %}
+<!-- Metrics Cards Grid -->
+<div class="metrics-grid animate-slide-up">
+  <div class="metric-card">
+    <div class="metric-icon" style="background: rgba(15, 118, 110, 0.1); color: var(--primary);">{{ icon('contract') }}</div>
+    <div class="metric-details">
+      <span class="metric-value">{{ stats.total }}</span>
+      <span class="metric-label">合同总份数</span>
     </div>
-</body>
-</html>
+  </div>
+  <div class="metric-card">
+    <div class="metric-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">{{ icon('folder') }}</div>
+    <div class="metric-details">
+      <span class="metric-value">{{ stats.总包合同 }}</span>
+      <span class="metric-label">总包合同</span>
+    </div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-icon" style="background: rgba(217, 119, 6, 0.1); color: #d97706;">{{ icon('people') }}</div>
+    <div class="metric-details">
+      <span class="metric-value">{{ stats.劳务合同 }}</span>
+      <span class="metric-label">劳务合同</span>
+    </div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">{{ icon('receipt') }}</div>
+    <div class="metric-details">
+      <span class="metric-value">{{ stats.材料商合同 + stats.人员合同 + stats.其它 }}</span>
+      <span class="metric-label">其它协议合同</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel-section animate-slide-up" style="animation-delay: 0.1s;">
+  <div class="panel-card">
+    <!-- Filter & Toolbar Header -->
+    <div class="panel-header" style="flex-wrap: wrap; gap: 16px;">
+      <form method="get" class="toolbar-filters" style="display: flex; gap: 12px; flex-wrap: wrap; flex-grow: 1;">
+        <input type="text" name="query" class="form-input" style="max-width: 240px; min-width: 180px;" placeholder="合同名称 / 备注..." value="{{ search_query or '' }}" autocomplete="off">
+        
+        <select name="project_id" class="form-select" style="max-width: 220px; min-width: 160px;">
+          <option value="">-- 全部项目 --</option>
+          {% for project in projects %}
+          <option value="{{ project.id }}" {% if filter_project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+          {% endfor %}
+        </select>
+        
+        <select name="contract_type" class="form-select" style="max-width: 180px; min-width: 140px;">
+          <option value="">-- 全部类型 --</option>
+          <option value="总包合同" {% if filter_contract_type == '总包合同' %}selected{% endif %}>总包合同</option>
+          <option value="劳务合同" {% if filter_contract_type == '劳务合同' %}selected{% endif %}>劳务合同</option>
+          <option value="材料商合同" {% if filter_contract_type == '材料商合同' %}selected{% endif %}>材料商合同</option>
+          <option value="人员合同" {% if filter_contract_type == '人员合同' %}selected{% endif %}>人员合同</option>
+          <option value="其它" {% if filter_contract_type == '其它' %}selected{% endif %}>其它</option>
+        </select>
+        
+        <button type="submit" class="btn btn-secondary" style="min-height: 38px; display: inline-flex; align-items: center; gap: 6px;">{{ icon('search') }} 搜索</button>
+        {% if filter_project_id or filter_contract_type or search_query %}
+        <a href="{{ url_for('web.contracts') }}" class="btn btn-secondary" style="min-height: 38px; display: inline-flex; align-items: center; text-decoration: none;">重置</a>
+        {% endif %}
+      </form>
+      <div class="toolbar-actions">
+        <a href="{{ url_for('web.download_export', export_type='contracts') }}" class="btn btn-secondary toolbar-btn">{{ icon('upload') }} 导出 Excel</a>
+        <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addContractModal')">{{ icon('add') }} 新增合同</button>
+      </div>
+    </div>
+
+    <!-- Contracts Table -->
+    <div class="table-container">
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th style="width: 80px; white-space: nowrap;">序号</th>
+            <th style="min-width: 250px; white-space: nowrap;">合同名称</th>
+            <th style="min-width: 120px; white-space: nowrap;">合同分类</th>
+            <th style="min-width: 220px; white-space: nowrap;">归属工程项目</th>
+            <th style="min-width: 150px; white-space: nowrap;">合同附件</th>
+            <th style="min-width: 200px; white-space: nowrap;">备注说明</th>
+            <th class="text-right" style="min-width: 160px; width: 160px; white-space: nowrap;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for contract in contracts %}
+          <tr>
+            <td class="font-mono text-muted" style="vertical-align: middle;">{{ loop.index }}</td>
+            <td class="font-semibold text-dark" style="vertical-align: middle; white-space: nowrap;">{{ contract.name }}</td>
+            <td style="vertical-align: middle;">
+              {% if contract.contract_type == '总包合同' %}
+              <span class="badge" style="background: rgba(37, 99, 235, 0.1); color: #2563eb; display: inline-flex; white-space: nowrap;">{{ contract.contract_type }}</span>
+              {% elif contract.contract_type == '劳务合同' %}
+              <span class="badge" style="background: rgba(217, 119, 6, 0.1); color: #d97706; display: inline-flex; white-space: nowrap;">{{ contract.contract_type }}</span>
+              {% elif contract.contract_type == '材料商合同' %}
+              <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981; display: inline-flex; white-space: nowrap;">{{ contract.contract_type }}</span>
+              {% elif contract.contract_type == '人员合同' %}
+              <span class="badge" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5; display: inline-flex; white-space: nowrap;">{{ contract.contract_type }}</span>
+              {% else %}
+              <span class="badge badge-secondary" style="display: inline-flex; white-space: nowrap;">{{ contract.contract_type }}</span>
+              {% endif %}
+            </td>
+            <td class="font-semibold" style="vertical-align: middle; white-space: nowrap;">
+              <a href="{{ url_for('web.project_vouchers', project_id=contract.project_id) }}" class="project-link" title="点击查看项目专属凭证台账">
+                {{ icon('folder') }} {{ contract.project_name }}
+              </a>
+            </td>
+            <td style="vertical-align: middle; white-space: nowrap;">
+              {% if contract.attachment_path %}
+              <div style="display: inline-flex; gap: 8px; align-items: center;">
+                <a href="{{ url_for('web.download_attachment', filename=contract.attachment_path) }}" target="_blank" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; text-decoration: none;" title="预览存证">
+                  {{ icon('preview') }} 预览
+                </a>
+                <a href="{{ url_for('web.download_attachment', filename=contract.attachment_path, download=1) }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; text-decoration: none;" title="立即下载">
+                  {{ icon('import') }} 下载
+                </a>
+              </div>
+              {% else %}
+              <span class="text-muted" style="font-size: 13px;">无附件</span>
+              {% endif %}
+            </td>
+            <td class="text-muted" style="vertical-align: middle; white-space: nowrap; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="{{ contract.notes or '' }}">
+              {{ contract.notes or '--' }}
+            </td>
+            <td class="text-right" style="white-space: nowrap; width: 160px; min-width: 160px; vertical-align: middle;">
+              <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
+                <button type="button" class="btn-action-edit" onclick="openModal('editContractModal-{{ contract.id }}')">
+                  {{ icon('edit') }} 编辑
+                </button>
+                <button type="button" class="btn-action-delete" onclick="deleteContract({{ contract.id }}, '{{ contract.name }}')">
+                  {{ icon('delete') }} 删除
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr class="empty-row">
+            <td colspan="7">
+              <div class="empty-state">
+                <span class="empty-icon">{{ icon('empty-inbox') }}</span>
+                <span class="empty-text">暂无合同记录，请点击右上角“新增合同”按钮登记合同</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Contract Modal -->
+<div id="addContractModal" class="modal animate-fade-in">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('contract') }} 新增合同登记</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addContractModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" enctype="multipart/form-data" class="premium-form">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label" for="name">合同名称 <span class="required">*</span></label>
+            <input type="text" class="form-input" id="name" name="name" required placeholder="如：郑州地铁6号线二期工程劳务分包合同" autocomplete="off">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="project_id">归属项目 <span class="required">*</span></label>
+            <select class="form-select" id="project_id" name="project_id" required>
+              <option value="">-- 请选择关联项目 --</option>
+              {% for project in projects %}
+              <option value="{{ project.id }}">{{ project.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="contract_type">合同分类 <span class="required">*</span></label>
+            <select class="form-select" id="contract_type" name="contract_type" required>
+              <option value="">-- 请选择合同分类 --</option>
+              <option value="总包合同">总包合同</option>
+              <option value="劳务合同">劳务合同</option>
+              <option value="材料商合同">材料商合同</option>
+              <option value="人员合同">人员合同</option>
+              <option value="其它">其它</option>
+            </select>
+          </div>
+          
+          <div class="form-group full-width">
+            <label class="form-label" for="attachment">上传合同附件 (支持 PDF/图片)</label>
+            <input type="file" class="form-input" id="attachment" name="attachment" accept=".pdf,image/*">
+            <p class="text-muted" style="margin-top: 4px; font-size: 12px;">注：如不上传附件，系统将自动生成精美的存证备案电子凭证进行在线预览。</p>
+          </div>
+          
+          <div class="form-group full-width">
+            <label class="form-label" for="notes">备注说明</label>
+            <input type="text" class="form-input" id="notes" name="notes" placeholder="对合同的重要条款或合作对象的简单备忘...">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addContractModal')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 确认保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Contract Modals -->
+{% for contract in contracts %}
+<div id="editContractModal-{{ contract.id }}" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('edit') }} 编辑合同信息</h3>
+      <button type="button" class="modal-close" onclick="closeModal('editContractModal-{{ contract.id }}')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form method="post" action="{{ url_for('web.edit_contract', contract_id=contract.id) }}" enctype="multipart/form-data" class="premium-form">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-name-{{ contract.id }}">合同名称 <span class="required">*</span></label>
+            <input type="text" class="form-input" id="edit-name-{{ contract.id }}" name="name" value="{{ contract.name }}" required autocomplete="off">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="edit-project-{{ contract.id }}">归属项目 <span class="required">*</span></label>
+            <select class="form-select" id="edit-project-{{ contract.id }}" name="project_id" required>
+              {% for project in projects %}
+              <option value="{{ project.id }}" {% if contract.project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="edit-type-{{ contract.id }}">合同分类 <span class="required">*</span></label>
+            <select class="form-select" id="edit-type-{{ contract.id }}" name="contract_type" required>
+              <option value="总包合同" {% if contract.contract_type == '总包合同' %}selected{% endif %}>总包合同</option>
+              <option value="劳务合同" {% if contract.contract_type == '劳务合同' %}selected{% endif %}>劳务合同</option>
+              <option value="材料商合同" {% if contract.contract_type == '材料商合同' %}selected{% endif %}>材料商合同</option>
+              <option value="人员合同" {% if contract.contract_type == '人员合同' %}selected{% endif %}>人员合同</option>
+              <option value="其它" {% if contract.contract_type == '其它' %}selected{% endif %}>其它</option>
+            </select>
+          </div>
+          
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-attachment-{{ contract.id }}">重置合同附件 (如需更新)</label>
+            <input type="file" class="form-input" id="edit-attachment-{{ contract.id }}" name="attachment" accept=".pdf,image/*">
+            {% if contract.attachment_path %}
+            <p class="text-muted" style="margin-top: 4px; font-size: 12.5px;">当前附件：<strong style="color: var(--primary);">{{ contract.attachment_path | upload_name }}</strong></p>
+            {% endif %}
+          </div>
+          
+          <div class="form-group full-width">
+            <label class="form-label" for="edit-notes-{{ contract.id }}">备注说明</label>
+            <input type="text" class="form-input" id="edit-notes-{{ contract.id }}" name="notes" value="{{ contract.notes or '' }}">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('editContractModal-{{ contract.id }}')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存修改</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<style>
+.project-link {
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1.5px dashed transparent;
+  padding-bottom: 2px;
+  transition: var(--transition);
+}
+.project-link:hover {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+</style>
+
+<script>
+function deleteContract(contractId, name) {
+  if (confirm(`您确定要删除合同「${name}」吗？\n警告：此操作不可恢复！`)) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = `/contracts/${contractId}/delete`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Close modal when clicking outside
+window.addEventListener('click', function(event) {
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (event.target === modal) {
+      closeModal(modal.id);
+    }
+  });
+});
+</script>
+{% endblock %}

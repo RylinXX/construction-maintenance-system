@@ -56,6 +56,9 @@
             <td class="text-muted" style="vertical-align: middle; white-space: nowrap;">{{ project.notes or '--' }}</td>
             <td class="text-right" style="white-space: nowrap; width: 180px; min-width: 180px; vertical-align: middle;" onclick="event.stopPropagation();">
               <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
+                <a href="{{ url_for('web.contracts', project_id=project.id) }}" class="btn-action-edit" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--primary); color: var(--primary); background: transparent;" title="查看该项目合同">
+                  {{ icon('contract') }} 合同
+                </a>
                 <button type="button" class="btn-action-edit" onclick="openModal('editProjectModal-{{ project.id }}')">
                   {{ icon('edit') }} 编辑
                 </button>
