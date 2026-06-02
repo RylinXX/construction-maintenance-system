@@ -81,3 +81,26 @@ def test_init_db_normalizes_legacy_batch_status(app):
         ).fetchone()
 
     assert item["status"] == "待确认"
+
+
+def test_contracts_table_initialization(app):
+    with app.app_context():
+        init_db()
+        db_conn = get_db()
+        # 验证表存在且字段正确
+        cursor = db_conn.execute("pragma table_info(contracts)")
+        columns = {row["name"]: row["type"] for row in cursor.fetchall()}
+        assert "id" in columns
+        assert "project_id" in columns
+        assert "name" in columns
+        assert "contract_type" in columns
+        assert "attachment_path" in columns
+        assert "notes" in columns
+        assert "created_at" in columns
+        
+        # 验证外键约束
+        fk_cursor = db_conn.execute("pragma foreign_key_list(contracts)")
+        fk_list = fk_cursor.fetchall()
+        assert len(fk_list) > 0
+        assert any(row["table"] == "projects" and row["from"] == "project_id" for row in fk_list)
+

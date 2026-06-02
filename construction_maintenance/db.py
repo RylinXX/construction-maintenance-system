@@ -140,6 +140,16 @@ def init_db() -> None:
             created_at text not null default current_timestamp,
             unique(person_id, work_date)
         );
+
+        create table if not exists contracts (
+            id integer primary key autoincrement,
+            project_id integer not null references projects(id),
+            name text not null,
+            contract_type text not null,
+            attachment_path text not null default '',
+            notes text not null default '',
+            created_at text not null default current_timestamp
+        );
         """
     )
     people_columns = {
@@ -318,4 +328,33 @@ def init_db() -> None:
                     """,
                     (project_1[0],)
                 )
+
+        # 5. 插入合同演示数据
+        contract_count = db.execute("select count(*) from contracts").fetchone()[0]
+        if contract_count == 0:
+            project_1 = db.execute("select id from projects where name = '郑州地铁6号线二期机电维保工程'").fetchone()
+            project_2 = db.execute("select id from projects where name = '郑州市中原路绿化提升改造项目'").fetchone()
+            if project_1 and project_2:
+                db.execute(
+                    """
+                    insert into contracts (project_id, name, contract_type, attachment_path, notes)
+                    values (?, '地铁6号线二期机电维保项目劳务分包合同', '劳务合同', 'contract_metro_labor.pdf', '与河南建工劳务队签署的机电维护劳务合同')
+                    """,
+                    (project_1[0],)
+                )
+                db.execute(
+                    """
+                    insert into contracts (project_id, name, contract_type, attachment_path, notes)
+                    values (?, '中原路绿化工程绿化苗木采购合同', '材料商合同', 'contract_green_tree.pdf', '向郑州百卉园艺采购绿化灌木合同')
+                    """,
+                    (project_2[0],)
+                )
+                db.execute(
+                    """
+                    insert into contracts (project_id, name, contract_type, attachment_path, notes)
+                    values (?, '中原路绿化提升改造工程总承包合同', '总包合同', 'contract_green_main.pdf', '与郑州市市政管理局签署的工程总包合同')
+                    """,
+                    (project_2[0],)
+                )
     db.commit()
+
