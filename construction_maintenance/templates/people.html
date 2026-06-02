@@ -210,14 +210,23 @@
                 <span class="card-info-label">联系电话</span>
                 <span class="card-info-val">{{ person.phone or '--' }}</span>
               </div>
-              <div class="card-info-item" style="border-bottom: none; padding-bottom: 0;">
+              <div class="card-info-item">
                 <span class="card-info-label">身份证号</span>
                 <span class="card-info-val font-mono">{{ person.id_number }}</span>
               </div>
-              
-              <!-- Tap indicator for premium UX -->
-              <div class="card-flip-hint">
-                点击查看完整档案 {{ icon('rotate') }}
+              <div class="card-info-item">
+                <span class="card-info-label">进场日期</span>
+                <span class="card-info-val">{{ person.entry_date or '未登记' }}</span>
+              </div>
+              <div class="card-info-item" style="border-bottom: none; padding-bottom: 0;">
+                <span class="card-info-label">月度考勤</span>
+                <span class="card-info-val">
+                  {% if person.is_attendance == 1 %}
+                  <span style="color: #059669; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">已激活</span>
+                  {% else %}
+                  <span style="color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px;">未参与</span>
+                  {% endif %}
+                </span>
               </div>
             </div>
           </div>
@@ -922,7 +931,7 @@ window.addEventListener('click', function(event) {
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
-  height: 230px;
+  height: 200px;
   cursor: pointer;
   position: relative;
 }

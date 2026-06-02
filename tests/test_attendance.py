@@ -62,6 +62,24 @@ def test_attendance_update_api_workflow(client, app):
         assert len(records) == 1
         assert records[0]["shift_type"] == "夜班"
 
+    # 5b. 更新考勤为请假
+    response = client.post(
+        "/attendance/update",
+        data=json.dumps({
+            "person_id": person_id,
+            "date": "2026-06-05",
+            "shift_type": "请假"
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+
+    # 5c. 校验数据库中考勤确实变更为请假
+    with app.app_context():
+        records = repo.list_attendance_by_month("2026-06")
+        assert len(records) == 1
+        assert records[0]["shift_type"] == "请假"
+
     # 6. 发送空或 null 以取消出勤
     response = client.post(
         "/attendance/update",

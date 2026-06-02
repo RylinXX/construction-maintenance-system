@@ -2160,6 +2160,24 @@ textarea.form-input:focus {
   background-color: #60a5fa !important;
 }
 
+/* 请假配色：浅黄/浅橙 */
+.attendance-cell.cell-leave {
+  background-color: #fef3c7 !important;
+  color: #d97706 !important;
+}
+.attendance-cell.cell-leave:hover {
+  background-color: #fde68a !important;
+}
+
+.dark-theme .attendance-cell.cell-leave {
+  background-color: #451a03 !important;
+  color: #fbbf24 !important;
+}
+.dark-theme .attendance-cell.cell-leave:hover {
+  background-color: #78350f !important;
+}
+
+
 /* Loading 状态 */
 .attendance-cell.cell-loading {
   background-color: var(--surface-inset) !important;

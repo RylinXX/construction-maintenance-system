@@ -57,3 +57,42 @@ def test_build_qualification_workbook(app, tmp_path):
     sheet = workbook.active
     assert sheet["A1"].value == "公司"
     assert sheet["B2"].value == "建筑业企业资质"
+
+
+def test_build_attendance_workbook(app, tmp_path):
+    with app.app_context():
+        # 1. 创建测试人员
+        person_id = repo.create_person(
+            {
+                "name": "李小华",
+                "id_number": "410000199001019999",
+                "is_attendance": 1,
+            }
+        )
+        # 2. 保存一笔考勤
+        repo.save_attendance(person_id, "2026-06-01", "白班")
+        repo.save_attendance(person_id, "2026-06-02", "请假")
+        
+        # 3. 导出考勤表到临时文件
+        from construction_maintenance.services.exports import build_attendance_workbook
+        output = tmp_path / "attendance.xlsx"
+        workbook = build_attendance_workbook("2026-06")
+        workbook.save(output)
+        
+    # 4. 验证导出的数据
+    workbook = load_workbook(output)
+    sheet = workbook.active
+    
+    # 检查表头
+    assert sheet["A1"].value == "姓名"
+    assert sheet["B1"].value == "身份证号"
+    assert sheet["C1"].value == "1日"
+    
+    # 检查数据
+    assert sheet["A2"].value == "李小华"
+    assert sheet["B2"].value == "410000199001019999"
+    # C2 (1日) 应该是 "白"
+    assert sheet["C2"].value == "白"
+    # D2 (2日) 应该是 "假"
+    assert sheet["D2"].value == "假"
+

@@ -5,7 +5,7 @@ from flask import redirect
 from flask import render_template
 from flask import request
 from flask import url_for
-from flask import flash
+from flask import flash, send_file
 
 from construction_maintenance import repositories as repo
 from construction_maintenance.web.forms import required_text
@@ -302,15 +302,18 @@ def attendance():
         p_att = attendance_dict.get(p_id, {})
         p_day = sum(1 for s in p_att.values() if s == "白班")
         p_night = sum(1 for s in p_att.values() if s == "夜班")
+        p_leave = sum(1 for s in p_att.values() if s == "请假")
         person_stats[p_id] = {
             "day": p_day,
             "night": p_night,
+            "leave": p_leave,
             "total": p_day + p_night,
         }
 
     total_shifts = len(raw_attendance)
     day_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "白班")
     night_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "夜班")
+    leave_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "请假")
 
     return render_template(
         "attendance.html",
@@ -325,8 +328,10 @@ def attendance():
             "total_shifts": total_shifts,
             "day_shifts": day_shifts,
             "night_shifts": night_shifts,
+            "leave_shifts": leave_shifts,
         },
     )
+
 
 
 @bp.post("/attendance/update")
@@ -361,6 +366,64 @@ def update_attendance_settings():
         return {"status": "success"}
     except Exception as exc:
         return {"status": "error", "message": str(exc)}, 500
+
+
+@bp.route("/attendance/export", methods=["GET"])
+def export_attendance():
+    from io import BytesIO
+    from construction_maintenance.services.exports import build_attendance_workbook
+
+    month = request.args.get("month", "")
+    is_template = request.args.get("template") == "1"
+
+    if not month:
+        import datetime
+        month = datetime.datetime.now().strftime("%Y-%m")
+
+    try:
+        workbook = build_attendance_workbook(month, is_template)
+        out = BytesIO()
+        workbook.save(out)
+        out.seek(0)
+
+        filename = f"{month}_考勤模板.xlsx" if is_template else f"{month}_月度考勤表.xlsx"
+        return send_file(
+            out,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename,
+        )
+    except Exception as exc:
+        flash(f"导出失败: {str(exc)}")
+        return redirect(url_for("web.attendance", month=month))
+
+
+@bp.post("/attendance/import")
+def import_attendance():
+    from pathlib import Path
+    import os
+    from flask import current_app
+    from construction_maintenance.services.imports import save_upload, import_attendance_workbook
+
+    month = request.form.get("month")
+    file = request.files.get("file")
+    if not file or not month:
+        return {"status": "error", "message": "缺少上传的文件或月份参数"}, 400
+
+    upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
+    temp_path = None
+    try:
+        temp_path = save_upload(upload_folder, file)
+        res = import_attendance_workbook(temp_path, month)
+        return res
+    except Exception as exc:
+        return {"status": "error", "message": f"服务器内部错误: {str(exc)}"}, 500
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
 
 @bp.route("/qualifications", methods=["GET", "POST"])
