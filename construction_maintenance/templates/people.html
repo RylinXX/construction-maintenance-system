@@ -47,7 +47,7 @@
               <th style="min-width: 110px; white-space: nowrap;">工种/岗位</th>
               <th style="min-width: 250px; white-space: nowrap;">银行卡</th>
               <th style="min-width: 100px; white-space: nowrap;">核实状态</th>
-              <th class="text-right" style="min-width: 180px; width: 180px; white-space: nowrap;">操作</th>
+              <th class="text-right" style="min-width: 100px; width: 100px; white-space: nowrap;">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -86,10 +86,9 @@
                 <span class="badge badge-warning" style="display: inline-flex; white-space: nowrap;">{{ person.review_status }}</span>
                 {% endif %}
               </td>
-              <td class="text-right" style="white-space: nowrap; width: 180px; min-width: 180px; vertical-align: middle;" onclick="event.stopPropagation();">
+              <td class="text-right" style="white-space: nowrap; width: 100px; min-width: 100px; vertical-align: middle;" onclick="event.stopPropagation();">
                 <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
                   <button type="button" class="btn-action-edit" onclick="openModal('editPersonModal-{{ person.id }}')">{{ icon('edit') }} 编辑</button>
-                  <button type="button" class="btn-action-delete" onclick="deletePerson({{ person.id }}, '{{ person.name }}')" title="删除人员">{{ icon('delete') }} 删除</button>
                 </div>
               </td>
             </tr>
@@ -280,9 +279,6 @@
               {% endif %}
               <button type="button" class="btn btn-primary card-btn" style="padding: 5px 8px; font-size: 11px; background-color: var(--accent); border-color: var(--accent);" onclick="openModal('editPersonModal-{{ person.id }}')">
                 {{ icon('edit') }} 修改
-              </button>
-              <button type="button" class="btn btn-danger" style="padding: 5px 8px; font-size: 11px; background-color: var(--error-color); border-color: var(--error-color); color: white; display: flex; align-items: center; justify-content: center; max-width: 32px; min-width: 32px; border-radius: var(--radius-sm);" onclick="deletePerson({{ person.id }}, '{{ person.name }}')" title="删除人员">
-                {{ icon('delete') }}
               </button>
             </div>
           </div>

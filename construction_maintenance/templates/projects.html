@@ -28,7 +28,7 @@
             <th style="min-width: 100px; white-space: nowrap;">状态</th>
             <th style="min-width: 200px; white-space: nowrap;">所属公司</th>
             <th style="min-width: 250px; white-space: nowrap;">备注信息</th>
-            <th class="text-right" style="min-width: 180px; width: 180px; white-space: nowrap;">管理操作</th>
+            <th class="text-right" style="min-width: 230px; width: 230px; white-space: nowrap;">管理操作</th>
           </tr>
         </thead>
         <tbody>
@@ -54,16 +54,16 @@
             </td>
             <td style="vertical-align: middle; white-space: nowrap;">{{ project.company_name }}</td>
             <td class="text-muted" style="vertical-align: middle; white-space: nowrap;">{{ project.notes or '--' }}</td>
-            <td class="text-right" style="white-space: nowrap; width: 180px; min-width: 180px; vertical-align: middle;" onclick="event.stopPropagation();">
+            <td class="text-right" style="white-space: nowrap; width: 230px; min-width: 230px; vertical-align: middle;" onclick="event.stopPropagation();">
               <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
+                <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="btn-action-preview" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="进入该项目专属费用台账">
+                  {{ icon('folder') }} 台账
+                </a>
                 <a href="{{ url_for('web.contracts', project_id=project.id) }}" class="btn-action-edit" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--primary); color: var(--primary); background: transparent;" title="查看该项目合同">
                   {{ icon('contract') }} 合同
                 </a>
                 <button type="button" class="btn-action-edit" onclick="openModal('editProjectModal-{{ project.id }}')">
                   {{ icon('edit') }} 编辑
-                </button>
-                <button type="button" class="btn-action-delete" onclick="deleteProject({{ project.id }}, '{{ project.name }}')" title="删除项目">
-                  {{ icon('delete') }} 删除
                 </button>
               </div>
             </td>
@@ -187,15 +187,16 @@
 
 <style>
 .project-link {
-  color: var(--text);
+  color: var(--primary);
   text-decoration: none;
-  border-bottom: 1.5px dashed transparent;
+  border-bottom: 1.5px dashed rgba(15, 118, 110, 0.32);
   padding-bottom: 2px;
   transition: var(--transition);
 }
 .project-link:hover {
   color: var(--primary);
   border-bottom-color: var(--primary);
+  opacity: 0.85;
 }
 </style>
 

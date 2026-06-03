@@ -70,5 +70,4 @@ def test_qualification_card_actions_use_compact_icon_button_layout():
 
     assert 'class="card-actions qualification-actions"' in template
     assert 'class="btn btn-secondary card-btn qualification-preview-btn"' in template
-    assert 'class="btn btn-danger qualification-delete-btn"' in template
     assert "预览下载" in template

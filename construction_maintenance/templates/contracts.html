@@ -86,7 +86,7 @@
             <th style="min-width: 220px; white-space: nowrap;">归属工程项目</th>
             <th style="min-width: 150px; white-space: nowrap;">合同附件</th>
             <th style="min-width: 200px; white-space: nowrap;">备注说明</th>
-            <th class="text-right" style="min-width: 160px; width: 160px; white-space: nowrap;">操作</th>
+            <th class="text-right" style="min-width: 100px; width: 100px; white-space: nowrap;">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -135,13 +135,10 @@
             <td class="text-muted" style="vertical-align: middle; white-space: nowrap; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="{{ contract.notes or '' }}">
               {{ contract.notes or '--' }}
             </td>
-            <td class="text-right" style="white-space: nowrap; width: 160px; min-width: 160px; vertical-align: middle;">
+            <td class="text-right" style="white-space: nowrap; width: 100px; min-width: 100px; vertical-align: middle;">
               <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
                 <button type="button" class="btn-action-edit" onclick="openModal('editContractModal-{{ contract.id }}')">
                   {{ icon('edit') }} 编辑
-                </button>
-                <button type="button" class="btn-action-delete" onclick="deleteContract({{ contract.id }}, '{{ contract.name }}')">
-                  {{ icon('delete') }} 删除
                 </button>
               </div>
             </td>
@@ -268,9 +265,12 @@
             <input type="text" class="form-input" id="edit-notes-{{ contract.id }}" name="notes" value="{{ contract.notes or '' }}">
           </div>
         </div>
-        <div class="form-actions" style="margin-top: 24px;">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('editContractModal-{{ contract.id }}')">取消</button>
-          <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存修改</button>
+        <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <button type="button" class="btn btn-danger" onclick="deleteContract({{ contract.id }}, '{{ contract.name }}')" style="background-color: var(--error-color); color: #fff; border-color: var(--error-color); min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">{{ icon('delete') }} 删除合同</button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('editContractModal-{{ contract.id }}')">取消</button>
+            <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存修改</button>
+          </div>
         </div>
       </form>
     </div>

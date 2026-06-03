@@ -153,7 +153,7 @@
 
 .qualification-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
 }
 
@@ -289,7 +289,7 @@
                 <span class="badge badge-info">正常服务中</span>
                 {% endif %}
               </td>
-              <td class="text-right" style="white-space: nowrap; width: 310px;">
+              <td class="text-right" style="white-space: nowrap; width: 200px;">
                 <button type="button" class="btn-action-preview" onclick='openDocumentPreview({
                   "id": "{{ item.id }}",
                   "company_name": "{{ item.company_name }}",
@@ -305,9 +305,6 @@
                 </button>
                 <button type="button" class="btn-action-edit" onclick="openModal('editQualificationModal-{{ item.id }}')">
                   {{ icon('edit') }} 修改
-                </button>
-                <button type="button" class="btn-action-delete" onclick="deleteQualification({{ item.id }}, '{{ item.name }}')" title="删除资质">
-                  {{ icon('delete') }} 删除
                 </button>
               </td>
             </tr>
@@ -419,9 +416,6 @@
           </button>
           <button type="button" class="btn btn-primary card-btn qualification-edit-btn" style="background-color: var(--accent); border-color: var(--accent);" onclick="openModal('editQualificationModal-{{ item.id }}')">
             {{ icon('edit') }} 修改
-          </button>
-          <button type="button" class="btn btn-danger qualification-delete-btn" onclick="deleteQualification({{ item.id }}, '{{ item.name }}')" title="删除资质" aria-label="删除资质">
-            {{ icon('delete') }}
           </button>
         </div>
       </div>
