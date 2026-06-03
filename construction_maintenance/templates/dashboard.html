@@ -176,7 +176,8 @@ document.addEventListener("DOMContentLoaded", function() {
       backgroundColor: categoryColorMap["{{ ds.category }}"] || fallbackColors[colorIdx++ % fallbackColors.length],
       borderRadius: 4,
       borderWidth: 0,
-      barPercentage: 0.6
+      barPercentage: 0.6,
+      maxBarThickness: 60
     },
     {% endfor %}
   ];
