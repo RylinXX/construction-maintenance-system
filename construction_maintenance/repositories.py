@@ -247,8 +247,9 @@ def create_person(data: dict[str, Any]) -> int:
         """
         insert into people
           (name, id_number, id_card_path, gender, birth_date, age, phone, address, job_type,
-           bank_card, bank_name, entry_date, notes, review_status, is_attendance)
-        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           bank_card, bank_name, entry_date, notes, review_status, is_attendance,
+           salary_type, salary_rate)
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             data["name"],
@@ -266,6 +267,8 @@ def create_person(data: dict[str, Any]) -> int:
             data.get("notes", ""),
             data.get("review_status", "已确认"),
             is_att,
+            data.get("salary_type", "日薪"),
+            float(data.get("salary_rate", 0.0)),
         ),
     )
     get_db().commit()
@@ -417,7 +420,7 @@ def update_person(person_id: int, data: dict[str, Any]) -> None:
     set_clause = """
         name = ?, id_number = ?, gender = ?, birth_date = ?, age = ?, phone = ?,
         address = ?, job_type = ?, bank_card = ?, bank_name = ?, entry_date = ?, notes = ?,
-        is_attendance = ?
+        is_attendance = ?, salary_type = ?, salary_rate = ?
     """
     params: list[Any] = [
         data["name"],
@@ -433,6 +436,8 @@ def update_person(person_id: int, data: dict[str, Any]) -> None:
         data.get("entry_date", ""),
         data.get("notes", ""),
         int(data.get("is_attendance", 1)),
+        data.get("salary_type", "日薪"),
+        float(data.get("salary_rate", 0.0)),
     ]
 
     if data.get("id_card_path"):
@@ -621,5 +626,151 @@ def update_contract(contract_id: int, data: dict[str, Any]) -> None:
 def delete_contract(contract_id: int) -> None:
     get_db().execute("delete from contracts where id = ?", (contract_id,))
     get_db().commit()
+
+
+def list_salary_payments(person_id: int | None = None, month: str | None = None) -> list[dict[str, Any]]:
+    db = get_db()
+    query = """
+        select salary_payments.*, people.name as person_name, people.job_type
+        from salary_payments
+        join people on people.id = salary_payments.person_id
+    """
+    where_clauses = []
+    params = []
+    
+    if person_id is not None:
+        where_clauses.append("salary_payments.person_id = ?")
+        params.append(person_id)
+        
+    if month is not None:
+        where_clauses.append("salary_payments.payment_date like ?")
+        params.append(f"{month}-%")
+        
+    if where_clauses:
+        query += " where " + " and ".join(where_clauses)
+        
+    query += " order by salary_payments.payment_date desc, salary_payments.created_at desc"
+    return db.execute(query, tuple(params)).fetchall()
+
+
+def create_salary_payment(data: dict[str, Any]) -> int:
+    db = get_db()
+    cursor = db.execute(
+        """
+        insert into salary_payments (person_id, payment_date, payment_type, amount, notes)
+        values (?, ?, ?, ?, ?)
+        """,
+        (
+            data["person_id"],
+            data["payment_date"],
+            data["payment_type"],
+            float(data["amount"]),
+            data.get("notes", ""),
+        ),
+    )
+    db.commit()
+    return int(cursor.lastrowid)
+
+
+def delete_salary_payment(payment_id: int) -> None:
+    db = get_db()
+    db.execute("delete from salary_payments where id = ?", (payment_id,))
+    db.commit()
+
+
+def get_salary_summary_by_month(month: str) -> list[dict[str, Any]]:
+    import calendar
+    
+    try:
+        year, month_num = map(int, month.split("-"))
+        _, days_in_month = calendar.monthrange(year, month_num)
+    except Exception:
+        days_in_month = 30
+        
+    db = get_db()
+    people = db.execute(
+        "select id, name, job_type, salary_type, salary_rate from people where is_attendance = 1 order by created_at desc"
+    ).fetchall()
+    
+    attendance_records = db.execute(
+        "select person_id, shift_type from attendance where work_date like ?",
+        (f"{month}-%",)
+    ).fetchall()
+    
+    att_map = {}
+    for r in attendance_records:
+        pid = r["person_id"]
+        shift = r["shift_type"]
+        if pid not in att_map:
+            att_map[pid] = {"day": 0, "night": 0, "leave": 0}
+        if shift == "白班":
+            att_map[pid]["day"] += 1
+        elif shift == "夜班":
+            att_map[pid]["night"] += 1
+        elif shift == "请假":
+            att_map[pid]["leave"] += 1
+            
+    payments = db.execute(
+        "select person_id, payment_type, amount from salary_payments where payment_date like ?",
+        (f"{month}-%",)
+    ).fetchall()
+    
+    pay_map = {}
+    for p in payments:
+        pid = p["person_id"]
+        ptype = p["payment_type"]
+        amt = p["amount"]
+        if pid not in pay_map:
+            pay_map[pid] = {"advance": 0.0, "payout": 0.0}
+        if ptype == "预支工资":
+            pay_map[pid]["advance"] += amt
+        elif ptype == "工资发放":
+            pay_map[pid]["payout"] += amt
+            
+    summary_list = []
+    for p in people:
+        pid = p["id"]
+        att = att_map.get(pid, {"day": 0, "night": 0, "leave": 0})
+        pay = pay_map.get(pid, {"advance": 0.0, "payout": 0.0})
+        
+        sal_type = p["salary_type"]
+        sal_rate = p["salary_rate"]
+        
+        work_days = att["day"] + att["night"]
+        leave_days = att["leave"]
+        
+        earnings = 0.0
+        if sal_type == "日薪":
+            earnings = work_days * sal_rate
+        elif sal_type == "月薪":
+            if days_in_month > 0:
+                deduction = leave_days * (sal_rate / days_in_month)
+                earnings = max(0.0, sal_rate - deduction)
+            else:
+                earnings = sal_rate
+        elif sal_type == "年薪":
+            earnings = sal_rate / 12.0
+        else:
+            earnings = 0.0
+            
+        balance = earnings - pay["advance"] - pay["payout"]
+        
+        summary_list.append({
+            "person_id": pid,
+            "name": p["name"],
+            "job_type": p["job_type"],
+            "salary_type": sal_type,
+            "salary_rate": sal_rate,
+            "day": att["day"],
+            "night": att["night"],
+            "leave": leave_days,
+            "work_days": work_days,
+            "earnings": round(earnings, 2),
+            "advance": round(pay["advance"], 2),
+            "payout": round(pay["payout"], 2),
+            "balance": round(balance, 2)
+        })
+        
+    return summary_list
 
 

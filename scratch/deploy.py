@@ -4,7 +4,7 @@ import paramiko
 from pathlib import Path
 
 # Config
-PROJECT_ROOT = Path(r"c:\Users\RM\Desktop\construction-maintenance-system-master")
+PROJECT_ROOT = Path(r"c:\Users\scodi.KYLINX\Desktop\construction-maintenance-system")
 TAR_PATH = PROJECT_ROOT / "cam.tar.gz"
 ZIP_CERT_PATH = Path(r"C:\Users\RM\Downloads\pam.rlxtc.com_nginx.zip")
 
@@ -63,8 +63,11 @@ def deploy():
     print(f"Uploading deployment archive to /root/cam.tar.gz...")
     sftp.put(str(TAR_PATH), "/root/cam.tar.gz")
     
-    print(f"Uploading Nginx certificates to /root/pam.rlxtc.com_nginx.zip...")
-    sftp.put(str(ZIP_CERT_PATH), "/root/pam.rlxtc.com_nginx.zip")
+    if ZIP_CERT_PATH.exists():
+        print(f"Uploading Nginx certificates to /root/pam.rlxtc.com_nginx.zip...")
+        sftp.put(str(ZIP_CERT_PATH), "/root/pam.rlxtc.com_nginx.zip")
+    else:
+        print(f"Skipping Nginx certificate upload as certificate file does not exist: {ZIP_CERT_PATH}")
     
     sftp.close()
     print("Files uploaded successfully via SFTP!")
@@ -81,15 +84,18 @@ def deploy():
     run_remote_command(ssh, "/root/cam/.venv/bin/pip install gunicorn -i https://pypi.tuna.tsinghua.edu.cn/simple")
     
     # Install unzip and deploy SSL
-    run_remote_command(ssh, "dnf install -y unzip || yum install -y unzip")
-    run_remote_command(ssh, "rm -rf /tmp/nginx_cert && mkdir -p /tmp/nginx_cert")
-    run_remote_command(ssh, "unzip -o /root/pam.rlxtc.com_nginx.zip -d /tmp/nginx_cert")
-    
-    run_remote_command(ssh, "mkdir -p /etc/nginx/ssl/pam.rlxtc.com")
-    run_remote_command(ssh, "find /tmp/nginx_cert -name '*.crt' -exec cp {} /etc/nginx/ssl/pam.rlxtc.com/ \;")
-    run_remote_command(ssh, "find /tmp/nginx_cert -name '*.pem' -exec cp {} /etc/nginx/ssl/pam.rlxtc.com/ \;")
-    run_remote_command(ssh, "find /tmp/nginx_cert -name '*.key' -exec cp {} /etc/nginx/ssl/pam.rlxtc.com/ \;")
-    run_remote_command(ssh, "ls -la /etc/nginx/ssl/pam.rlxtc.com")
+    if ZIP_CERT_PATH.exists():
+        run_remote_command(ssh, "dnf install -y unzip || yum install -y unzip")
+        run_remote_command(ssh, "rm -rf /tmp/nginx_cert && mkdir -p /tmp/nginx_cert")
+        run_remote_command(ssh, "unzip -o /root/pam.rlxtc.com_nginx.zip -d /tmp/nginx_cert")
+        
+        run_remote_command(ssh, "mkdir -p /etc/nginx/ssl/pam.rlxtc.com")
+        run_remote_command(ssh, "find /tmp/nginx_cert -name '*.crt' -exec cp {} /etc/nginx/ssl/pam.rlxtc.com/ \;")
+        run_remote_command(ssh, "find /tmp/nginx_cert -name '*.pem' -exec cp {} /etc/nginx/ssl/pam.rlxtc.com/ \;")
+        run_remote_command(ssh, "find /tmp/nginx_cert -name '*.key' -exec cp {} /etc/nginx/ssl/pam.rlxtc.com/ \;")
+        run_remote_command(ssh, "ls -la /etc/nginx/ssl/pam.rlxtc.com")
+    else:
+        print("Skipping Nginx certificate deployment as ZIP_CERT_PATH does not exist.")
     
     # 4. Configure Nginx
     nginx_conf = """server {

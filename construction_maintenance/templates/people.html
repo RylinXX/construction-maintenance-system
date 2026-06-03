@@ -356,6 +356,19 @@
             <label class="form-label" for="bank_name">开户行名称</label>
             <input class="form-input" id="bank_name" name="bank_name" type="text" placeholder="如：中国建设银行郑州支行">
           </div>
+          <div class="form-group">
+            <label class="form-label" for="salary_type">计薪方式</label>
+            <select class="form-select" id="salary_type" name="salary_type">
+              <option value="日薪" selected>日薪 (按出勤天数)</option>
+              <option value="月薪">月薪 (月固定扣假)</option>
+              <option value="年薪">年薪 (年包干月均)</option>
+              <option value="无">无</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="salary_rate">薪资标准 (元)</label>
+            <input class="form-input" id="salary_rate" name="salary_rate" type="number" step="0.01" min="0" placeholder="如: 300或8000">
+          </div>
           <div class="form-group" style="display: flex; align-items: center; padding-top: 24px;">
             <label class="form-label" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin-bottom: 0;">
               <input type="checkbox" name="is_attendance" value="1" checked style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
@@ -578,6 +591,19 @@
           <div class="form-group">
             <label class="form-label" for="edit-bank_name-{{ person.id }}">开户行名称</label>
             <input class="form-input" id="edit-bank_name-{{ person.id }}" name="bank_name" type="text" value="{{ person.bank_name or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-salary_type-{{ person.id }}">计薪方式</label>
+            <select class="form-select" id="edit-salary_type-{{ person.id }}" name="salary_type">
+              <option value="日薪" {% if person.salary_type == '日薪' %}selected{% endif %}>日薪 (按出勤天数)</option>
+              <option value="月薪" {% if person.salary_type == '月薪' %}selected{% endif %}>月薪 (月固定扣假)</option>
+              <option value="年薪" {% if person.salary_type == '年薪' %}selected{% endif %}>年薪 (年包干月均)</option>
+              <option value="无" {% if person.salary_type == '无' %}selected{% endif %}>无</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-salary_rate-{{ person.id }}">薪资标准 (元)</label>
+            <input class="form-input" id="edit-salary_rate-{{ person.id }}" name="salary_rate" type="number" step="0.01" min="0" value="{{ person.salary_rate or 0.0 }}" placeholder="如: 300或8000">
           </div>
           <div class="form-group" style="display: flex; align-items: center; padding-top: 24px;">
             <label class="form-label" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin-bottom: 0;">

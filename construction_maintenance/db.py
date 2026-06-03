@@ -104,6 +104,8 @@ def init_db() -> None:
             notes text not null default '',
             review_status text not null default '已确认',
             is_attendance integer not null default 1,
+            salary_type text not null default '日薪',
+            salary_rate real not null default 0.0,
             created_at text not null default current_timestamp
         );
 
@@ -150,6 +152,16 @@ def init_db() -> None:
             notes text not null default '',
             created_at text not null default current_timestamp
         );
+
+        create table if not exists salary_payments (
+            id integer primary key autoincrement,
+            person_id integer not null references people(id) on delete cascade,
+            payment_date text not null,
+            payment_type text not null,
+            amount real not null check(amount >= 0),
+            notes text not null default '',
+            created_at text not null default current_timestamp
+        );
         """
     )
     people_columns = {
@@ -159,6 +171,10 @@ def init_db() -> None:
         db.execute("alter table people add column id_card_path text not null default ''")
     if "is_attendance" not in people_columns:
         db.execute("alter table people add column is_attendance integer not null default 1")
+    if "salary_type" not in people_columns:
+        db.execute("alter table people add column salary_type text not null default '日薪'")
+    if "salary_rate" not in people_columns:
+        db.execute("alter table people add column salary_rate real not null default 0.0")
 
     db.execute(
         """
@@ -356,5 +372,27 @@ def init_db() -> None:
                     """,
                     (project_2[0],)
                 )
+
+        # 6. 为部分演示人员设置薪水计薪方式及标准，并插入发放流水
+        db.execute("update people set salary_type = '日薪', salary_rate = 300.00 where name = '刘思伟'")
+        db.execute("update people set salary_type = '月薪', salary_rate = 7500.00 where name = '李刘成'")
+        db.execute("update people set salary_type = '月薪', salary_rate = 8500.00 where name = '王成'")
+        db.execute("update people set salary_type = '年薪', salary_rate = 120000.00 where name = '雷威'")
+        
+        payments_count = db.execute("select count(*) from salary_payments").fetchone()[0]
+        if payments_count == 0:
+            p_liu = db.execute("select id from people where name = '刘思伟'").fetchone()
+            p_li = db.execute("select id from people where name = '李刘成'").fetchone()
+            p_lei = db.execute("select id from people where name = '雷威'").fetchone()
+            
+            if p_liu:
+                db.execute("insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, '2026-05-20', '预支工资', 1000.00, '预支5月份生活费')", (p_liu[0],))
+                db.execute("insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, '2026-06-01', '预支工资', 1500.00, '预支6月份部分工资')", (p_liu[0],))
+            if p_li:
+                db.execute("insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, '2026-05-25', '预支工资', 2000.00, '预支5月生活费')", (p_li[0],))
+                db.execute("insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, '2026-06-02', '工资发放', 5500.00, '结清5月份剩余月薪工资')", (p_li[0],))
+            if p_lei:
+                db.execute("insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, '2026-05-15', '预支工资', 5000.00, '年中预支生活开销费用')", (p_lei[0],))
+
     db.commit()
 

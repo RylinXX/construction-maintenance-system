@@ -220,6 +220,125 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
     # 确保身份证号那列列宽较宽
     sheet.column_dimensions["B"].width = 22
 
+    if not is_template:
+        # 新增第二个 Sheet
+        sal_sheet = workbook.create_sheet(title="工资结算与流水")
+        sal_sheet.views.sheetView[0].showGridLines = True
+        
+        # 1. 写入工资结算表表头
+        sal_headers = ["姓名", "工种/岗位", "计薪方式", "薪资标准", "出勤/请假天数", "当月应发工资", "已预支金额", "已发放金额", "本月应补尾款"]
+        sal_sheet.append(["月度工资核算结算汇总表"])
+        sal_sheet.append([]) # 空行
+        sal_sheet.append(sal_headers)
+        
+        # 获取结算数据
+        summary_data = repo.get_salary_summary_by_month(month)
+        
+        # 2. 样式定义
+        title_font = Font(name="微软雅黑", size=14, bold=True, color="0f766e")
+        header_fill = PatternFill(start_color="ecfdf5", end_color="ecfdf5", fill_type="solid")
+        header_font = Font(name="微软雅黑", size=10, bold=True, color="0f172a")
+        
+        # 格式化大标题
+        sal_sheet.cell(row=1, column=1).font = title_font
+        
+        # 格式化工资表头
+        for col_idx in range(1, len(sal_headers) + 1):
+            cell = sal_sheet.cell(row=3, column=col_idx)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center_align
+            cell.border = thin_border
+            
+        # 3. 写入工资汇总数据
+        current_row = 4
+        for item in summary_data:
+            rate_str = f"¥{item['salary_rate']:.2f}/" + ("天" if item["salary_type"] == "日薪" else ("月" if item["salary_type"] == "月薪" else ("年" if item["salary_type"] == "年薪" else "--")))
+            att_str = f"{item['work_days']}天出勤 / {item['leave']}天请假"
+            
+            row_data = [
+                item["name"],
+                item["job_type"] or "普工",
+                item["salary_type"],
+                rate_str,
+                att_str,
+                item["earnings"],
+                item["advance"],
+                item["payout"],
+                item["balance"]
+            ]
+            sal_sheet.append(row_data)
+            
+            # 为该行设置样式
+            for col_idx in range(1, len(sal_headers) + 1):
+                cell = sal_sheet.cell(row=current_row, column=col_idx)
+                cell.font = Font(name="微软雅黑", size=10)
+                cell.border = thin_border
+                
+                if col_idx in [6, 7, 8, 9]:
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+                    cell.number_format = '"¥"#,##0.00'
+                    if col_idx == 9:
+                        if cell.value < 0:
+                            cell.font = Font(name="微软雅黑", size=10, bold=True, color="ef4444")
+                        elif cell.value > 0:
+                            cell.font = Font(name="微软雅黑", size=10, bold=True, color="0f766e")
+                else:
+                    cell.alignment = center_align
+                    
+            current_row += 1
+            
+        # 4. 在右侧展现“当月收支明细流水” (从第 L 列 (第12列) 开始)
+        payment_headers = ["流水工号", "员工姓名", "交易类别", "金额", "交易执行日期", "备注说明"]
+        sal_sheet.cell(row=1, column=12, value="月度工资预支与发放流水明细").font = title_font
+        
+        for col_idx, h in enumerate(payment_headers, start=12):
+            cell = sal_sheet.cell(row=3, column=col_idx, value=h)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center_align
+            cell.border = thin_border
+            
+        # 获取流水
+        payment_data = repo.list_salary_payments(month=month)
+        
+        pay_row = 4
+        for idx, pay in enumerate(payment_data, start=1):
+            sal_sheet.cell(row=pay_row, column=12, value=f"PAY-{pay['id']:05d}").alignment = center_align
+            sal_sheet.cell(row=pay_row, column=13, value=pay["person_name"]).alignment = center_align
+            sal_sheet.cell(row=pay_row, column=14, value=pay["payment_type"]).alignment = center_align
+            
+            amt_cell = sal_sheet.cell(row=pay_row, column=15, value=pay["amount"])
+            amt_cell.alignment = Alignment(horizontal="right", vertical="center")
+            amt_cell.number_format = '"¥"#,##0.00'
+            if pay["payment_type"] == "预支工资":
+                amt_cell.font = Font(name="微软雅黑", size=10, color="d97706")
+            else:
+                amt_cell.font = Font(name="微软雅黑", size=10, color="10b981")
+                
+            sal_sheet.cell(row=pay_row, column=16, value=pay["payment_date"]).alignment = center_align
+            sal_sheet.cell(row=pay_row, column=17, value=pay["notes"] or "--").alignment = Alignment(horizontal="left", vertical="center")
+            
+            for col_idx in range(12, 18):
+                c = sal_sheet.cell(row=pay_row, column=col_idx)
+                c.border = thin_border
+                if col_idx != 15:
+                    c.font = Font(name="微软雅黑", size=10)
+            pay_row += 1
+            
+        # 5. 自适应列宽
+        for col in sal_sheet.columns:
+            max_len = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                val_str = str(cell.value or "")
+                byte_len = len(val_str.encode("utf-8"))
+                char_len = len(val_str)
+                approx_len = char_len + (byte_len - char_len) // 2
+                if approx_len > max_len:
+                    max_len = approx_len
+            sal_sheet.column_dimensions[col_letter].width = max(max_len + 3, 10)
+
     return workbook
 
 

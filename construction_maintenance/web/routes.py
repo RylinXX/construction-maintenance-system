@@ -242,6 +242,8 @@ def people():
                 "notes": text_value(request.form, "notes"),
                 "id_card_path": _save_form_upload("id_card_attachment"),
                 "is_attendance": 1 if request.form.get("is_attendance") else 0,
+                "salary_type": text_value(request.form, "salary_type") or "日薪",
+                "salary_rate": float(text_value(request.form, "salary_rate") or 0.0),
             }
         )
         return redirect(url_for("web.people"))
@@ -315,6 +317,9 @@ def attendance():
     night_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "夜班")
     leave_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "请假")
 
+    salary_summary = repo.get_salary_summary_by_month(month)
+    salary_payments = repo.list_salary_payments(month=month)
+
     return render_template(
         "attendance.html",
         people=people,
@@ -323,6 +328,8 @@ def attendance():
         month=month,
         attendance_dict=attendance_dict,
         person_stats=person_stats,
+        salary_summary=salary_summary,
+        salary_payments=salary_payments,
         metrics={
             "total_people": len(people),
             "total_shifts": total_shifts,
@@ -331,6 +338,59 @@ def attendance():
             "leave_shifts": leave_shifts,
         },
     )
+
+
+@bp.route("/attendance/salary-payments/add", methods=["POST"])
+def add_salary_payment():
+    from construction_maintenance.web.routes import required_text, text_value
+    try:
+        if request.is_json:
+            data = request.get_json() or {}
+        else:
+            data = request.form.to_dict()
+            
+        if not data.get("person_id") or not data.get("payment_date") or not data.get("payment_type") or not data.get("amount"):
+            if request.is_json:
+                return {"status": "error", "message": "缺失必要参数"}, 400
+            flash("登记失败：缺失必要参数", "error")
+            return redirect(url_for("web.attendance"))
+            
+        repo.create_salary_payment(data)
+        
+        if request.is_json:
+            return {"status": "success"}
+        flash("预支/发薪流水登记成功！", "success")
+        return redirect(url_for("web.attendance", month=data.get("payment_date")[:7]))
+    except Exception as exc:
+        if request.is_json:
+            return {"status": "error", "message": str(exc)}, 500
+        flash(f"系统错误：{str(exc)}", "error")
+        return redirect(url_for("web.attendance"))
+
+
+@bp.route("/attendance/salary-payments/<int:payment_id>/delete", methods=["POST"])
+def delete_salary_payment(payment_id):
+    try:
+        payments = repo.list_salary_payments()
+        target_payment = next((p for p in payments if p["id"] == payment_id), None)
+        redirect_month = None
+        if target_payment:
+            redirect_month = target_payment["payment_date"][:7]
+            
+        repo.delete_salary_payment(payment_id)
+        
+        if request.is_json:
+            return {"status": "success"}
+        flash("流水删除成功！", "success")
+        
+        if redirect_month:
+            return redirect(url_for("web.attendance", month=redirect_month))
+        return redirect(url_for("web.attendance"))
+    except Exception as exc:
+        if request.is_json:
+            return {"status": "error", "message": str(exc)}, 500
+        flash(f"删除失败：{str(exc)}", "error")
+        return redirect(url_for("web.attendance"))
 
 
 
@@ -1040,6 +1100,8 @@ def edit_person(person_id: int):
             "notes": text_value(request.form, "notes"),
             "id_card_path": _save_form_upload("id_card_attachment"),
             "is_attendance": 1 if request.form.get("is_attendance") else 0,
+            "salary_type": text_value(request.form, "salary_type") or "日薪",
+            "salary_rate": float(text_value(request.form, "salary_rate") or 0.0),
         }
     )
     return redirect(url_for("web.people"))
