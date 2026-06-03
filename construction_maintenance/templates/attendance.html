@@ -125,92 +125,166 @@
 
 <!-- 2. 工资结算与台账选项卡 -->
 <div id="salaryTabContent" style="display: none; gap: 20px; flex-wrap: wrap; align-items: flex-start; width: 100%; margin-top: 16px;">
-  <!-- 左栏：月度工资核算结算大表 -->
-  <div class="panel-card" style="flex: 1.5; min-width: 600px; padding: 28px 30px !important; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--surface-color); box-shadow: var(--shadow-sm);">
-    <div class="panel-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-      <div>
-        <h3 class="panel-title">{{ icon('money') }} 人员工资核算账单</h3>
-        <p class="panel-subtitle">根据人员计薪类型及当月考勤（请假天数自动扣减）计算应发、预支及应补尾款金额。</p>
+  <!-- 左栏：月度工资核算（分为长期和日结两个账单） -->
+  <div style="flex: 1.5; min-width: 600px; display: flex; flex-direction: column; gap: 20px;">
+    
+    <!-- 长期员工工资核算账单 -->
+    <div class="panel-card" style="padding: 28px 30px !important; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--surface-color); box-shadow: var(--shadow-sm);">
+      <div class="panel-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h3 class="panel-title" style="font-size: 16px;">{{ icon('money') }} 长期员工工资结算表</h3>
+          <p class="panel-subtitle">针对月薪及年薪制人员，按当月考勤请假天数自动扣减计算。</p>
+        </div>
+        <div>
+          <button type="button" class="btn btn-primary" onclick="openModal('addSalaryPaymentModal')" style="font-weight: 700; gap: 6px; min-height: 38px; box-shadow: var(--shadow-sm);">
+            {{ icon('add') }} 登记工资预支与发放
+          </button>
+        </div>
       </div>
-      <div>
-        <button type="button" class="btn btn-primary" onclick="openModal('addSalaryPaymentModal')" style="font-weight: 700; gap: 6px; min-height: 38px; box-shadow: var(--shadow-sm);">
-          {{ icon('add') }} 登记工资预支与发放
-        </button>
+      
+      <div class="table-container">
+        <table class="premium-table">
+          <thead>
+            <tr>
+              <th style="min-width: 100px; white-space: nowrap;">姓名/岗位</th>
+              <th style="min-width: 80px; white-space: nowrap;">计薪模式</th>
+              <th style="min-width: 110px; white-space: nowrap;">薪资标准</th>
+              <th style="min-width: 80px; text-align: center; white-space: nowrap;">请假天数</th>
+              <th style="min-width: 90px; text-align: right; white-space: nowrap;">应发工资</th>
+              <th style="min-width: 85px; text-align: right; white-space: nowrap;">已预支</th>
+              <th style="min-width: 85px; text-align: right; white-space: nowrap;">已发放</th>
+              <th style="min-width: 90px; text-align: right; white-space: nowrap;">应补尾款</th>
+              <th style="min-width: 70px; text-align: center; white-space: nowrap;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set has_long_term = namespace(found=false) %}
+            {% for item in salary_summary %}
+              {% if item.salary_type in ['月薪', '年薪'] %}
+                {% set has_long_term.found = true %}
+                <tr>
+                  <td class="font-semibold text-dark" style="vertical-align: middle;">
+                    <span style="font-weight: 700;">{{ item.name }}</span>
+                    <span class="text-muted" style="display: block; font-size: 11px; margin-top: 2px;">{{ item.job_type or '技术/管理' }}</span>
+                  </td>
+                  <td style="vertical-align: middle;">
+                    {% if item.salary_type == '月薪' %}
+                    <span class="badge" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">月薪制</span>
+                    {% else %}
+                    <span class="badge" style="background: rgba(217, 119, 6, 0.1); color: #d97706;">年薪制</span>
+                    {% endif %}
+                  </td>
+                  <td class="font-mono text-muted" style="vertical-align: middle; font-size: 12.5px;">
+                    {% if item.salary_type == '月薪' %}
+                    ¥{{ "%.2f" | format(item.salary_rate) }}/月
+                    {% else %}
+                    ¥{{ "%.2f" | format(item.salary_rate) }}/年
+                    {% endif %}
+                  </td>
+                  <td style="text-align: center; vertical-align: middle; font-size: 13px;">
+                    {% if item.leave > 0 %}
+                    <span class="text-dark" style="font-weight: 700; color: #ef4444;">{{ item.leave }}天</span>
+                    {% else %}
+                    <span class="text-muted">0天</span>
+                    {% endif %}
+                  </td>
+                  <td class="font-mono text-right" style="vertical-align: middle; font-weight: 700; font-size: 13px;">¥{{ "%.2f" | format(item.earnings) }}</td>
+                  <td class="font-mono text-right" style="vertical-align: middle; color: #d97706; font-size: 13px;">¥{{ "%.2f" | format(item.advance) }}</td>
+                  <td class="font-mono text-right" style="vertical-align: middle; color: #10b981; font-size: 13px;">¥{{ "%.2f" | format(item.payout) }}</td>
+                  <td class="font-mono text-right" style="vertical-align: middle; font-weight: 800; font-size: 13px; {% if item.balance < 0 %}color: #ef4444;{% elif item.balance > 0 %}color: var(--primary-color);{% else %}color: var(--text-secondary);{% endif %}">
+                    ¥{{ "%.2f" | format(item.balance) }}
+                  </td>
+                  <td style="text-align: center; vertical-align: middle; white-space: nowrap;">
+                    <button type="button" class="btn-link-action preview" onclick="quickRegisterPayment({{ item.person_id }}, '{{ item.name }}')" style="font-size: 12px; padding: 2px 6px;" title="为此人记一笔收支">
+                      {{ icon('edit') }} 记一笔
+                    </button>
+                  </td>
+                </tr>
+              {% endif %}
+            {% endfor %}
+            {% if not has_long_term.found %}
+            <tr class="empty-row">
+              <td colspan="9" style="text-align: center; padding: 36px;">
+                <div class="empty-state">
+                  <span class="empty-icon" style="font-size: 24px;">{{ icon('money') }}</span>
+                  <span class="empty-text" style="font-size: 13px; color: var(--text-secondary);">当月无长期人员（月薪/年薪）结算数据</span>
+                </div>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
       </div>
     </div>
-    
-    <div class="table-container">
-      <table class="premium-table">
-        <thead>
-          <tr>
-            <th style="min-width: 100px; white-space: nowrap;">姓名/岗位</th>
-            <th style="min-width: 90px; white-space: nowrap;">计薪模式</th>
-            <th style="min-width: 120px; white-space: nowrap;">薪资标准</th>
-            <th style="min-width: 90px; text-align: center; white-space: nowrap;">出勤/请假</th>
-            <th style="min-width: 100px; text-align: right; white-space: nowrap;">应发工资</th>
-            <th style="min-width: 90px; text-align: right; white-space: nowrap;">已预支</th>
-            <th style="min-width: 90px; text-align: right; white-space: nowrap;">已发放</th>
-            <th style="min-width: 100px; text-align: right; white-space: nowrap;">应补尾款</th>
-            <th style="min-width: 80px; text-align: center; white-space: nowrap;">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in salary_summary %}
-          <tr>
-            <td class="font-semibold text-dark" style="vertical-align: middle;">
-              <span style="font-weight: 700;">{{ item.name }}</span>
-              <span class="text-muted" style="display: block; font-size: 11px; margin-top: 2px;">{{ item.job_type or '普工' }}</span>
-            </td>
-            <td style="vertical-align: middle;">
+
+    <!-- 日结工人工资核算账单 -->
+    <div class="panel-card" style="padding: 28px 30px !important; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--surface-color); box-shadow: var(--shadow-sm);">
+      <div class="panel-header" style="margin-bottom: 24px;">
+        <h3 class="panel-title" style="font-size: 16px;">{{ icon('money') }} 日结工人工资结算表</h3>
+        <p class="panel-subtitle">针对日薪制临时工，根据当月实际考勤出勤天数计算应发金额。</p>
+      </div>
+      
+      <div class="table-container">
+        <table class="premium-table">
+          <thead>
+            <tr>
+              <th style="min-width: 100px; white-space: nowrap;">姓名/岗位</th>
+              <th style="min-width: 80px; white-space: nowrap;">计薪模式</th>
+              <th style="min-width: 110px; white-space: nowrap;">薪资标准</th>
+              <th style="min-width: 80px; text-align: center; white-space: nowrap;">实际出勤</th>
+              <th style="min-width: 90px; text-align: right; white-space: nowrap;">应发工资</th>
+              <th style="min-width: 85px; text-align: right; white-space: nowrap;">已预支</th>
+              <th style="min-width: 85px; text-align: right; white-space: nowrap;">已发放</th>
+              <th style="min-width: 90px; text-align: right; white-space: nowrap;">应补尾款</th>
+              <th style="min-width: 70px; text-align: center; white-space: nowrap;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set has_daily = namespace(found=false) %}
+            {% for item in salary_summary %}
               {% if item.salary_type == '日薪' %}
-              <span class="badge" style="background: rgba(15, 118, 110, 0.1); color: var(--primary-color);">日薪制</span>
-              {% elif item.salary_type == '月薪' %}
-              <span class="badge" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">月薪制</span>
-              {% elif item.salary_type == '年薪' %}
-              <span class="badge" style="background: rgba(217, 119, 6, 0.1); color: #d97706;">年薪制</span>
-              {% else %}
-              <span class="badge badge-secondary">无</span>
+                {% set has_daily.found = true %}
+                <tr>
+                  <td class="font-semibold text-dark" style="vertical-align: middle;">
+                    <span style="font-weight: 700;">{{ item.name }}</span>
+                    <span class="text-muted" style="display: block; font-size: 11px; margin-top: 2px;">{{ item.job_type or '普工' }}</span>
+                  </td>
+                  <td style="vertical-align: middle;">
+                    <span class="badge" style="background: rgba(15, 118, 110, 0.1); color: var(--primary-color);">日薪制</span>
+                  </td>
+                  <td class="font-mono text-muted" style="vertical-align: middle; font-size: 12.5px;">
+                    ¥{{ "%.2f" | format(item.salary_rate) }}/天
+                  </td>
+                  <td style="text-align: center; vertical-align: middle; font-size: 13px;">
+                    <span class="text-dark" style="font-weight: 600;">{{ item.work_days }}天</span>
+                  </td>
+                  <td class="font-mono text-right" style="vertical-align: middle; font-weight: 700; font-size: 13px;">¥{{ "%.2f" | format(item.earnings) }}</td>
+                  <td class="font-mono text-right" style="vertical-align: middle; color: #d97706; font-size: 13px;">¥{{ "%.2f" | format(item.advance) }}</td>
+                  <td class="font-mono text-right" style="vertical-align: middle; color: #10b981; font-size: 13px;">¥{{ "%.2f" | format(item.payout) }}</td>
+                  <td class="font-mono text-right" style="vertical-align: middle; font-weight: 800; font-size: 13px; {% if item.balance < 0 %}color: #ef4444;{% elif item.balance > 0 %}color: var(--primary-color);{% else %}color: var(--text-secondary);{% endif %}">
+                    ¥{{ "%.2f" | format(item.balance) }}
+                  </td>
+                  <td style="text-align: center; vertical-align: middle; white-space: nowrap;">
+                    <button type="button" class="btn-link-action preview" onclick="quickRegisterPayment({{ item.person_id }}, '{{ item.name }}')" style="font-size: 12px; padding: 2px 6px;" title="为此人记一笔收支">
+                      {{ icon('edit') }} 记一笔
+                    </button>
+                  </td>
+                </tr>
               {% endif %}
-            </td>
-            <td class="font-mono text-muted" style="vertical-align: middle; font-size: 12.5px;">
-              {% if item.salary_type == '日薪' %}
-              ¥{{ "%.2f" | format(item.salary_rate) }}/天
-              {% elif item.salary_type == '月薪' %}
-              ¥{{ "%.2f" | format(item.salary_rate) }}/月
-              {% elif item.salary_type == '年薪' %}
-              ¥{{ "%.2f" | format(item.salary_rate) }}/年
-              {% else %}
-              --
-              {% endif %}
-            </td>
-            <td style="text-align: center; vertical-align: middle; font-size: 13px;">
-              <span class="text-dark" style="font-weight: 600;">{{ item.work_days }}天白/夜</span>
-              <span class="text-muted" style="display: block; font-size: 11px; margin-top: 2px;">{{ item.leave }}天请假</span>
-            </td>
-            <td class="font-mono text-right" style="vertical-align: middle; font-weight: 700; font-size: 13.5px;">¥{{ "%.2f" | format(item.earnings) }}</td>
-            <td class="font-mono text-right" style="vertical-align: middle; color: #d97706; font-size: 13.5px;">¥{{ "%.2f" | format(item.advance) }}</td>
-            <td class="font-mono text-right" style="vertical-align: middle; color: #10b981; font-size: 13.5px;">¥{{ "%.2f" | format(item.payout) }}</td>
-            <td class="font-mono text-right" style="vertical-align: middle; font-weight: 800; font-size: 13.5px; {% if item.balance < 0 %}color: #ef4444;{% elif item.balance > 0 %}color: var(--primary-color);{% else %}color: var(--text-secondary);{% endif %}">
-              ¥{{ "%.2f" | format(item.balance) }}
-            </td>
-            <td style="text-align: center; vertical-align: middle; white-space: nowrap;">
-              <button type="button" class="btn-link-action preview" onclick="quickRegisterPayment({{ item.person_id }}, '{{ item.name }}')" style="font-size: 12.5px;" title="为此人记一笔收支">
-                {{ icon('edit') }} 记一笔
-              </button>
-            </td>
-          </tr>
-          {% else %}
-          <tr class="empty-row">
-            <td colspan="9" style="text-align: center; padding: 48px;">
-              <div class="empty-state">
-                <span class="empty-icon" style="font-size: 32px;">{{ icon('money') }}</span>
-                <span class="empty-text">当前月份暂无参与考勤的薪资人员结算数据</span>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+            {% endfor %}
+            {% if not has_daily.found %}
+            <tr class="empty-row">
+              <td colspan="9" style="text-align: center; padding: 36px;">
+                <div class="empty-state">
+                  <span class="empty-icon" style="font-size: 24px;">{{ icon('money') }}</span>
+                  <span class="empty-text" style="font-size: 13px; color: var(--text-secondary);">当月无日结人员（日薪）结算数据</span>
+                </div>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
   
