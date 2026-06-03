@@ -205,60 +205,58 @@ def init_db() -> None:
         people_count = db.execute("select count(*) from people").fetchone()[0]
         if people_count == 0:
             test_people = [
-                ("刘思伟", "410101199001010001", "男", 36, "13800138001", "普工", "6222021702019988771", "中国工商银行", "2026-05-10"),
-                ("李刘成", "410101199001010002", "男", 34, "13900139002", "普工", "6228481234567890123", "中国农业银行", "2026-05-12"),
-                ("王成", "410101199001010003", "男", 31, "13600136004", "水泥工", "6217001234567890456", "中国建设银行", "2026-05-15"),
-                ("雷威", "410101199001010004", "男", 41, "13500135005", "架子工", "6222601234567890789", "交通银行", "2026-05-18"),
-                ("李军", "410101199001010005", "男", 38, "13700137003", "水泥工", "6230521234567890987", "中国邮政储蓄银行", "2026-05-20"),
-                ("刘新田", "410101199001010006", "男", 29, "13800138002", "普工", "6222021702019988772", "中国工商银行", "2026-05-22"),
-                ("李和羊", "410101199001010007", "男", 33, "13900139003", "普工", "6228481234567890124", "中国农业银行", "2026-05-23"),
-                ("李金洲", "410101199001010008", "男", 35, "13600136005", "架子工", "6217001234567890457", "中国建设银行", "2026-05-24"),
-                ("王建民", "410101199001010009", "男", 40, "13500135006", "安全员", "6222601234567890790", "交通银行", "2026-05-25"),
-                ("黄林刚", "410101199001010010", "男", 37, "13700137004", "普工", "6230521234567890988", "中国邮政储蓄银行", "2026-05-26"),
-                ("方强", "410101199001010011", "男", 30, "13800138003", "水泥工", "6222021702019988773", "中国工商银行", "2026-05-27"),
-                ("宁守付", "410101199001010012", "男", 42, "13900139004", "架子工", "6228481234567890125", "中国农业银行", "2026-05-28"),
-                ("赵全", "410101199001010013", "男", 28, "13600136006", "资料员", "6217001234567890458", "中国建设银行", "2026-05-29"),
-                ("王军喜", "410101199001010014", "男", 45, "13500135007", "普工", "6222601234567890791", "交通银行", "2026-05-30"),
-                ("李勇", "410101199001010015", "男", 32, "13700137005", "安全员", "6230521234567890989", "中国邮政储蓄银行", "2026-06-01"),
-                ("袁爱贵", "410101199001010016", "男", 39, "13800138004", "普工", "6222021702019988774", "中国工商银行", "2026-06-01"),
-                ("李光", "410101199001010017", "男", 34, "13900139005", "普工", "6228481234567890126", "中国农业银行", "2026-06-01"),
+                ("谢瑞鸣", "411503200102019635", "男", "2001-02-01", 25, "17710665069", "河南省信阳市平桥区", "日薪", 310.00),
+                ("谢伟", "413001198310156513", "男", "1983-10-15", 43, "17739720017", "河南省信阳市", "月薪", 7800.00),
+                ("王维秋", "372926198705073977", "男", "1987-05-07", 39, "18678587973", "山东省菏泽市巨野县", "日薪", 330.00),
+                ("张坤", "341281198602166097", "男", "1986-02-16", 40, "13683356253", "安徽省亳州市", "日薪", 350.00),
+                ("黄保清", "413023197210084210", "男", "1972-10-08", 54, "15552041689", "河南省信阳市平桥区", "日薪", 280.00),
+                ("黄保林", "413023198101244232", "男", "1981-01-24", 45, "13671159122", "河南省信阳市平桥区", "日薪", 290.00),
+                ("黄玉东", "411503200412026750", "男", "2004-12-02", 22, "15188559208", "河南省信阳市平桥区", "日薪", 260.00),
+                ("张文刚", "232303198611153839", "男", "1986-11-15", 40, "13403769906", "黑龙江省绥化市肇东市", "月薪", 8000.00),
+                ("马士银", "411503198205210619", "男", "1982-05-21", 44, "15937658121", "河南省信阳市平桥区", "日薪", 300.00),
+                ("谢抒洋", "411503200306110633", "男", "2003-06-11", 23, "15937658121", "河南省信阳市平桥区", "日薪", 290.00),
+                ("谢俊", "411503200502284235", "男", "2005-02-28", 21, "17610677658", "河南省信阳市平桥区", "日薪", 270.00),
+                ("谢金斌", "511623199102033313", "男", "1991-02-03", 35, "18161151333", "四川省广安市邻水县", "日薪", 320.00),
+                ("李效良", "372926198712023935", "男", "1987-12-02", 39, "15552041689", "山东省菏泽市巨野县", "日薪", 310.00),
+                ("方强", "411503199811114218", "男", "1998-11-11", 28, "18337986537", "河南省信阳市平桥区邢集镇周楼村陈庄村民组49号", "日薪", 340.00),
+                ("黄林刚", "411503199105034210", "男", "1991-05-03", 35, "15738696655", "河南省信阳市平桥区邢集镇高庙村大黄庄组32号", "日薪", 300.00),
+                ("汪保伦", "411503199504104239", "男", "1995-04-10", 31, "13673600372", "河南省信阳市平桥区邢集镇康庄村汪庄村民组8号", "月薪", 7500.00),
             ]
-            for p in test_people:
+            for name, id_num, gen, birth, age, ph, addr, sal_t, sal_r in test_people:
                 cursor = db.execute(
                     """
-                    insert into people (name, id_number, gender, age, phone, job_type, bank_card, bank_name, entry_date, review_status)
-                    values (?, ?, ?, ?, ?, ?, ?, ?, ?, '已确认')
+                    insert into people (name, id_number, gender, birth_date, age, phone, address, job_type, entry_date, review_status, salary_type, salary_rate)
+                    values (?, ?, ?, ?, ?, ?, ?, '普工', '2026-05-24', '已确认', ?, ?)
                     """,
-                    p,
+                    (name, id_num, gen, birth, age, ph, addr, sal_t, sal_r)
                 )
                 person_id = cursor.lastrowid
                 
                 attendance_dates = []
-                if p[0] == "李光":
-                    # 李光在 2026-05 的 27, 28, 29, 31 号请假
-                    attendance_dates.append(("2026-05-27", "请假"))
-                    attendance_dates.append(("2026-05-28", "请假"))
-                    attendance_dates.append(("2026-05-29", "请假"))
-                    attendance_dates.append(("2026-05-31", "请假"))
-                else:
-                    name_hash = sum(ord(c) for c in p[0])
-                    if name_hash % 3 == 0:
-                        for d in range(1, 15):
-                            if d % 5 == 0:
-                                attendance_dates.append((f"2026-06-{d:02d}", "请假"))
-                            elif d % 2 == 0:
-                                attendance_dates.append((f"2026-06-{d:02d}", "白班"))
-                            else:
-                                attendance_dates.append((f"2026-06-{d:02d}", "夜班"))
-                    elif name_hash % 3 == 1:
-                        for d in range(1, 10):
-                            attendance_dates.append((f"2026-06-{d:02d}", "白班"))
-                        for d in range(15, 20):
-                            attendance_dates.append((f"2026-06-{d:02d}", "请假"))
-                    else:
-                        for d in range(5, 15):
-                            attendance_dates.append((f"2026-06-{d:02d}", "夜班"))
+                name_hash = sum(ord(c) for c in name)
                 
+                # 5月考勤 (24号~31号)
+                for d in range(24, 32):
+                    date_str = f"2026-05-{d}"
+                    if name_hash % 7 == 0 and d in (26, 30):
+                        attendance_dates.append((date_str, "请假"))
+                    elif name_hash % 5 == 0 and d == 28:
+                        attendance_dates.append((date_str, "请假"))
+                    elif (name_hash + d) % 2 == 0:
+                        attendance_dates.append((date_str, "白班"))
+                    else:
+                        attendance_dates.append((date_str, "夜班"))
+                
+                # 6月考勤 (1号~3号)
+                for d in range(1, 4):
+                    date_str = f"2026-06-0{d}"
+                    if (name_hash + d) % 3 == 0:
+                        attendance_dates.append((date_str, "白班"))
+                    elif (name_hash + d) % 3 == 1:
+                        attendance_dates.append((date_str, "夜班"))
+                    else:
+                        attendance_dates.append((date_str, "请假"))
+
                 db.executemany(
                     "insert into attendance (person_id, work_date, shift_type) values (?, ?, ?)",
                     [(person_id, date, shift) for date, shift in attendance_dates],
@@ -267,39 +265,58 @@ def init_db() -> None:
         # 扩充项目、资质、企业与费用凭证演示数据 (用于全系统演示)
         # 1. 升级公司名称及插入关联外包企业
         db.execute("update companies set name = '河南建工第八建设集团有限公司' where is_main = 1 and name = '主公司'")
-        company_exists = db.execute("select 1 from companies where name = '商丘市瑞隆土石方工程有限公司'").fetchone()
-        if not company_exists:
-            db.execute(
-                """
-                insert into companies (name, credit_code, legal_person, phone, notes, is_main)
-                values ('商丘市瑞隆土石方工程有限公司', '91411402MAD31X8L9Y', '瑞德隆', '15837012345', '土石方专业分包合作商', 0)
-                """
-            )
+        
+        # 插入截图中的新增公司
+        for comp_name in ["北京营力特建筑工程有限公司", "北京倍越兴建筑工程有限公司"]:
+            exists = db.execute("select 1 from companies where name = ?", (comp_name,)).fetchone()
+            if not exists:
+                db.execute(
+                    """
+                    insert into companies (name, credit_code, legal_person, phone, notes, is_main)
+                    values (?, '', '', '', '分包合作商', 0)
+                    """,
+                    (comp_name,)
+                )
 
-        # 2. 插入精美演示项目
+        # 2. 插入精美演示项目 (截图的 12 个项目)
         project_count = db.execute("select count(*) from projects").fetchone()[0]
         if project_count == 0:
+            ylt_row = db.execute("select id from companies where name = '北京营力特建筑工程有限公司'").fetchone()
+            byx_row = db.execute("select id from companies where name = '北京倍越兴建筑工程有限公司'").fetchone()
             main_company_id = db.execute("select id from companies where is_main = 1").fetchone()[0]
-            db.execute(
-                """
-                insert into projects (company_id, name, status, owner, start_date, end_date, notes)
-                values (?, '郑州地铁6号线二期机电维保工程', '进行中', '郑州地铁集团', '2026-01-01', '2026-12-31', '包含地铁站点区间内机电与管线常规维护')
-                """,
-                (main_company_id,)
-            )
-            db.execute(
-                """
-                insert into projects (company_id, name, status, owner, start_date, end_date, notes)
-                values (?, '郑州市中原路绿化提升改造项目', '进行中', '郑州市市政管理局', '2026-03-15', '2026-08-30', '中原路主干道绿化补植与灌溉系统升级')
-                """,
-                (main_company_id,)
-            )
+            
+            ylt_id = ylt_row[0] if ylt_row else main_company_id
+            byx_id = byx_row[0] if byx_row else main_company_id
+            
+            projects_data = [
+                (ylt_id, "中央电视总台项目", "进行中", "中央电视台", "2026-01-01", "2026-12-31", "包含中央电视总台项目资料"),
+                (ylt_id, "军庄项目", "进行中", "军庄建设方", "2026-02-01", "2026-12-31", "包含军庄资料"),
+                (byx_id, "衙门口项目", "进行中", "衙门口建设方", "2026-03-01", "2026-12-31", "包含衙门口资料"),
+                (byx_id, "老东山项目", "已完工", "老东山建设方", "2025-05-01", "2026-05-01", "老东山资料-完工"),
+                (ylt_id, "通州潞城项目", "进行中", "通州区潞城建设", "2026-04-01", "2026-12-31", "通州潞城项目资料"),
+                (byx_id, "内蒙二期项目", "已完工", "内蒙电力", "2025-06-01", "2026-05-01", "内蒙二期项目-完工"),
+                (ylt_id, "首师大八里庄项目", "进行中", "首师大", "2026-04-15", "2026-12-31", "首师大八里庄项目资料"),
+                (byx_id, "北理工项目", "已完工", "北京理工大学", "2025-07-01", "2026-05-01", "北理工项目-完工"),
+                (ylt_id, "顺义项目", "进行中", "顺义建设方", "2026-05-01", "2026-12-31", "顺义项目资料"),
+                (byx_id, "通州六合工地项目", "进行中", "通州区六合", "2026-03-10", "2026-12-31", "通州六合工地"),
+                (byx_id, "新兴项目", "进行中", "新兴建设方", "2026-02-15", "2026-12-31", "新兴资料"),
+                (ylt_id, "梧桐苑项目", "进行中", "梧桐苑房地产", "2026-01-10", "2026-12-31", "梧桐苑项目资料"),
+            ]
+            for comp_id, p_name, status, owner, start_d, end_d, notes in projects_data:
+                db.execute(
+                    """
+                    insert into projects (company_id, name, status, owner, start_date, end_date, notes)
+                    values (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (comp_id, p_name, status, owner, start_d, end_d, notes)
+                )
 
         # 3. 插入精美资质数据
         qualification_count = db.execute("select count(*) from qualifications").fetchone()[0]
         if qualification_count == 0:
             main_company_id = db.execute("select id from companies where is_main = 1").fetchone()[0]
-            sub_company_id = db.execute("select id from companies where name = '商丘市瑞隆土石方工程有限公司'").fetchone()[0]
+            sub_company_id = db.execute("select id from companies where name = '北京营力特建筑工程有限公司'").fetchone()
+            sub_company_id = sub_company_id[0] if sub_company_id else main_company_id
             
             db.execute(
                 """
@@ -319,21 +336,21 @@ def init_db() -> None:
         # 4. 插入精美财务凭证数据
         voucher_count = db.execute("select count(*) from vouchers").fetchone()[0]
         if voucher_count == 0:
-            project_1 = db.execute("select id from projects where name = '郑州地铁6号线二期机电维保工程'").fetchone()
-            project_2 = db.execute("select id from projects where name = '郑州市中原路绿化提升改造项目'").fetchone()
+            project_1 = db.execute("select id from projects where name = '中央电视总台项目'").fetchone()
+            project_2 = db.execute("select id from projects where name = '军庄项目'").fetchone()
             
             if project_1 and project_2:
                 db.execute(
                     """
                     insert into vouchers (project_id, voucher_date, voucher_type, amount, notes, entry_user)
-                    values (?, '2026-05-20', '材料费用', 15200.00, '地铁6号线区间站采购阻燃铜芯电缆一批', '系统管理员')
+                    values (?, '2026-05-20', '材料费用', 15200.00, '中央电视总台项目采购电缆一批', '系统管理员')
                     """,
                     (project_1[0],)
                 )
                 db.execute(
                     """
                     insert into vouchers (project_id, voucher_date, voucher_type, amount, notes, entry_user)
-                    values (?, '2026-05-24', '转账凭证', 4800.00, '中原路绿化工程 - 苗木运输运费报销', '系统管理员')
+                    values (?, '2026-05-24', '转账凭证', 4800.00, '军庄项目 - 运输运费报销', '系统管理员')
                     """,
                     (project_2[0],)
                 )
@@ -348,54 +365,25 @@ def init_db() -> None:
         # 5. 插入合同演示数据
         contract_count = db.execute("select count(*) from contracts").fetchone()[0]
         if contract_count == 0:
-            project_1 = db.execute("select id from projects where name = '郑州地铁6号线二期机电维保工程'").fetchone()
-            project_2 = db.execute("select id from projects where name = '郑州市中原路绿化提升改造项目'").fetchone()
+            project_1 = db.execute("select id from projects where name = '中央电视总台项目'").fetchone()
+            project_2 = db.execute("select id from projects where name = '军庄项目'").fetchone()
             if project_1 and project_2:
                 db.execute(
                     """
                     insert into contracts (project_id, name, contract_type, attachment_path, notes)
-                    values (?, '地铁6号线二期机电维保项目劳务分包合同', '劳务合同', 'contract_metro_labor.pdf', '与河南建工劳务队签署的机电维护劳务合同')
+                    values (?, '中央电视总台项目劳务分包合同', '劳务合同', 'contract_metro_labor.pdf', '与北京营力特签署的劳务合同')
                     """,
                     (project_1[0],)
                 )
                 db.execute(
                     """
                     insert into contracts (project_id, name, contract_type, attachment_path, notes)
-                    values (?, '中原路绿化工程绿化苗木采购合同', '材料商合同', 'contract_green_tree.pdf', '向郑州百卉园艺采购绿化灌木合同')
-                    """,
-                    (project_2[0],)
-                )
-                db.execute(
-                    """
-                    insert into contracts (project_id, name, contract_type, attachment_path, notes)
-                    values (?, '中原路绿化提升改造工程总承包合同', '总包合同', 'contract_green_main.pdf', '与郑州市市政管理局签署的工程总包合同')
+                    values (?, '军庄项目绿化苗木采购合同', '材料商合同', 'contract_green_tree.pdf', '向百卉园艺采购合同')
                     """,
                     (project_2[0],)
                 )
 
-        # 6. 为全部演示人员配置多样化的薪水计薪方式及标准，并以幂等方式插入收付流水
-        salary_presets = [
-            ("刘思伟", "日薪", 300.00),
-            ("李刘成", "月薪", 7500.00),
-            ("王成", "月薪", 8500.00),
-            ("雷威", "年薪", 120000.00),
-            ("李军", "日薪", 320.00),
-            ("刘新田", "日薪", 280.00),
-            ("李和羊", "月薪", 6800.00),
-            ("李金洲", "日薪", 350.00),
-            ("王建民", "月薪", 9000.00),
-            ("黄林刚", "日薪", 300.00),
-            ("方强", "日薪", 330.00),
-            ("宁守付", "日薪", 360.00),
-            ("赵全", "月薪", 7200.00),
-            ("王军喜", "日薪", 290.00),
-            ("李勇", "月薪", 8000.00),
-            ("袁爱贵", "日薪", 310.00),
-            ("李光", "月薪", 7000.00)
-        ]
-        for name, sal_type, sal_rate in salary_presets:
-            db.execute("update people set salary_type = ?, salary_rate = ? where name = ?", (sal_type, sal_rate, name))
-
+        # 6. 以幂等方式插入收付流水
         # 辅助函数，确保重复初始化时不污染数据库
         def safe_insert_payment(person_name, p_date, p_type, p_amount, p_notes):
             p = db.execute("select id from people where name = ?", (person_name,)).fetchone()
@@ -412,17 +400,23 @@ def init_db() -> None:
                     )
 
         # 5月流水
-        safe_insert_payment("刘思伟", "2026-05-20", "预支工资", 1000.00, "预支5月份部分生活费")
-        safe_insert_payment("李刘成", "2026-05-25", "预支工资", 2000.00, "预支5月房租及生活开销")
-        safe_insert_payment("雷威", "2026-05-15", "预支工资", 5000.00, "年中家庭支出预支")
+        safe_insert_payment("谢伟", "2026-05-28", "预支工资", 1000.00, "5月份生活费预支")
+        safe_insert_payment("张文刚", "2026-05-29", "预支工资", 1500.00, "预支生活费")
+        safe_insert_payment("汪保伦", "2026-05-28", "预支工资", 1200.00, "新入职借支")
+        safe_insert_payment("谢瑞鸣", "2026-05-30", "预支工资", 500.00, "买生活用品借支")
+        safe_insert_payment("方强", "2026-05-29", "预支工资", 800.00, "预支零花钱")
+        safe_insert_payment("张坤", "2026-05-30", "预支工资", 600.00, "买衣物预支")
         
         # 6月流水
-        safe_insert_payment("刘思伟", "2026-06-01", "预支工资", 1500.00, "预支6月份零花钱")
-        safe_insert_payment("李刘成", "2026-06-02", "工资发放", 5500.00, "结清5月份剩余应补月薪尾款")
-        safe_insert_payment("李军", "2026-06-02", "预支工资", 800.00, "买鞋及餐费周转")
-        safe_insert_payment("王建民", "2026-06-01", "预支工资", 1500.00, "预支6月生活费")
-        safe_insert_payment("黄林刚", "2026-06-03", "工资发放", 1200.00, "发放5月零散工程工时费")
-        safe_insert_payment("李和羊", "2026-06-02", "预支工资", 1000.00, "回老家探亲预支路费")
+        safe_insert_payment("谢伟", "2026-06-02", "预支工资", 500.00, "6月份零花钱借支")
+        safe_insert_payment("张文刚", "2026-06-02", "预支工资", 1000.00, "6月租房补贴与生活费借支")
+        safe_insert_payment("马士银", "2026-06-02", "预支工资", 400.00, "6月预支")
+        safe_insert_payment("黄保清", "2026-06-01", "预支工资", 300.00, "借支")
+        
+        # 工资发放结清5月份
+        safe_insert_payment("谢瑞鸣", "2026-06-02", "工资发放", 1500.00, "结清5月份工钱")
+        safe_insert_payment("黄林刚", "2026-06-02", "工资发放", 1200.00, "发放5月工资")
+        safe_insert_payment("李效良", "2026-06-02", "工资发放", 1000.00, "结清5月部分工钱")
 
     db.commit()
 

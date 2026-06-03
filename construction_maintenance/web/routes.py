@@ -223,42 +223,15 @@ def project_vouchers(project_id: int):
     )
 
 
-@bp.route("/people", methods=["GET", "POST"])
-def people():
-    if request.method == "POST":
-        repo.create_person(
-            {
-                "name": required_text(request.form, "name", "姓名"),
-                "id_number": required_text(request.form, "id_number", "身份证号"),
-                "gender": text_value(request.form, "gender"),
-                "birth_date": text_value(request.form, "birth_date"),
-                "age": int(text_value(request.form, "age") or 0) or None,
-                "phone": text_value(request.form, "phone"),
-                "address": text_value(request.form, "address"),
-                "job_type": text_value(request.form, "job_type"),
-                "bank_card": text_value(request.form, "bank_card"),
-                "bank_name": text_value(request.form, "bank_name"),
-                "entry_date": text_value(request.form, "entry_date"),
-                "notes": text_value(request.form, "notes"),
-                "id_card_path": _save_form_upload("id_card_attachment"),
-                "is_attendance": 1 if request.form.get("is_attendance") else 0,
-                "salary_type": text_value(request.form, "salary_type") or "日薪",
-                "salary_rate": float(text_value(request.form, "salary_rate") or 0.0),
-            }
-        )
-        return redirect(url_for("web.people"))
-    return render_template(
-        "people.html",
-        people=repo.list_people(),
-        batch_items=repo.list_batch_items(item_type="person"),
-    )
-
-
-@bp.route("/attendance", methods=["GET"])
-def attendance():
+def _render_people_and_attendance(active_tab):
     import datetime
     import calendar
 
+    # --- 1. 花名册基础数据 ---
+    all_people = repo.list_people()
+    batch_items = repo.list_batch_items(item_type="person")
+
+    # --- 2. 考勤数据计算 ---
     now = datetime.datetime.now()
     current_month_str = now.strftime("%Y-%m")
     month = request.args.get("month", current_month_str)
@@ -285,8 +258,7 @@ def attendance():
             "is_weekend": dt.weekday() in (5, 6),
         })
 
-    people = repo.list_attendance_people()
-    all_people = repo.list_people()
+    attendance_people = repo.list_attendance_people()
     raw_attendance = repo.list_attendance_by_month(month)
 
     attendance_dict = {}
@@ -299,7 +271,7 @@ def attendance():
         attendance_dict[p_id][date_str] = shift
 
     person_stats = {}
-    for p in people:
+    for p in attendance_people:
         p_id = p["id"]
         p_att = attendance_dict.get(p_id, {})
         p_day = sum(1 for s in p_att.values() if s == "白班")
@@ -321,8 +293,11 @@ def attendance():
     salary_payments = repo.list_salary_payments(month=month)
 
     return render_template(
-        "attendance.html",
-        people=people,
+        "people.html",
+        active_tab=active_tab,
+        people=all_people,
+        batch_items=batch_items,
+        attendance_people=attendance_people,
         all_people=all_people,
         days=days,
         month=month,
@@ -331,13 +306,47 @@ def attendance():
         salary_summary=salary_summary,
         salary_payments=salary_payments,
         metrics={
-            "total_people": len(people),
+            "total_people": len(attendance_people),
             "total_shifts": total_shifts,
             "day_shifts": day_shifts,
             "night_shifts": night_shifts,
             "leave_shifts": leave_shifts,
         },
     )
+
+
+@bp.route("/people", methods=["GET", "POST"])
+def people():
+    if request.method == "POST":
+        repo.create_person(
+            {
+                "name": required_text(request.form, "name", "姓名"),
+                "id_number": required_text(request.form, "id_number", "身份证号"),
+                "gender": text_value(request.form, "gender"),
+                "birth_date": text_value(request.form, "birth_date"),
+                "age": int(text_value(request.form, "age") or 0) or None,
+                "phone": text_value(request.form, "phone"),
+                "address": text_value(request.form, "address"),
+                "job_type": text_value(request.form, "job_type"),
+                "bank_card": text_value(request.form, "bank_card"),
+                "bank_name": text_value(request.form, "bank_name"),
+                "entry_date": text_value(request.form, "entry_date"),
+                "notes": text_value(request.form, "notes"),
+                "id_card_path": _save_form_upload("id_card_attachment"),
+                "is_attendance": 1 if request.form.get("is_attendance") else 0,
+                "salary_type": text_value(request.form, "salary_type") or "日薪",
+                "salary_rate": float(text_value(request.form, "salary_rate") or 0.0),
+            }
+        )
+        return redirect(url_for("web.people"))
+    
+    active_tab = request.args.get("tab", "people")
+    return _render_people_and_attendance(active_tab)
+
+
+@bp.route("/attendance", methods=["GET"])
+def attendance():
+    return _render_people_and_attendance("attendance")
 
 
 @bp.route("/attendance/salary-payments/add", methods=["POST"])
@@ -353,19 +362,19 @@ def add_salary_payment():
             if request.is_json:
                 return {"status": "error", "message": "缺失必要参数"}, 400
             flash("登记失败：缺失必要参数", "error")
-            return redirect(url_for("web.attendance"))
+            return redirect(url_for("web.people", tab="attendance"))
             
         repo.create_salary_payment(data)
         
         if request.is_json:
             return {"status": "success"}
         flash("预支/发薪流水登记成功！", "success")
-        return redirect(url_for("web.attendance", month=data.get("payment_date")[:7]))
+        return redirect(url_for("web.people", tab="attendance", month=data.get("payment_date")[:7]))
     except Exception as exc:
         if request.is_json:
             return {"status": "error", "message": str(exc)}, 500
         flash(f"系统错误：{str(exc)}", "error")
-        return redirect(url_for("web.attendance"))
+        return redirect(url_for("web.people", tab="attendance"))
 
 
 @bp.route("/attendance/salary-payments/<int:payment_id>/delete", methods=["POST"])
@@ -384,13 +393,13 @@ def delete_salary_payment(payment_id):
         flash("流水删除成功！", "success")
         
         if redirect_month:
-            return redirect(url_for("web.attendance", month=redirect_month))
-        return redirect(url_for("web.attendance"))
+            return redirect(url_for("web.people", tab="attendance", month=redirect_month))
+        return redirect(url_for("web.people", tab="attendance"))
     except Exception as exc:
         if request.is_json:
             return {"status": "error", "message": str(exc)}, 500
         flash(f"删除失败：{str(exc)}", "error")
-        return redirect(url_for("web.attendance"))
+        return redirect(url_for("web.people", tab="attendance"))
 
 
 
@@ -529,7 +538,7 @@ def export_attendance():
         )
     except Exception as exc:
         flash(f"导出失败: {str(exc)}")
-        return redirect(url_for("web.attendance", month=month))
+        return redirect(url_for("web.people", tab="attendance", month=month))
 
 
 @bp.post("/attendance/import")
