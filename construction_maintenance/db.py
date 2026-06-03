@@ -373,26 +373,56 @@ def init_db() -> None:
                     (project_2[0],)
                 )
 
-        # 6. 为部分演示人员设置薪水计薪方式及标准，并插入发放流水
-        db.execute("update people set salary_type = '日薪', salary_rate = 300.00 where name = '刘思伟'")
-        db.execute("update people set salary_type = '月薪', salary_rate = 7500.00 where name = '李刘成'")
-        db.execute("update people set salary_type = '月薪', salary_rate = 8500.00 where name = '王成'")
-        db.execute("update people set salary_type = '年薪', salary_rate = 120000.00 where name = '雷威'")
+        # 6. 为全部演示人员配置多样化的薪水计薪方式及标准，并以幂等方式插入收付流水
+        salary_presets = [
+            ("刘思伟", "日薪", 300.00),
+            ("李刘成", "月薪", 7500.00),
+            ("王成", "月薪", 8500.00),
+            ("雷威", "年薪", 120000.00),
+            ("李军", "日薪", 320.00),
+            ("刘新田", "日薪", 280.00),
+            ("李和羊", "月薪", 6800.00),
+            ("李金洲", "日薪", 350.00),
+            ("王建民", "月薪", 9000.00),
+            ("黄林刚", "日薪", 300.00),
+            ("方强", "日薪", 330.00),
+            ("宁守付", "日薪", 360.00),
+            ("赵全", "月薪", 7200.00),
+            ("王军喜", "日薪", 290.00),
+            ("李勇", "月薪", 8000.00),
+            ("袁爱贵", "日薪", 310.00),
+            ("李光", "月薪", 7000.00)
+        ]
+        for name, sal_type, sal_rate in salary_presets:
+            db.execute("update people set salary_type = ?, salary_rate = ? where name = ?", (sal_type, sal_rate, name))
+
+        # 辅助函数，确保重复初始化时不污染数据库
+        def safe_insert_payment(person_name, p_date, p_type, p_amount, p_notes):
+            p = db.execute("select id from people where name = ?", (person_name,)).fetchone()
+            if p:
+                pid = p[0]
+                exists = db.execute(
+                    "select 1 from salary_payments where person_id = ? and payment_date = ? and payment_type = ? and amount = ?",
+                    (pid, p_date, p_type, p_amount)
+                ).fetchone()
+                if not exists:
+                    db.execute(
+                        "insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, ?, ?, ?, ?)",
+                        (pid, p_date, p_type, p_amount, p_notes)
+                    )
+
+        # 5月流水
+        safe_insert_payment("刘思伟", "2026-05-20", "预支工资", 1000.00, "预支5月份部分生活费")
+        safe_insert_payment("李刘成", "2026-05-25", "预支工资", 2000.00, "预支5月房租及生活开销")
+        safe_insert_payment("雷威", "2026-05-15", "预支工资", 5000.00, "年中家庭支出预支")
         
-        payments_count = db.execute("select count(*) from salary_payments").fetchone()[0]
-        if payments_count == 0:
-            p_liu = db.execute("select id from people where name = '刘思伟'").fetchone()
-            p_li = db.execute("select id from people where name = '李刘成'").fetchone()
-            p_lei = db.execute("select id from people where name = '雷威'").fetchone()
-            
-            if p_liu:
-                db.execute("insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, '2026-05-20', '预支工资', 1000.00, '预支5月份生活费')", (p_liu[0],))
-                db.execute("insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, '2026-06-01', '预支工资', 1500.00, '预支6月份部分工资')", (p_liu[0],))
-            if p_li:
-                db.execute("insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, '2026-05-25', '预支工资', 2000.00, '预支5月生活费')", (p_li[0],))
-                db.execute("insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, '2026-06-02', '工资发放', 5500.00, '结清5月份剩余月薪工资')", (p_li[0],))
-            if p_lei:
-                db.execute("insert into salary_payments (person_id, payment_date, payment_type, amount, notes) values (?, '2026-05-15', '预支工资', 5000.00, '年中预支生活开销费用')", (p_lei[0],))
+        # 6月流水
+        safe_insert_payment("刘思伟", "2026-06-01", "预支工资", 1500.00, "预支6月份零花钱")
+        safe_insert_payment("李刘成", "2026-06-02", "工资发放", 5500.00, "结清5月份剩余应补月薪尾款")
+        safe_insert_payment("李军", "2026-06-02", "预支工资", 800.00, "买鞋及餐费周转")
+        safe_insert_payment("王建民", "2026-06-01", "预支工资", 1500.00, "预支6月生活费")
+        safe_insert_payment("黄林刚", "2026-06-03", "工资发放", 1200.00, "发放5月零散工程工时费")
+        safe_insert_payment("李和羊", "2026-06-02", "预支工资", 1000.00, "回老家探亲预支路费")
 
     db.commit()
 
