@@ -225,37 +225,85 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
         sal_sheet = workbook.create_sheet(title="工资结算与流水")
         sal_sheet.views.sheetView[0].showGridLines = True
         
-        # 1. 写入工资结算表表头
-        sal_headers = ["姓名", "工种/岗位", "计薪方式", "薪资标准", "出勤/请假天数", "当月应发工资", "已预支金额", "已发放金额", "本月应补尾款"]
-        sal_sheet.append(["月度工资核算结算汇总表"])
-        sal_sheet.append([]) # 空行
-        sal_sheet.append(sal_headers)
-        
-        # 获取结算数据
+        # 获取结算数据并分类
         summary_data = repo.get_salary_summary_by_month(month)
+        long_term_data = [item for item in summary_data if item["salary_type"] in ["月薪", "年薪"]]
+        daily_data = [item for item in summary_data if item["salary_type"] == "日薪"]
         
-        # 2. 样式定义
-        title_font = Font(name="微软雅黑", size=14, bold=True, color="0f766e")
+        # 样式定义
+        title_font = Font(name="微软雅黑", size=12, bold=True, color="0f766e")
         header_fill = PatternFill(start_color="ecfdf5", end_color="ecfdf5", fill_type="solid")
         header_font = Font(name="微软雅黑", size=10, bold=True, color="0f172a")
         
-        # 格式化大标题
-        sal_sheet.cell(row=1, column=1).font = title_font
+        # 1. 写入长期员工工资结算表
+        sal_sheet.cell(row=1, column=1, value="一、长期员工工资结算汇总表").font = title_font
+        long_headers = ["姓名", "工种/岗位", "计薪方式", "薪资标准", "请假天数", "当月应发工资", "已预支金额", "已发放金额", "本月应补尾款"]
         
-        # 格式化工资表头
-        for col_idx in range(1, len(sal_headers) + 1):
-            cell = sal_sheet.cell(row=3, column=col_idx)
+        # 格式化长期表头
+        for col_idx, h in enumerate(long_headers, start=1):
+            cell = sal_sheet.cell(row=3, column=col_idx, value=h)
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = center_align
             cell.border = thin_border
             
-        # 3. 写入工资汇总数据
         current_row = 4
-        for item in summary_data:
-            rate_str = f"¥{item['salary_rate']:.2f}/" + ("天" if item["salary_type"] == "日薪" else ("月" if item["salary_type"] == "月薪" else ("年" if item["salary_type"] == "年薪" else "--")))
-            att_str = f"{item['work_days']}天出勤 / {item['leave']}天请假"
+        for item in long_term_data:
+            rate_str = f"¥{item['salary_rate']:.2f}/" + ("月" if item["salary_type"] == "月薪" else "年")
+            att_str = f"{item['leave']}天"
+            row_data = [
+                item["name"],
+                item["job_type"] or "技术/管理",
+                item["salary_type"],
+                rate_str,
+                att_str,
+                item["earnings"],
+                item["advance"],
+                item["payout"],
+                item["balance"]
+            ]
+            for col_idx, val in enumerate(row_data, start=1):
+                cell = sal_sheet.cell(row=current_row, column=col_idx, value=val)
+                cell.font = Font(name="微软雅黑", size=10)
+                cell.border = thin_border
+                if col_idx in [6, 7, 8, 9]:
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+                    cell.number_format = '"¥"#,##0.00'
+                    if col_idx == 9:
+                        if cell.value < 0:
+                            cell.font = Font(name="微软雅黑", size=10, bold=True, color="ef4444")
+                        elif cell.value > 0:
+                            cell.font = Font(name="微软雅黑", size=10, bold=True, color="0f766e")
+                else:
+                    cell.alignment = center_align
+            current_row += 1
             
+        if not long_term_data:
+            sal_sheet.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=9)
+            empty_cell = sal_sheet.cell(row=current_row, column=1, value="当月无长期人员（月薪/年薪）结算数据")
+            empty_cell.alignment = center_align
+            empty_cell.font = Font(name="微软雅黑", size=10, italic=True, color="94a3b8")
+            for col_idx in range(1, 10):
+                sal_sheet.cell(row=current_row, column=col_idx).border = thin_border
+            current_row += 1
+            
+        # 2. 空白隔断，写入日结员工工资结算表
+        current_row += 2
+        sal_sheet.cell(row=current_row, column=1, value="二、日结工人工资结算汇总表").font = title_font
+        current_row += 1
+        
+        daily_headers = ["姓名", "工种/岗位", "计薪方式", "薪资标准", "实际出勤", "当月应发工资", "已预支金额", "已发放金额", "本月应补尾款"]
+        for col_idx, h in enumerate(daily_headers, start=1):
+            cell = sal_sheet.cell(row=current_row, column=col_idx, value=h)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center_align
+            cell.border = thin_border
+            
+        current_row += 1
+        for item in daily_data:
+            rate_str = f"¥{item['salary_rate']:.2f}/天"
+            att_str = f"{item['work_days']}天"
             row_data = [
                 item["name"],
                 item["job_type"] or "普工",
@@ -267,14 +315,10 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
                 item["payout"],
                 item["balance"]
             ]
-            sal_sheet.append(row_data)
-            
-            # 为该行设置样式
-            for col_idx in range(1, len(sal_headers) + 1):
-                cell = sal_sheet.cell(row=current_row, column=col_idx)
+            for col_idx, val in enumerate(row_data, start=1):
+                cell = sal_sheet.cell(row=current_row, column=col_idx, value=val)
                 cell.font = Font(name="微软雅黑", size=10)
                 cell.border = thin_border
-                
                 if col_idx in [6, 7, 8, 9]:
                     cell.alignment = Alignment(horizontal="right", vertical="center")
                     cell.number_format = '"¥"#,##0.00'
@@ -285,12 +329,20 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
                             cell.font = Font(name="微软雅黑", size=10, bold=True, color="0f766e")
                 else:
                     cell.alignment = center_align
-                    
             current_row += 1
             
-        # 4. 在右侧展现“当月收支明细流水” (从第 L 列 (第12列) 开始)
+        if not daily_data:
+            sal_sheet.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=9)
+            empty_cell = sal_sheet.cell(row=current_row, column=1, value="当月无日结工（日薪）结算数据")
+            empty_cell.alignment = center_align
+            empty_cell.font = Font(name="微软雅黑", size=10, italic=True, color="94a3b8")
+            for col_idx in range(1, 10):
+                sal_sheet.cell(row=current_row, column=col_idx).border = thin_border
+            current_row += 1
+            
+        # 3. 在右侧展现“当月收支明细流水” (从第 L 列 (第12列) 开始，从第 3 行开始写入以错开标题)
         payment_headers = ["流水工号", "员工姓名", "交易类别", "金额", "交易执行日期", "备注说明"]
-        sal_sheet.cell(row=1, column=12, value="月度工资预支与发放流水明细").font = title_font
+        sal_sheet.cell(row=1, column=12, value="月度工资预支与发放流水明细").font = Font(name="微软雅黑", size=12, bold=True, color="0f766e")
         
         for col_idx, h in enumerate(payment_headers, start=12):
             cell = sal_sheet.cell(row=3, column=col_idx, value=h)

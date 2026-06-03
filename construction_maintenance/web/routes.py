@@ -428,6 +428,80 @@ def update_attendance_settings():
         return {"status": "error", "message": str(exc)}, 500
 
 
+@bp.post("/attendance/batch-fill")
+def batch_fill_attendance():
+    data = request.get_json() or {}
+    month = data.get("month")
+    shift_type = data.get("shift_type", "白班")
+    
+    if not month:
+        return {"status": "error", "message": "缺失必要参数"}, 400
+        
+    try:
+        # 获取所有当前参与考勤的人员
+        people = repo.list_attendance_people()
+        
+        # 计算当月的所有日期
+        import calendar
+        year, m = map(int, month.split("-"))
+        _, num_days = calendar.monthrange(year, m)
+        
+        db = repo.get_db()
+        # 批量填报考勤
+        for p in people:
+            for d in range(1, num_days + 1):
+                date_str = f"{month}-{d:02d}"
+                # 排除周末：不填报周六和周日，保持默认休息状态，非常人性化
+                import datetime
+                dt = datetime.date(year, m, d)
+                if dt.weekday() in [5, 6]:
+                    continue
+                
+                db.execute(
+                    """
+                    insert into attendance (person_id, work_date, shift_type)
+                    values (?, ?, ?)
+                    on conflict(person_id, work_date) do update set shift_type = excluded.shift_type
+                    """,
+                    (p["id"], date_str, shift_type),
+                )
+        db.commit()
+        return {"status": "success"}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}, 500
+
+
+@bp.route("/attendance/salary-payments/quota", methods=["GET"])
+def get_salary_quota():
+    person_id_str = request.args.get("person_id")
+    month = request.args.get("month")
+    
+    if not person_id_str or not month:
+        return {"status": "error", "message": "缺失必要参数"}, 400
+        
+    try:
+        pid = int(person_id_str)
+        summary = repo.get_salary_summary_by_month(month)
+        for item in summary:
+            if item["person_id"] == pid:
+                return {
+                    "status": "success",
+                    "earnings": item["earnings"],
+                    "advance": item["advance"],
+                    "payout": item["payout"],
+                    "balance": item["balance"]
+                }
+        return {
+            "status": "success",
+            "earnings": 0.0,
+            "advance": 0.0,
+            "payout": 0.0,
+            "balance": 0.0
+        }
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}, 500
+
+
 @bp.route("/attendance/export", methods=["GET"])
 def export_attendance():
     from io import BytesIO
