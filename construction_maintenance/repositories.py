@@ -493,6 +493,7 @@ def delete_person(person_id: int) -> None:
 def delete_project(project_id: int) -> None:
     db = get_db()
     db.execute("delete from vouchers where project_id = ?", (project_id,))
+    db.execute("delete from contracts where project_id = ?", (project_id,))
     db.execute("delete from projects where id = ?", (project_id,))
     db.commit()
 
