@@ -172,7 +172,14 @@ def list_projects():
         select projects.*, companies.name as company_name
         from projects
         join companies on companies.id = projects.company_id
-        order by projects.created_at desc
+        order by 
+            case projects.status 
+                when '进行中' then 1 
+                when '已暂停' then 2 
+                when '已完工' then 3 
+                else 4 
+            end asc,
+            projects.created_at desc
         """
     ).fetchall()
 
