@@ -89,7 +89,7 @@
             <th class="text-right" style="min-width: 100px; width: 100px; white-space: nowrap;">操作</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="contracts-table-tbody">
           {% for contract in contracts %}
           <tr>
             <td class="font-mono text-muted" style="vertical-align: middle;">{{ loop.index }}</td>
@@ -156,6 +156,7 @@
         </tbody>
       </table>
     </div>
+    <div id="contractsPagination" class="pagination-container"></div>
   </div>
 </div>
 
@@ -622,6 +623,15 @@ window.addEventListener('click', function(event) {
     if (event.target === modal) {
       closeModal(modal.id);
     }
+  });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  window.paginators['contracts-table-tbody'] = new ClientPaginator({
+    containerId: 'contracts-table-tbody',
+    itemSelector: 'tr:not(.empty-row)',
+    paginationId: 'contractsPagination',
+    pageSize: 10
   });
 });
 </script>

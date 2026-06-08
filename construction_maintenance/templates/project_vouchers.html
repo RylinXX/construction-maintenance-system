@@ -139,6 +139,7 @@
         </tbody>
       </table>
     </div>
+    <div id="vouchersPagination" class="pagination-container"></div>
   </div>
 </div>
 
@@ -327,12 +328,17 @@ function filterVouchersTable() {
     const matchesCategory = (categoryQuery === "" || category === categoryQuery);
     
     if (matchesSearch && matchesCategory) {
-      row.style.display = '';
+      row.classList.remove('filtered-out');
       visibleCount++;
     } else {
-      row.style.display = 'none';
+      row.classList.add('filtered-out');
     }
   });
+
+  // 触发分页重算
+  if (window.paginators && window.paginators['vouchersTableBody']) {
+    window.paginators['vouchersTableBody'].init();
+  }
 
   // Toggle empty states
   const emptyRow = document.getElementById('vouchersEmptyRow');
@@ -559,6 +565,15 @@ window.addEventListener('click', function(event) {
     if (event.target === modal) {
       closeModal(modal.id);
     }
+  });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  window.paginators['vouchersTableBody'] = new ClientPaginator({
+    containerId: 'vouchersTableBody',
+    itemSelector: '.voucher-row',
+    paginationId: 'vouchersPagination',
+    pageSize: 15
   });
 });
 </script>

@@ -44,7 +44,7 @@
             <th>备注信息</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="vouchers-table-tbody">
           {% for voucher in vouchers %}
           <tr>
             <td class="font-mono text-dark">{{ voucher.voucher_date }}</td>
@@ -79,6 +79,7 @@
         </tbody>
       </table>
     </div>
+    <div id="vouchersPagination" class="pagination-container"></div>
   </div>
 </div>
 
@@ -315,6 +316,15 @@ window.addEventListener('click', function(event) {
     if (event.target === modal) {
       closeModal(modal.id);
     }
+  });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  window.paginators['vouchers-table-tbody'] = new ClientPaginator({
+    containerId: 'vouchers-table-tbody',
+    itemSelector: 'tr:not(.empty-row)',
+    paginationId: 'vouchersPagination',
+    pageSize: 15
   });
 });
 </script>

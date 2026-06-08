@@ -5,13 +5,23 @@
 
 {% block content %}
 <!-- Main Tabs Navigation -->
-<div class="view-tabs animate-slide-up" style="display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+<div class="view-tabs animate-slide-up" style="display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; align-items: center; width: 100%;">
   <button type="button" class="tab-btn {% if active_tab == 'people' %}active{% endif %}" id="mainTabBtnPeople" onclick="switchMainTab('people')" style="background: none; border: none; border-bottom: 3px solid {% if active_tab == 'people' %}var(--secondary-color){% else %}transparent{% endif %}; color: {% if active_tab == 'people' %}var(--secondary-color){% else %}var(--text-secondary){% endif %}; padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
     {{ icon('people') }} 花名册档案
   </button>
   <button type="button" class="tab-btn {% if active_tab == 'attendance' %}active{% endif %}" id="mainTabBtnAttendance" onclick="switchMainTab('attendance')" style="background: none; border: none; border-bottom: 3px solid {% if active_tab == 'attendance' %}var(--secondary-color){% else %}transparent{% endif %}; color: {% if active_tab == 'attendance' %}var(--secondary-color){% else %}var(--text-secondary){% endif %}; padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
     {{ icon('checklist') }} 人员考勤与结算
   </button>
+
+  <!-- Sub Tabs Navigation positioned on the right of the main tabs -->
+  <div id="subTabsAttendanceContainer" style="margin-left: auto; display: {% if active_tab == 'attendance' %}flex{% else %}none{% endif %}; gap: 4px; align-items: center;">
+    <button type="button" class="tab-btn active" id="tabBtnAttendance" onclick="switchAttendanceTab('attendance')" style="background: none; border: none; border-bottom: 3px solid var(--secondary-color); color: var(--secondary-color); padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
+      {{ icon('checklist') }} 月度考勤矩阵
+    </button>
+    <button type="button" class="tab-btn" id="tabBtnSalary" onclick="switchAttendanceTab('salary')" style="background: none; border: none; border-bottom: 3px solid transparent; color: var(--text-secondary); padding: 10px 20px; font-weight: 650; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
+      {{ icon('money') }} 工资结算与预支台账
+    </button>
+  </div>
 </div>
 
 <!-- 1. 花名册档案 Tab 内容 -->
@@ -185,10 +195,12 @@
           </tbody>
         </table>
       </div>
+      <div id="peopleListPagination" class="pagination-container"></div>
     </div>
 
     <!-- Premium Digital Employee Badge Card Grid View -->
-    <div id="peopleGridView" class="people-grid">
+    <div id="peopleGridArea" style="display: none;">
+      <div id="peopleGridView" class="people-grid">
       {% for person in people %}
       {% set is_verified = (person.review_status == '已确认') %}
       {% set avatar_icon = 'user' %}
@@ -304,20 +316,14 @@
       </div>
       {% endfor %}
     </div>
+    <div id="peopleGridPagination" class="pagination-container"></div>
+    </div> <!-- 闭合 peopleGridArea -->
   </div>
 </div>
 </div> <!-- 闭合 mainTabContentPeople -->
 
 <!-- 2. 人员考勤与结算 Tab 内容 -->
 <div id="mainTabContentAttendance" style="display: {% if active_tab == 'attendance' %}block{% else %}none{% endif %};">
-  <div class="view-tabs animate-slide-up" style="display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
-    <button type="button" class="tab-btn active" id="tabBtnAttendance" onclick="switchAttendanceTab('attendance')" style="background: none; border: none; border-bottom: 3px solid var(--secondary-color); color: var(--secondary-color); padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
-      {{ icon('checklist') }} 月度考勤矩阵
-    </button>
-    <button type="button" class="tab-btn" id="tabBtnSalary" onclick="switchAttendanceTab('salary')" style="background: none; border: none; border-bottom: 3px solid transparent; color: var(--text-secondary); padding: 10px 20px; font-weight: 650; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
-      {{ icon('money') }} 工资结算与预支台账
-    </button>
-  </div>
 
   <div id="attendanceTabContent">
   <div class="panel-section">
@@ -369,6 +375,12 @@
         </div>
       </div>
 
+      <!-- Premium Interactive Live Search Bar for Attendance -->
+      <div class="search-bar" style="margin-top: 8px; margin-bottom: 18px;">
+        <span class="search-icon">{{ icon('search') }}</span>
+        <input type="text" id="attendanceSearch" class="search-input" oninput="filterAttendanceModule('attendanceSearch')" placeholder="输入人员姓名或工种岗位进行快速检索（考勤表及工资结算表均会同步过滤）...">
+      </div>
+
       <!-- Attendance Grid Table Container -->
       <div class="attendance-table-container">
         <table class="attendance-table">
@@ -386,7 +398,7 @@
               <th style="min-width: 180px; text-align: center;">出勤统计</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="attendance-table-tbody">
             {% for person in attendance_people %}
             {% set stats = person_stats[person.id] %}
             <tr data-person-id="{{ person.id }}">
@@ -427,14 +439,25 @@
           </tbody>
         </table>
       </div>
+      <div id="attendancePagination" class="pagination-container"></div>
     </div>
   </div>
   </div>
 
   <!-- 工资结算与预支台账 -->
   <div id="salaryTabContent" style="display: none; flex-direction: column; gap: 20px; width: 100%; margin-top: 16px;">
+    <!-- 工资台账类别子选项卡切换 (Sub-tab Switcher for Salary Ledger) -->
+    <div class="view-switcher" style="margin-bottom: 8px; width: fit-content; align-self: flex-start;">
+      <button type="button" class="view-btn active" id="salarySubTabBtnLong" onclick="switchSalarySubTab('long')" style="min-height: 38px;">
+        {{ icon('people') }} 长期员工工资结算
+      </button>
+      <button type="button" class="view-btn" id="salarySubTabBtnDaily" onclick="switchSalarySubTab('daily')" style="min-height: 38px;">
+        {{ icon('people') }} 日结工人工资结算
+      </button>
+    </div>
+
     <!-- 长期员工工资结算表 -->
-    <div class="panel-card" style="width: 100%; padding: 28px 30px !important; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--surface-color); box-shadow: var(--shadow-sm);">
+    <div id="salaryLongCard" class="panel-card" style="width: 100%; padding: 28px 30px !important; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--surface-color); box-shadow: var(--shadow-sm);">
       <div class="panel-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
         <div>
           <h3 class="panel-title" style="font-size: 16px;">{{ icon('money') }} 长期员工工资结算表</h3>
@@ -448,6 +471,12 @@
             {{ icon('add') }} 登记工资预支与发放
           </button>
         </div>
+      </div>
+
+      <!-- Premium Interactive Live Search Bar for Long-term Salary -->
+      <div class="search-bar" style="margin-top: 8px; margin-bottom: 18px;">
+        <span class="search-icon">{{ icon('search') }}</span>
+        <input type="text" id="salaryLongSearch" class="search-input" oninput="filterAttendanceModule('salaryLongSearch')" placeholder="输入人员姓名或工种岗位进行快速检索（考勤表及工资结算表均会同步过滤）...">
       </div>
       
       <div class="table-container">
@@ -465,12 +494,12 @@
               <th style="min-width: 70px; text-align: center; white-space: nowrap;">操作</th>
             </tr>
           </thead>
-          <tbody>
+        <tbody id="salary-long-tbody">
             {% set has_long_term = namespace(found=false) %}
             {% for item in salary_summary %}
               {% if item.salary_type in ['月薪', '年薪'] %}
                 {% set has_long_term.found = true %}
-                <tr>
+                <tr class="salary-row-long" data-person-name="{{ item.name }}" data-job-type="{{ item.job_type or '' }}">
                   <td class="font-semibold text-dark" style="vertical-align: middle;">
                     <span style="font-weight: 700;">{{ item.name }}</span>
                     <span class="text-muted" style="display: block; font-size: 11px; margin-top: 2px;">{{ item.job_type or '技术/管理' }}</span>
@@ -523,13 +552,20 @@
           </tbody>
         </table>
       </div>
+      <div id="salaryLongPagination" class="pagination-container"></div>
     </div>
 
     <!-- 日结工人工资结算表 -->
-    <div class="panel-card" style="width: 100%; padding: 28px 30px !important; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--surface-color); box-shadow: var(--shadow-sm);">
+    <div id="salaryDailyCard" class="panel-card" style="display: none; width: 100%; padding: 28px 30px !important; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--surface-color); box-shadow: var(--shadow-sm);">
       <div class="panel-header" style="margin-bottom: 24px;">
         <h3 class="panel-title" style="font-size: 16px;">{{ icon('money') }} 日结工人工资结算表</h3>
         <p class="panel-subtitle">针对日薪制临时工，根据当月实际考勤出勤天数计算应发金额。</p>
+      </div>
+      
+      <!-- Premium Interactive Live Search Bar for Daily Salary -->
+      <div class="search-bar" style="margin-top: 8px; margin-bottom: 18px;">
+        <span class="search-icon">{{ icon('search') }}</span>
+        <input type="text" id="salaryDailySearch" class="search-input" oninput="filterAttendanceModule('salaryDailySearch')" placeholder="输入人员姓名或工种岗位进行快速检索（考勤表及工资结算表均会同步过滤）...">
       </div>
       
       <div class="table-container">
@@ -547,12 +583,12 @@
               <th style="min-width: 70px; text-align: center; white-space: nowrap;">操作</th>
             </tr>
           </thead>
-          <tbody>
+        <tbody id="salary-daily-tbody">
             {% set has_daily = namespace(found=false) %}
             {% for item in salary_summary %}
               {% if item.salary_type == '日薪' %}
                 {% set has_daily.found = true %}
-                <tr>
+                <tr class="salary-row-daily" data-person-name="{{ item.name }}" data-job-type="{{ item.job_type or '' }}">
                   <td class="font-semibold text-dark" style="vertical-align: middle;">
                     <span style="font-weight: 700;">{{ item.name }}</span>
                     <span class="text-muted" style="display: block; font-size: 11px; margin-top: 2px;">{{ item.job_type or '普工' }}</span>
@@ -593,6 +629,7 @@
           </tbody>
         </table>
       </div>
+      <div id="salaryDailyPagination" class="pagination-container"></div>
     </div>
   </div>
 </div>
@@ -1223,10 +1260,10 @@ function filterPeople() {
     const detailsRow = document.getElementById(detailId);
     
     if (text.includes(query)) {
-      row.style.display = '';
+      row.classList.remove('filtered-out');
     } else {
-      row.style.display = 'none';
-      if (detailsRow) detailsRow.style.display = 'none';
+      row.classList.add('filtered-out');
+      if (detailsRow) detailsRow.classList.add('filtered-out');
     }
   });
   
@@ -1236,20 +1273,26 @@ function filterPeople() {
     const text = card.innerText.toLowerCase();
     
     if (text.includes(query)) {
-      card.style.display = 'flex';
+      card.classList.remove('filtered-out');
     } else {
-      card.style.display = 'none';
+      card.classList.add('filtered-out');
       card.classList.remove('expanded');
     }
   });
+  
+  // Update pagination if initialized
+  if (window.paginators) {
+    if (window.paginators['peopleGridView']) window.paginators['peopleGridView'].init();
+    if (window.paginators['peopleListView']) window.paginators['peopleListView'].init();
+  }
   
   // 3. 统计并触发空状态提示
   let visibleCount = 0;
   const isGrid = document.getElementById('viewBtnGrid').classList.contains('active');
   if (isGrid) {
-    cards.forEach(c => { if (c.style.display !== 'none') visibleCount++; });
+    cards.forEach(c => { if (!c.classList.contains('filtered-out')) visibleCount++; });
   } else {
-    tableRows.forEach(r => { if (r.style.display !== 'none') visibleCount++; });
+    tableRows.forEach(r => { if (!r.classList.contains('filtered-out')) visibleCount++; });
   }
   
   const emptyRow = document.getElementById('peopleEmptyRow');
@@ -1292,20 +1335,20 @@ function toggleEmployeeCardDetails(id) {
 }
 
 function togglePeopleView(view) {
-  const gridView = document.getElementById('peopleGridView');
+  const gridArea = document.getElementById('peopleGridArea');
   const listView = document.getElementById('peopleListView');
   const btnGrid = document.getElementById('viewBtnGrid');
   const btnList = document.getElementById('viewBtnList');
   
   if (view === 'grid') {
-    gridView.style.display = 'grid';
-    listView.style.display = 'none';
+    if (gridArea) gridArea.style.display = 'block';
+    if (listView) listView.style.display = 'none';
     btnGrid.classList.add('active');
     btnList.classList.remove('active');
     localStorage.setItem('people_view', 'grid');
   } else {
-    gridView.style.display = 'none';
-    listView.style.display = 'block';
+    if (gridArea) gridArea.style.display = 'none';
+    if (listView) listView.style.display = 'block';
     btnGrid.classList.remove('active');
     btnList.classList.add('active');
     localStorage.setItem('people_view', 'list');
@@ -1316,6 +1359,9 @@ function togglePeopleView(view) {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
+  if (typeof initAllPagination === 'function') {
+    initAllPagination();
+  }
   const savedView = localStorage.getItem('people_view') || 'grid';
   togglePeopleView(savedView);
 
@@ -1328,6 +1374,9 @@ document.addEventListener("DOMContentLoaded", function() {
   
   const activeTab = localStorage.getItem('attendance_active_tab') || 'attendance';
   switchAttendanceTab(activeTab);
+
+  const savedSalarySubTab = localStorage.getItem('salary_active_sub_tab') || 'long';
+  switchSalarySubTab(savedSalarySubTab);
 });
 
 function openModal(id) {
@@ -1352,10 +1401,12 @@ function switchMainTab(tab) {
   const attTab = document.getElementById('mainTabContentAttendance');
   const btnPeople = document.getElementById('mainTabBtnPeople');
   const btnAtt = document.getElementById('mainTabBtnAttendance');
+  const subTabs = document.getElementById('subTabsAttendanceContainer');
   
   if (tab === 'people') {
     peopleTab.style.display = 'block';
     attTab.style.display = 'none';
+    if (subTabs) subTabs.style.display = 'none';
     
     btnPeople.classList.add('active');
     btnPeople.style.borderBottomColor = 'var(--secondary-color)';
@@ -1373,6 +1424,7 @@ function switchMainTab(tab) {
   } else {
     peopleTab.style.display = 'none';
     attTab.style.display = 'block';
+    if (subTabs) subTabs.style.display = 'flex';
     
     btnAtt.classList.add('active');
     btnAtt.style.borderBottomColor = 'var(--secondary-color)';
@@ -1425,6 +1477,28 @@ function switchAttendanceTab(tab) {
       btnAtt.style.fontWeight = '650';
     }
     localStorage.setItem('attendance_active_tab', 'salary');
+  }
+}
+
+// 工资结算子 Tab 切换（长期员工与日结工人）
+function switchSalarySubTab(subTab) {
+  const cardLong = document.getElementById('salaryLongCard');
+  const cardDaily = document.getElementById('salaryDailyCard');
+  const btnLong = document.getElementById('salarySubTabBtnLong');
+  const btnDaily = document.getElementById('salarySubTabBtnDaily');
+  
+  if (subTab === 'long') {
+    if (cardLong) cardLong.style.display = 'block';
+    if (cardDaily) cardDaily.style.display = 'none';
+    if (btnLong) btnLong.classList.add('active');
+    if (btnDaily) btnDaily.classList.remove('active');
+    localStorage.setItem('salary_active_sub_tab', 'long');
+  } else {
+    if (cardLong) cardLong.style.display = 'none';
+    if (cardDaily) cardDaily.style.display = 'block';
+    if (btnLong) btnLong.classList.remove('active');
+    if (btnDaily) btnDaily.classList.add('active');
+    localStorage.setItem('salary_active_sub_tab', 'daily');
   }
 }
 
@@ -1768,9 +1842,115 @@ function deletePayment(paymentId, name, amount, type) {
     form.submit();
   }
 }
+
+// 考勤与薪资大模块的实时过滤逻辑
+function filterAttendanceModule(sourceId) {
+  let val = '';
+  if (sourceId) {
+    const sourceInput = document.getElementById(sourceId);
+    if (sourceInput) {
+      val = sourceInput.value;
+      
+      // 同步所有三个搜索框的值
+      const searchIds = ['attendanceSearch', 'salaryLongSearch', 'salaryDailySearch'];
+      searchIds.forEach(id => {
+        if (id !== sourceId) {
+          const input = document.getElementById(id);
+          if (input) input.value = val;
+        }
+      });
+    }
+  } else {
+    const defaultInput = document.getElementById('attendanceSearch');
+    if (defaultInput) val = defaultInput.value;
+  }
+
+  const query = val.toLowerCase();
+  
+  // 1. 过滤考勤矩阵表的行
+  const attRows = document.querySelectorAll('#attendance-table-tbody tr[data-person-id]');
+  attRows.forEach(row => {
+    const nameCell = row.querySelector('.p-name');
+    const jobCell = row.querySelector('.p-job');
+    const nameText = nameCell ? nameCell.innerText.toLowerCase() : '';
+    const jobText = jobCell ? jobCell.innerText.toLowerCase() : '';
+    
+    if (nameText.includes(query) || jobText.includes(query)) {
+      row.classList.remove('filtered-out');
+    } else {
+      row.classList.add('filtered-out');
+    }
+  });
+  
+  // 触发考勤矩阵分页重算
+  if (window.paginators && window.paginators['attendance-table-tbody']) {
+    window.paginators['attendance-table-tbody'].init();
+  }
+  
+  // 2. 过滤工资表（月薪、日薪表）的行
+  const salaryRows = document.querySelectorAll('.salary-row-long, .salary-row-daily');
+  salaryRows.forEach(row => {
+    const name = (row.getAttribute('data-person-name') || '').toLowerCase();
+    const job = (row.getAttribute('data-job-type') || '').toLowerCase();
+    
+    if (name.includes(query) || job.includes(query)) {
+      row.classList.remove('filtered-out');
+    } else {
+      row.classList.add('filtered-out');
+    }
+  });
+  
+  // 触发工资表分页重算
+  if (window.paginators && window.paginators['salary-long-tbody']) {
+    window.paginators['salary-long-tbody'].init();
+  }
+  if (window.paginators && window.paginators['salary-daily-tbody']) {
+    window.paginators['salary-daily-tbody'].init();
+  }
+}
+
+function initAllPagination() {
+  window.paginators['peopleGridView'] = new ClientPaginator({
+    containerId: 'peopleGridView',
+    itemSelector: '.person-card',
+    paginationId: 'peopleGridPagination',
+    pageSize: 15
+  });
+
+  window.paginators['peopleListView'] = new ClientPaginator({
+    containerId: 'peopleListView',
+    itemSelector: '.people-table-row',
+    paginationId: 'peopleListPagination',
+    pageSize: 15,
+    groupDetails: true
+  });
+
+  window.paginators['attendance-table-tbody'] = new ClientPaginator({
+    containerId: 'attendance-table-tbody',
+    itemSelector: 'tr[data-person-id]',
+    paginationId: 'attendancePagination',
+    pageSize: 15
+  });
+
+  window.paginators['salary-long-tbody'] = new ClientPaginator({
+    containerId: 'salary-long-tbody',
+    itemSelector: '.salary-row-long',
+    paginationId: 'salaryLongPagination',
+    pageSize: 10
+  });
+
+  window.paginators['salary-daily-tbody'] = new ClientPaginator({
+    containerId: 'salary-daily-tbody',
+    itemSelector: '.salary-row-daily',
+    paginationId: 'salaryDailyPagination',
+    pageSize: 10
+  });
+}
 </script>
 
 <style>
+
+
 .search-bar {
   display: flex;
   align-items: center;

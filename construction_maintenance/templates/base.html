@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.3">
     <script>
       (function() {
         const theme = localStorage.getItem('theme') || 'light';
@@ -123,6 +123,158 @@
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
         window.dispatchEvent(new Event('themechanged'));
       }
+
+      class ClientPaginator {
+        constructor(options) {
+          this.containerId = options.containerId;
+          this.itemSelector = options.itemSelector;
+          this.paginationId = options.paginationId;
+          this.pageSize = options.pageSize || 15;
+          this.currentPage = 1;
+          this.groupDetails = options.groupDetails || false;
+          
+          this.init();
+        }
+        
+        init() {
+          this.currentPage = 1;
+          this.render();
+        }
+        
+        getItems() {
+          const container = document.getElementById(this.containerId);
+          if (!container) return [];
+          return Array.from(container.querySelectorAll(this.itemSelector));
+        }
+        
+        getActiveItems() {
+          return this.getItems().filter(item => !item.classList.contains('filtered-out'));
+        }
+        
+        goToPage(page) {
+          const activeItems = this.getActiveItems();
+          const totalPages = Math.ceil(activeItems.length / this.pageSize) || 1;
+          if (page < 1) page = 1;
+          if (page > totalPages) page = totalPages;
+          this.currentPage = page;
+          
+          this.updateVisibility();
+          this.updatePaginationControls();
+        }
+        
+        updateVisibility() {
+          const items = this.getItems();
+          const activeItems = this.getActiveItems();
+          
+          const startIndex = (this.currentPage - 1) * this.pageSize;
+          const endIndex = startIndex + this.pageSize;
+          
+          items.forEach(item => {
+            item.classList.add('hidden-by-pagination');
+            if (this.groupDetails) {
+              const detailId = item.getAttribute('data-detail-id');
+              const detailRow = document.getElementById(detailId);
+              if (detailRow) {
+                detailRow.classList.add('hidden-by-pagination');
+              }
+            }
+          });
+          
+          activeItems.forEach((item, index) => {
+            if (index >= startIndex && index < endIndex) {
+              item.classList.remove('hidden-by-pagination');
+              if (this.groupDetails) {
+                const detailId = item.getAttribute('data-detail-id');
+                const detailRow = document.getElementById(detailId);
+                if (detailRow) {
+                  detailRow.classList.remove('hidden-by-pagination');
+                }
+              }
+            }
+          });
+        }
+        
+        updatePaginationControls() {
+          const paginationContainer = document.getElementById(this.paginationId);
+          if (!paginationContainer) return;
+          
+          const activeItems = this.getActiveItems();
+          const totalItems = activeItems.length;
+          const totalPages = Math.ceil(totalItems / this.pageSize) || 1;
+          
+          if (totalItems === 0) {
+            paginationContainer.innerHTML = '';
+            paginationContainer.style.display = 'none';
+            return;
+          }
+          
+          paginationContainer.style.display = 'flex';
+          
+          let html = `
+            <div class="pagination-info">
+              共 ${totalItems} 条，第 ${this.currentPage} / ${totalPages} 页
+            </div>
+            <div class="pagination-actions">
+              <span style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">每页显示:</span>
+              <select class="pagination-size-select" onchange="window.paginators['${this.containerId}'].changePageSize(this.value)">
+                <option value="10" ${this.pageSize === 10 ? 'selected' : ''}>10 条</option>
+                <option value="15" ${this.pageSize === 15 ? 'selected' : ''}>15 条</option>
+                <option value="20" ${this.pageSize === 20 ? 'selected' : ''}>20 条</option>
+                <option value="50" ${this.pageSize === 50 ? 'selected' : ''}>50 条</option>
+                <option value="100" ${this.pageSize === 100 ? 'selected' : ''}>100 条</option>
+                <option value="999999" ${this.pageSize >= 999999 ? 'selected' : ''}>全部</option>
+              </select>
+            </div>
+            <div class="pagination-buttons">
+              <button type="button" class="pagination-btn" ${this.currentPage === 1 ? 'disabled' : ''} onclick="window.paginators['${this.containerId}'].goToPage(1)" title="第一页">«</button>
+              <button type="button" class="pagination-btn" ${this.currentPage === 1 ? 'disabled' : ''} onclick="window.paginators['${this.containerId}'].goToPage(${this.currentPage - 1})" title="上一页">‹</button>
+          `;
+          
+          const range = 2;
+          let startPage = Math.max(1, this.currentPage - range);
+          let endPage = Math.min(totalPages, this.currentPage + range);
+          
+          if (startPage > 1) {
+            html += `<button type="button" class="pagination-btn" onclick="window.paginators['${this.containerId}'].goToPage(1)">1</button>`;
+            if (startPage > 2) {
+              html += `<span style="color: var(--text-secondary); padding: 0 4px; display: inline-flex; align-items: center;">...</span>`;
+            }
+          }
+          
+          for (let p = startPage; p <= endPage; p++) {
+            html += `
+              <button type="button" class="pagination-btn ${p === this.currentPage ? 'active' : ''}" onclick="window.paginators['${this.containerId}'].goToPage(${p})">${p}</button>
+            `;
+          }
+          
+          if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+              html += `<span style="color: var(--text-secondary); padding: 0 4px; display: inline-flex; align-items: center;">...</span>`;
+            }
+            html += `<button type="button" class="pagination-btn" onclick="window.paginators['${this.containerId}'].goToPage(${totalPages})">${totalPages}</button>`;
+          }
+          
+          html += `
+              <button type="button" class="pagination-btn" ${this.currentPage === totalPages ? 'disabled' : ''} onclick="window.paginators['${this.containerId}'].goToPage(${this.currentPage + 1})" title="下一页">›</button>
+              <button type="button" class="pagination-btn" ${this.currentPage === totalPages ? 'disabled' : ''} onclick="window.paginators['${this.containerId}'].goToPage(${totalPages})" title="最后一页">»</button>
+            </div>
+          `;
+          
+          paginationContainer.innerHTML = html;
+        }
+        
+        changePageSize(newSize) {
+          this.pageSize = parseInt(newSize) || 15;
+          this.currentPage = 1;
+          this.render();
+        }
+        
+        render() {
+          this.goToPage(this.currentPage);
+        }
+      }
+
+      window.paginators = {};
     </script>
   </body>
 </html>
