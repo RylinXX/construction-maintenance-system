@@ -782,3 +782,66 @@ def get_salary_summary_by_month(month: str) -> list[dict[str, Any]]:
     return summary_list
 
 
+def list_salary_sheets_by_person(person_id: int) -> list[dict[str, Any]]:
+    db = get_db()
+    rows = db.execute(
+        """
+        select *
+        from salary_sheets
+        where person_id = ?
+        order by settle_month asc, id asc
+        """,
+        (person_id,),
+    ).fetchall()
+    
+    results = []
+    current_balance = 0.0
+    for row in rows:
+        item = dict(row)
+        current_balance += item["earnings"] - item["paid_amount"]
+        item["balance"] = round(current_balance, 2)
+        
+        month_str = item["settle_month"]
+        try:
+            if "-" in month_str:
+                y, m = month_str.split("-")
+                item["formatted_month"] = f"{int(y)}年{int(m)}月"
+            else:
+                item["formatted_month"] = month_str
+        except Exception:
+            item["formatted_month"] = month_str
+            
+        results.append(item)
+    return results
+
+
+def create_salary_sheet_item(data: dict[str, Any]) -> int:
+    db = get_db()
+    cursor = db.execute(
+        """
+        insert into salary_sheets 
+          (person_id, settle_month, should_work_days, actual_work_days, salary_rate, earnings, paid_amount, notes)
+        values (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            data["person_id"],
+            data["settle_month"],
+            float(data.get("should_work_days", 30.0)),
+            float(data.get("actual_work_days", 30.0)),
+            float(data.get("salary_rate", 0.0)),
+            float(data.get("earnings", 0.0)),
+            float(data.get("paid_amount", 0.0)),
+            data.get("notes", ""),
+        ),
+    )
+    db.commit()
+    return int(cursor.lastrowid)
+
+
+def delete_salary_sheet_item(item_id: int) -> None:
+    db = get_db()
+    db.execute("delete from salary_sheets where id = ?", (item_id,))
+    db.commit()
+
+
+

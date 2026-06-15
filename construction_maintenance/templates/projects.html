@@ -26,7 +26,6 @@
             <th style="min-width: 120px; white-space: nowrap;">负责人</th>
             <th style="min-width: 120px; white-space: nowrap;">开工日期</th>
             <th style="min-width: 100px; white-space: nowrap;">状态</th>
-            <th style="min-width: 200px; white-space: nowrap;">所属公司</th>
             <th style="min-width: 250px; white-space: nowrap;">备注信息</th>
             <th class="text-right" style="min-width: 230px; width: 230px; white-space: nowrap;">管理操作</th>
           </tr>
@@ -52,7 +51,6 @@
               <span class="badge badge-warning" style="display: inline-flex; white-space: nowrap;">{{ project.status }}</span>
               {% endif %}
             </td>
-            <td style="vertical-align: middle; white-space: nowrap;">{{ project.company_name }}</td>
             <td class="text-muted" style="vertical-align: middle; white-space: nowrap;">{{ project.notes or '--' }}</td>
             <td class="text-right" style="white-space: nowrap; width: 230px; min-width: 230px; vertical-align: middle;" onclick="event.stopPropagation();">
               <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
@@ -70,7 +68,7 @@
           </tr>
           {% else %}
           <tr class="empty-row">
-            <td colspan="7">
+            <td colspan="6">
               <div class="empty-state">
                 <span class="empty-icon">{{ icon('empty-inbox') }}</span>
                 <span class="empty-text">暂无项目，请点击右上角“新增项目”按钮创建工程</span>

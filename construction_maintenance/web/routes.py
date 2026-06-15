@@ -1197,6 +1197,71 @@ def delete_person(person_id: int):
     return redirect(url_for("web.people"))
 
 
+@bp.route("/people/<int:person_id>/salary-sheets", methods=["GET"])
+def get_person_salary_sheets(person_id: int):
+    person = next((p for p in repo.list_people() if int(p["id"]) == person_id), None)
+    if not person:
+        return {"status": "error", "message": "人员不存在"}, 404
+    
+    sheets = repo.list_salary_sheets_by_person(person_id)
+    return {
+        "status": "success",
+        "person_name": person["name"],
+        "salary_rate": person["salary_rate"],
+        "salary_type": person["salary_type"],
+        "data": sheets
+    }
+
+
+@bp.route("/people/<int:person_id>/salary-sheets/add", methods=["POST"])
+def add_person_salary_sheet(person_id: int):
+    person = next((p for p in repo.list_people() if int(p["id"]) == person_id), None)
+    if not person:
+        return {"status": "error", "message": "人员不存在"}, 404
+        
+    data = request.get_json() or {}
+    settle_month = data.get("settle_month", "").strip()
+    if not settle_month:
+        return {"status": "error", "message": "结算月份不能为空"}, 400
+        
+    try:
+        should_work = float(data.get("should_work_days", 30))
+        actual_work = float(data.get("actual_work_days", 30))
+        rate = float(data.get("salary_rate", 0.0))
+        earnings = float(data.get("earnings", 0.0))
+        paid = float(data.get("paid_amount", 0.0))
+    except (TypeError, ValueError):
+        return {"status": "error", "message": "天数或金额格式不正确"}, 400
+        
+    repo.create_salary_sheet_item({
+        "person_id": person_id,
+        "settle_month": settle_month,
+        "should_work_days": should_work,
+        "actual_work_days": actual_work,
+        "salary_rate": rate,
+        "earnings": earnings,
+        "paid_amount": paid,
+        "notes": data.get("notes", "").strip()
+    })
+    
+    sheets = repo.list_salary_sheets_by_person(person_id)
+    return {"status": "success", "data": sheets}
+
+
+@bp.route("/people/salary-sheets/<int:item_id>/delete", methods=["POST"])
+def delete_person_salary_sheet_item(item_id: int):
+    db = repo.get_db()
+    row = db.execute("select person_id from salary_sheets where id = ?", (item_id,)).fetchone()
+    if not row:
+        return {"status": "error", "message": "记录不存在"}, 404
+    person_id = row[0]
+    
+    repo.delete_salary_sheet_item(item_id)
+    
+    sheets = repo.list_salary_sheets_by_person(person_id)
+    return {"status": "success", "data": sheets}
+
+
 @bp.route("/qualifications/<int:qualification_id>/edit", methods=["POST"])
 def edit_qualification(qualification_id: int):
     company_id = int(required_text(request.form, "company_id", "公司"))

@@ -162,6 +162,19 @@ def init_db() -> None:
             notes text not null default '',
             created_at text not null default current_timestamp
         );
+
+        create table if not exists salary_sheets (
+            id integer primary key autoincrement,
+            person_id integer not null references people(id) on delete cascade,
+            settle_month text not null,
+            should_work_days real not null default 30.0,
+            actual_work_days real not null default 30.0,
+            salary_rate real not null default 0.0,
+            earnings real not null default 0.0,
+            paid_amount real not null default 0.0,
+            notes text not null default '',
+            created_at text not null default current_timestamp
+        );
         """
     )
     people_columns = {

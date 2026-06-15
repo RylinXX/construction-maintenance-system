@@ -645,8 +645,13 @@ a {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 16px;
+}
+@media (max-width: 1200px) {
+  .metric-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .metric-card {
@@ -750,6 +755,8 @@ a {
   background: var(--surface-color);
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .panel-card:hover {
@@ -929,6 +936,8 @@ textarea.form-input:focus {
 }
 
 .table-container {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -1691,9 +1700,11 @@ textarea.form-input:focus {
   }
 
   .dashboard-hero-panel,
-  .metric-grid,
   .profile-grid {
     grid-template-columns: 1fr;
+  }
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .panel-header,
@@ -2418,5 +2429,11 @@ textarea.form-input:focus {
 }
 .pagination-size-select:focus {
   border-color: var(--primary-color);
+}
+
+@media (max-width: 480px) {
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
 }
 

@@ -181,3 +181,63 @@ def test_salary_calculations_rules(app):
         year_item = summary_map[pid_year]
         assert year_item["earnings"] == 10000.00
         assert year_item["balance"] == 10000.00
+
+
+def test_salary_sheets_crud_and_balance(app):
+    with app.app_context():
+        init_db()
+        db = get_db()
+        
+        tables = db.execute("select name from sqlite_master where type='table'").fetchall()
+        table_names = {r["name"] for r in tables}
+        assert "salary_sheets" in table_names
+        
+        pid = repo.create_person({
+            "name": "马星元测试",
+            "id_number": "410101199001017777",
+            "gender": "男",
+            "age": 40,
+            "salary_rate": 10000.00,
+            "salary_type": "月薪"
+        })
+        
+        item_id1 = repo.create_salary_sheet_item({
+            "person_id": pid,
+            "settle_month": "2026-01",
+            "should_work_days": 28.0,
+            "actual_work_days": 21.0,
+            "salary_rate": 10000.00,
+            "earnings": 7500.00,
+            "paid_amount": 0.0,
+            "notes": "第一月"
+        })
+        
+        item_id2 = repo.create_salary_sheet_item({
+            "person_id": pid,
+            "settle_month": "2026-02",
+            "should_work_days": 30.0,
+            "actual_work_days": 30.0,
+            "salary_rate": 11000.00,
+            "earnings": 11000.00,
+            "paid_amount": 9000.00,
+            "notes": "第二月"
+        })
+        
+        sheets = repo.list_salary_sheets_by_person(pid)
+        assert len(sheets) == 2
+        
+        assert sheets[0]["settle_month"] == "2026-01"
+        assert sheets[1]["settle_month"] == "2026-02"
+        
+        assert sheets[0]["formatted_month"] == "2026年1月"
+        assert sheets[1]["formatted_month"] == "2026年2月"
+        
+        assert sheets[0]["balance"] == 7500.00
+        assert sheets[1]["balance"] == 9500.00
+        
+        repo.delete_salary_sheet_item(item_id1)
+        sheets2 = repo.list_salary_sheets_by_person(pid)
+        assert len(sheets2) == 1
+        assert sheets2[0]["settle_month"] == "2026-02"
+        assert sheets2[0]["balance"] == 2000.00
+

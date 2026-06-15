@@ -111,6 +111,7 @@
               <td class="text-right" style="white-space: nowrap; width: 100px; min-width: 100px; vertical-align: middle;" onclick="event.stopPropagation();">
                 <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
                   <button type="button" class="btn-action-edit" onclick="openModal('editPersonModal-{{ person.id }}')">{{ icon('edit') }} 编辑</button>
+                  <button type="button" class="btn-action-salary" onclick="openSalarySheetModal({{ person.id }})" style="background: rgba(16, 185, 129, 0.08); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-sm); padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(16, 185, 129, 0.16)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'">{{ icon('money') }} 工资表</button>
                 </div>
               </td>
             </tr>
@@ -303,6 +304,9 @@
               {% endif %}
               <button type="button" class="btn btn-primary card-btn" style="padding: 5px 8px; font-size: 11px; background-color: var(--accent); border-color: var(--accent);" onclick="openModal('editPersonModal-{{ person.id }}')">
                 {{ icon('edit') }} 修改
+              </button>
+              <button type="button" class="btn card-btn" style="padding: 5px 8px; font-size: 11px; background-color: #10b981; border-color: #10b981; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 2px;" onclick="openSalarySheetModal({{ person.id }})">
+                {{ icon('money') }} 工资表
               </button>
             </div>
           </div>
@@ -1166,7 +1170,283 @@
   </div>
 </div>
 
+<!-- 个人工资对账单（工资卡）弹窗 -->
+<div id="salarySheetModal" class="modal">
+  <div class="modal-content" style="max-width: 950px; width: 95%;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('money') }} <span id="salarySheetTitleName">--</span> 的月度工资结算表</h3>
+      <button type="button" class="modal-close" onclick="closeModal('salarySheetModal')">&times;</button>
+    </div>
+    <div class="modal-body" style="padding-top: 8px;">
+      
+      <p style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: 16px; line-height: 1.5;">
+        此表用于按月/段直接结算员工工资。填写月份、应出勤、实际出勤及已发工资后，系统会自动换算并累加计算“工资余额”。此模式无需在大日历表上逐日打卡。
+      </p>
+
+      <!-- 快捷新增结算行区域 -->
+      <div style="background: var(--surface-muted); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+        <h4 style="margin: 0 0 12px 0; color: var(--primary-color); display: flex; align-items: center; gap: 6px; font-size: 14.5px;">
+          {{ icon('add') }} 新增工资结算记录
+        </h4>
+        <form id="salarySheetForm" onsubmit="submitSalarySheet(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; align-items: flex-end;">
+          <input type="hidden" id="salarySheetPersonId">
+          
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">结算月份 *</label>
+            <input type="month" id="sheet_settle_month" class="form-input" style="padding: 6px 10px; font-size: 13px;" required>
+          </div>
+          
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">应出勤天数 *</label>
+            <input type="number" id="sheet_should_work" step="0.5" min="0.5" class="form-input" style="padding: 6px 10px; font-size: 13px;" value="30" oninput="calculateSheetEarnings()" required>
+          </div>
+          
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">工作天数 *</label>
+            <input type="number" id="sheet_actual_work" step="0.5" min="0" class="form-input" style="padding: 6px 10px; font-size: 13px;" value="30" oninput="calculateSheetEarnings()" required>
+          </div>
+          
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">工资标准(元) *</label>
+            <input type="number" id="sheet_rate" step="0.01" min="0" class="form-input font-mono" style="padding: 6px 10px; font-size: 13px;" oninput="calculateSheetEarnings()" required>
+          </div>
+          
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">应发工资(元) *</label>
+            <input type="number" id="sheet_earnings" step="0.01" min="0" class="form-input font-mono" style="padding: 6px 10px; font-size: 13px; font-weight: 700; color: var(--primary-color);" required>
+          </div>
+          
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">已发工资(元)</label>
+            <input type="number" id="sheet_paid" step="0.01" min="0" class="form-input font-mono" style="padding: 6px 10px; font-size: 13px;" value="0">
+          </div>
+          
+          <div class="form-group" style="grid-column: span 2; margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">备注说明</label>
+            <input type="text" id="sheet_notes" class="form-input" style="padding: 6px 10px; font-size: 13px;" placeholder="例如：某某工地/项目，代付等">
+          </div>
+          
+          <div style="margin-bottom: 0;">
+            <button type="submit" class="btn btn-primary" style="width: 100%; min-height: 34px; padding: 0; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+              {{ icon('save') }} 保存
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 结算流水表格区 -->
+      <div class="table-container" style="max-height: 350px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+        <table class="premium-table" style="font-size: 13px; width: 100%;">
+          <thead>
+            <tr>
+              <th style="white-space: nowrap;">时间</th>
+              <th style="text-align: center; white-space: nowrap;">应出勤天数</th>
+              <th style="text-align: center; white-space: nowrap;">工作时间(天)</th>
+              <th style="text-align: right; white-space: nowrap;">应发工资</th>
+              <th style="text-align: right; white-space: nowrap;">已发工资</th>
+              <th style="text-align: right; white-space: nowrap; color: var(--primary-color);">工资余额</th>
+              <th style="padding-left: 20px;">备注</th>
+              <th style="text-align: center; white-space: nowrap; width: 60px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="salarySheetTableBody">
+            <!-- 动态渲染的表格行 -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 对账汇总统计 -->
+      <div id="salarySheetSummary" style="margin-top: 14px; padding: 12px 16px; border-radius: var(--radius-md); background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); display: flex; justify-content: space-between; font-weight: 700; font-size: 14px;">
+        <span style="color: var(--text-secondary);">累计对账：累计应发 <span id="summaryTotalEarnings" style="color: var(--text-primary); font-family: monospace;">¥0.00</span> 元，累计已发 <span id="summaryTotalPaid" style="color: var(--text-primary); font-family: monospace;">¥0.00</span> 元</span>
+        <span style="color: var(--primary-color);">当前总余额：<span id="summaryTotalBalance" style="font-family: monospace; font-size: 16px;">¥0.00</span> 元</span>
+      </div>
+      
+      <div class="form-actions" style="padding-top: 18px; display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid var(--border-color);">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('salarySheetModal')">关闭窗口</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+// ==========================================
+// 员工个人月度工资对账单 (工资卡) 业务逻辑
+// ==========================================
+let currentPersonSalaryRate = 0.0;
+
+function openSalarySheetModal(personId) {
+  document.getElementById('salarySheetPersonId').value = personId;
+  
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const monthStr = `${year}-${month}`;
+  document.getElementById('sheet_settle_month').value = monthStr;
+  
+  const daysInMonth = new Date(year, now.getMonth() + 1, 0).getDate();
+  document.getElementById('sheet_should_work').value = daysInMonth;
+  document.getElementById('sheet_actual_work').value = daysInMonth;
+  
+  document.getElementById('sheet_paid').value = "0";
+  document.getElementById('sheet_notes').value = "";
+  
+  fetch(`/people/${personId}/salary-sheets`)
+    .then(response => {
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      return response.json();
+    })
+    .then(res => {
+      if (res.status === 'success') {
+        document.getElementById('salarySheetTitleName').innerText = res.person_name;
+        
+        currentPersonSalaryRate = parseFloat(res.salary_rate) || 0.0;
+        document.getElementById('sheet_rate').value = currentPersonSalaryRate.toFixed(2);
+        
+        calculateSheetEarnings();
+        renderSalarySheetTable(res.data);
+        openModal('salarySheetModal');
+      } else {
+        alert("获取对账单失败：" + res.message);
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("网络通信异常，请刷新后重试。");
+    });
+}
+
+function calculateSheetEarnings() {
+  const shouldWork = parseFloat(document.getElementById('sheet_should_work').value) || 30.0;
+  const actualWork = parseFloat(document.getElementById('sheet_actual_work').value) || 0.0;
+  const rate = parseFloat(document.getElementById('sheet_rate').value) || 0.0;
+  
+  let earnings = 0.0;
+  if (shouldWork > 0) {
+    earnings = (rate / shouldWork) * actualWork;
+  }
+  document.getElementById('sheet_earnings').value = earnings.toFixed(2);
+}
+
+function renderSalarySheetTable(data) {
+  const tbody = document.getElementById('salarySheetTableBody');
+  tbody.innerHTML = '';
+  
+  let totalEarnings = 0.0;
+  let totalPaid = 0.0;
+  let lastBalance = 0.0;
+  
+  if (!data || data.length === 0) {
+    tbody.innerHTML = `
+      <tr class="empty-row">
+        <td colspan="8" style="text-align: center; padding: 48px;">
+          <div class="empty-state">
+            <span class="empty-icon" style="font-size: 24px;">{{ icon('money') }}</span>
+            <span class="empty-text" style="font-size: 12.5px; margin-top: 8px; color: var(--text-secondary);">暂无月度工资结算对账单记录</span>
+          </div>
+        </td>
+      </tr>
+    `;
+    document.getElementById('summaryTotalEarnings').innerText = '¥0.00';
+    document.getElementById('summaryTotalPaid').innerText = '¥0.00';
+    document.getElementById('summaryTotalBalance').innerText = '¥0.00';
+    return;
+  }
+  
+  data.forEach(item => {
+    totalEarnings += item.earnings;
+    totalPaid += item.paid_amount;
+    lastBalance = item.balance;
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="vertical-align: middle; font-weight: 700; color: var(--text-primary);">${item.formatted_month}</td>
+      <td style="text-align: center; vertical-align: middle;">${item.should_work_days} 天</td>
+      <td style="text-align: center; vertical-align: middle; font-weight: 600;">${item.actual_work_days} 天</td>
+      <td class="font-mono" style="text-align: right; vertical-align: middle; font-weight: 700;">¥${item.earnings.toFixed(2)}</td>
+      <td class="font-mono" style="text-align: right; vertical-align: middle; color: #d97706; font-weight: 700;">¥${item.paid_amount.toFixed(2)}</td>
+      <td class="font-mono" style="text-align: right; vertical-align: middle; color: var(--primary-color); font-weight: 800; font-size: 13.5px;">¥${item.balance.toFixed(2)}</td>
+      <td class="text-muted" style="vertical-align: middle; padding-left: 20px; max-width: 250px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${item.notes || ''}">${item.notes || '--'}</td>
+      <td style="text-align: center; vertical-align: middle;">
+        <button type="button" onclick="deleteSalarySheetItem(${item.id})" title="删除该记录" style="background: rgba(239, 68, 68, 0.08); color: #ef4444; border: none; border-radius: var(--radius-sm); width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(239, 68, 68, 0.16)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.08)'">
+          <svg style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  
+  document.getElementById('summaryTotalEarnings').innerText = '¥' + totalEarnings.toFixed(2);
+  document.getElementById('summaryTotalPaid').innerText = '¥' + totalPaid.toFixed(2);
+  document.getElementById('summaryTotalBalance').innerText = '¥' + lastBalance.toFixed(2);
+}
+
+function submitSalarySheet(event) {
+  event.preventDefault();
+  const personId = document.getElementById('salarySheetPersonId').value;
+  
+  const settleMonth = document.getElementById('sheet_settle_month').value;
+  const shouldWork = document.getElementById('sheet_should_work').value;
+  const actualWork = document.getElementById('sheet_actual_work').value;
+  const rate = document.getElementById('sheet_rate').value;
+  const earnings = document.getElementById('sheet_earnings').value;
+  const paid = document.getElementById('sheet_paid').value;
+  const notes = document.getElementById('sheet_notes').value;
+  
+  fetch(`/people/${personId}/salary-sheets/add`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      settle_month: settleMonth,
+      should_work_days: shouldWork,
+      actual_work_days: actualWork,
+      salary_rate: rate,
+      earnings: earnings,
+      paid_amount: paid,
+      notes: notes
+    })
+  })
+  .then(response => {
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    return response.json();
+  })
+  .then(res => {
+    if (res.status === 'success') {
+      renderSalarySheetTable(res.data);
+      document.getElementById('sheet_paid').value = "0";
+      document.getElementById('sheet_notes').value = "";
+    } else {
+      alert("保存记录失败：" + res.message);
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("网络请求失败，未能成功保存。");
+  });
+}
+
+function deleteSalarySheetItem(itemId) {
+  if (!confirm("您确定要删除该条工资结算记录吗？删除后，该月及后续月份的余额账目将被重新自动计算。")) return;
+  
+  fetch(`/people/salary-sheets/${itemId}/delete`, {
+    method: 'POST'
+  })
+  .then(response => {
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    return response.json();
+  })
+  .then(res => {
+    if (res.status === 'success') {
+      renderSalarySheetTable(res.data);
+    } else {
+      alert("删除记录失败：" + res.message);
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("网络通信异常，删除失败。");
+  });
+}
+
 let idCardPreviewScale = 1.0;
 let idCardPreviewRotation = 0;
 
