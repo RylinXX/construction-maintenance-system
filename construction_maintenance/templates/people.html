@@ -409,7 +409,12 @@
               <td class="sticky-col font-semibold">
                 <div class="name-cell">
                   <span class="p-name">{{ person.name }}</span>
-                  <span class="p-job" style="font-size: 11px; opacity: 0.75; display: block; font-weight: normal; margin-top: 2px;">{{ person.job_type or '普工' }}</span>
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 4px;">
+                    <span class="p-job" style="font-size: 11px; opacity: 0.75; font-weight: normal; display: inline-block;">{{ person.job_type or '普工' }}</span>
+                    <button type="button" class="btn-quick-fill" onclick="openRowQuickFillModal({{ person.id }}, '{{ person.name }}')" title="快捷填报" style="padding: 1px 4px; font-size: 10px; border-radius: 3px; background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); cursor: pointer; display: inline-flex; align-items: center; gap: 2px; font-weight: 600; line-height: 1.2; white-space: nowrap; transition: all 0.2s;" onmouseover="this.style.background='rgba(16, 185, 129, 0.2)'; this.style.borderColor='rgba(16, 185, 129, 0.4)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.12)'; this.style.borderColor='rgba(16, 185, 129, 0.25)'">
+                      {{ icon('ai') }} 快捷填报
+                    </button>
+                  </div>
                 </div>
               </td>
               {% for day in days %}
@@ -1268,7 +1273,149 @@
   </div>
 </div>
 
+<!-- 考勤一键快捷填报弹窗 -->
+<div id="rowQuickFillModal" class="modal">
+  <div class="modal-content" style="max-width: 480px; width: 95%;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('checklist') }} 考勤快捷填报 (<span id="rowQuickFillTitleName">--</span>)</h3>
+      <button type="button" class="modal-close" onclick="closeModal('rowQuickFillModal')">&times;</button>
+    </div>
+    <div class="modal-body" style="padding-top: 8px;">
+      <p style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: 16px; line-height: 1.5;">
+        直接输入白班、夜班与请假天数，系统将根据分配规则自动平摊分配至当月。原有的当月打卡记录将被清除并重新生成。
+      </p>
+      
+      <form id="rowQuickFillForm" onsubmit="submitRowQuickFill(event)" class="premium-form">
+        <input type="hidden" id="rowQuickFillPersonId">
+        
+        <div class="form-group">
+          <label class="form-label" for="quick_fill_month">考勤月份 <span class="required">*</span></label>
+          <input type="month" id="quick_fill_month" class="form-input" required readonly style="background: var(--surface-muted); color: var(--text-secondary); cursor: not-allowed;">
+        </div>
+
+        <div class="form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="quick_fill_day" style="font-size: 12px; margin-bottom: 4px;">白班天数</label>
+            <input type="number" id="quick_fill_day" min="0" max="31" class="form-input" style="padding: 6px 10px; font-size: 13px;" value="0" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="quick_fill_night" style="font-size: 12px; margin-bottom: 4px;">夜班天数</label>
+            <input type="number" id="quick_fill_night" min="0" max="31" class="form-input" style="padding: 6px 10px; font-size: 13px;" value="0" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="quick_fill_leave" style="font-size: 12px; margin-bottom: 4px;">请假天数</label>
+            <input type="number" id="quick_fill_leave" min="0" max="31" class="form-input" style="padding: 6px 10px; font-size: 13px;" value="0" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">平铺分配规则</label>
+          <div style="display: flex; gap: 20px; align-items: center; padding-top: 4px;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13.5px;">
+              <input type="radio" name="quick_fill_rule" value="skip" checked style="accent-color: var(--primary-color);">
+              工作日优先（避开周末）
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13.5px;">
+              <input type="radio" name="quick_fill_rule" value="all" style="accent-color: var(--primary-color);">
+              自然日顺延
+            </label>
+          </div>
+        </div>
+
+        <div class="form-actions" style="padding-top: 18px; display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('rowQuickFillModal')">取消</button>
+          <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+            {{ icon('save') }} 确认填充
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
+// ==========================================
+// 考勤一键快捷平摊填报 业务逻辑
+// ==========================================
+function openRowQuickFillModal(personId, personName) {
+  document.getElementById('rowQuickFillPersonId').value = personId;
+  document.getElementById('rowQuickFillTitleName').textContent = personName;
+  
+  const currentMonth = document.getElementById('monthSelect').value;
+  document.getElementById('quick_fill_month').value = currentMonth;
+  
+  let dayVal = 0;
+  let nightVal = 0;
+  let leaveVal = 0;
+  
+  const row = document.querySelector(`tr[data-person-id="${personId}"]`);
+  if (row) {
+    const dayCountEl = row.querySelector('.day-count');
+    const nightCountEl = row.querySelector('.night-count');
+    const leaveCountEl = row.querySelector('.leave-count');
+    
+    if (dayCountEl) dayVal = parseInt(dayCountEl.textContent) || 0;
+    if (nightCountEl) nightVal = parseInt(nightCountEl.textContent) || 0;
+    if (leaveCountEl) leaveVal = parseInt(leaveCountEl.textContent) || 0;
+  }
+  
+  document.getElementById('quick_fill_day').value = dayVal;
+  document.getElementById('quick_fill_night').value = nightVal;
+  document.getElementById('quick_fill_leave').value = leaveVal;
+  
+  openModal('rowQuickFillModal');
+}
+
+function submitRowQuickFill(event) {
+  event.preventDefault();
+  
+  const personId = document.getElementById('rowQuickFillPersonId').value;
+  const month = document.getElementById('quick_fill_month').value;
+  const dayShifts = parseInt(document.getElementById('quick_fill_day').value) || 0;
+  const nightShifts = parseInt(document.getElementById('quick_fill_night').value) || 0;
+  const leaveShifts = parseInt(document.getElementById('quick_fill_leave').value) || 0;
+  const skipWeekends = document.querySelector('input[name="quick_fill_rule"]:checked').value === 'skip';
+  
+  const totalShifts = dayShifts + nightShifts + leaveShifts;
+  if (totalShifts <= 0) {
+    alert("请输入至少1个需要填报的班次");
+    return;
+  }
+  
+  const data = {
+    person_id: parseInt(personId),
+    month: month,
+    day_shifts: dayShifts,
+    night_shifts: nightShifts,
+    leave_shifts: leaveShifts,
+    skip_weekends: skipWeekends
+  };
+  
+  fetch('/attendance/quick-fill-person', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => {
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    return response.json();
+  })
+  .then(res => {
+    if (res.status === 'success') {
+      closeModal('rowQuickFillModal');
+      location.reload();
+    } else {
+      alert("快捷填报失败: " + (res.message || "未知错误"));
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("请求异常，请稍后重试");
+  });
+}
+
 // ==========================================
 // 员工个人月度工资对账单 (工资卡) 业务逻辑
 // ==========================================

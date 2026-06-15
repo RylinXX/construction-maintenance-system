@@ -27,7 +27,7 @@
             <th style="min-width: 120px; white-space: nowrap;">开工日期</th>
             <th style="min-width: 100px; white-space: nowrap;">状态</th>
             <th style="min-width: 250px; white-space: nowrap;">备注信息</th>
-            <th class="text-right" style="min-width: 230px; width: 230px; white-space: nowrap;">管理操作</th>
+            <th class="text-right" style="min-width: 260px; width: 260px; white-space: nowrap;">管理操作</th>
           </tr>
         </thead>
         <tbody id="projects-table-tbody">
@@ -52,7 +52,7 @@
               {% endif %}
             </td>
             <td class="text-muted" style="vertical-align: middle; white-space: nowrap;">{{ project.notes or '--' }}</td>
-            <td class="text-right" style="white-space: nowrap; width: 230px; min-width: 230px; vertical-align: middle;" onclick="event.stopPropagation();">
+            <td class="text-right" style="white-space: nowrap; width: 260px; min-width: 260px; vertical-align: middle;" onclick="event.stopPropagation();">
               <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
                 <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="btn-action-preview" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="进入该项目专属费用台账">
                   {{ icon('folder') }} 台账

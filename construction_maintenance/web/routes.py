@@ -1262,6 +1262,76 @@ def delete_person_salary_sheet_item(item_id: int):
     return {"status": "success", "data": sheets}
 
 
+@bp.route("/attendance/quick-fill-person", methods=["POST"])
+def quick_fill_person_attendance():
+    data = request.get_json() or {}
+    person_id = data.get("person_id")
+    month = data.get("month")
+    
+    if not person_id or not month:
+        return {"status": "error", "message": "必要参数缺失"}, 400
+        
+    try:
+        day_shifts = int(data.get("day_shifts", 0))
+        night_shifts = int(data.get("night_shifts", 0))
+        leave_shifts = int(data.get("leave_shifts", 0))
+        skip_weekends = bool(data.get("skip_weekends", True))
+    except (TypeError, ValueError):
+        return {"status": "error", "message": "天数参数必须为整数"}, 400
+        
+    try:
+        import calendar
+        import datetime
+        
+        year, m = map(int, month.split("-"))
+        _, num_days = calendar.monthrange(year, m)
+        
+        workdays = []
+        weekends = []
+        for d in range(1, num_days + 1):
+            date_str = f"{month}-{d:02d}"
+            dt = datetime.date(year, m, d)
+            if dt.weekday() in (5, 6):
+                weekends.append(date_str)
+            else:
+                workdays.append(date_str)
+                
+        if skip_weekends:
+            target_dates = workdays + weekends
+        else:
+            target_dates = [f"{month}-{d:02d}" for d in range(1, num_days + 1)]
+            
+        shifts_pool = (
+            ["白班"] * day_shifts + 
+            ["夜班"] * night_shifts + 
+            ["请假"] * leave_shifts
+        )
+        
+        if len(shifts_pool) > num_days:
+            return {"status": "error", "message": f"填充的总天数 ({len(shifts_pool)} 天) 超过了当月的总天数 ({num_days} 天)"}, 400
+            
+        db = repo.get_db()
+        db.execute(
+            "delete from attendance where person_id = ? and work_date like ?",
+            (person_id, f"{month}-%"),
+        )
+        
+        for idx, shift in enumerate(shifts_pool):
+            date_str = target_dates[idx]
+            db.execute(
+                """
+                insert into attendance (person_id, work_date, shift_type)
+                values (?, ?, ?)
+                """,
+                (person_id, date_str, shift),
+            )
+            
+        db.commit()
+        return {"status": "success"}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}, 500
+
+
 @bp.route("/qualifications/<int:qualification_id>/edit", methods=["POST"])
 def edit_qualification(qualification_id: int):
     company_id = int(required_text(request.form, "company_id", "公司"))
