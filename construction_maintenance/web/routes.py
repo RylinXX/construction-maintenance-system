@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from flask import Blueprint
 from flask import redirect
 from flask import render_template
@@ -97,12 +98,16 @@ def dashboard():
 @bp.route("/expense-categories", methods=["GET", "POST"])
 def expense_categories():
     if request.method == "POST":
-        repo.create_expense_category(
-            {
-                "name": required_text(request.form, "name", "费用科目名称"),
-                "sort_order": text_value(request.form, "sort_order"),
-            }
-        )
+        try:
+            repo.create_expense_category(
+                {
+                    "name": required_text(request.form, "name", "费用科目名称"),
+                    "sort_order": text_value(request.form, "sort_order"),
+                }
+            )
+            flash("费用科目已成功添加。", "success")
+        except sqlite3.IntegrityError:
+            flash("添加失败：该科目名称已存在。", "danger")
         redirect_url = request.form.get("redirect")
         return redirect(redirect_url or url_for("web.expense_categories"))
 
@@ -114,14 +119,18 @@ def expense_categories():
 
 @bp.route("/expense-categories/<int:category_id>/edit", methods=["POST"])
 def edit_expense_category(category_id: int):
-    repo.update_expense_category(
-        category_id,
-        {
-            "name": required_text(request.form, "name", "费用科目名称"),
-            "sort_order": text_value(request.form, "sort_order"),
-            "is_active": 1 if request.form.get("is_active") else 0,
-        },
-    )
+    try:
+        repo.update_expense_category(
+            category_id,
+            {
+                "name": required_text(request.form, "name", "费用科目名称"),
+                "sort_order": text_value(request.form, "sort_order"),
+                "is_active": 1 if request.form.get("is_active") else 0,
+            },
+        )
+        flash("费用科目已成功修改。", "success")
+    except sqlite3.IntegrityError:
+        flash("修改失败：该科目名称已存在。", "danger")
     redirect_url = request.form.get("redirect")
     return redirect(redirect_url or url_for("web.expense_categories"))
 
@@ -318,26 +327,30 @@ def _render_people_and_attendance(active_tab):
 @bp.route("/people", methods=["GET", "POST"])
 def people():
     if request.method == "POST":
-        repo.create_person(
-            {
-                "name": required_text(request.form, "name", "姓名"),
-                "id_number": required_text(request.form, "id_number", "身份证号"),
-                "gender": text_value(request.form, "gender"),
-                "birth_date": text_value(request.form, "birth_date"),
-                "age": int(text_value(request.form, "age") or 0) or None,
-                "phone": text_value(request.form, "phone"),
-                "address": text_value(request.form, "address"),
-                "job_type": text_value(request.form, "job_type"),
-                "bank_card": text_value(request.form, "bank_card"),
-                "bank_name": text_value(request.form, "bank_name"),
-                "entry_date": text_value(request.form, "entry_date"),
-                "notes": text_value(request.form, "notes"),
-                "id_card_path": _save_form_upload("id_card_attachment"),
-                "is_attendance": 1 if request.form.get("is_attendance") else 0,
-                "salary_type": text_value(request.form, "salary_type") or "日薪",
-                "salary_rate": float(text_value(request.form, "salary_rate") or 0.0),
-            }
-        )
+        try:
+            repo.create_person(
+                {
+                    "name": required_text(request.form, "name", "姓名"),
+                    "id_number": required_text(request.form, "id_number", "身份证号"),
+                    "gender": text_value(request.form, "gender"),
+                    "birth_date": text_value(request.form, "birth_date"),
+                    "age": int(text_value(request.form, "age") or 0) or None,
+                    "phone": text_value(request.form, "phone"),
+                    "address": text_value(request.form, "address"),
+                    "job_type": text_value(request.form, "job_type"),
+                    "bank_card": text_value(request.form, "bank_card"),
+                    "bank_name": text_value(request.form, "bank_name"),
+                    "entry_date": text_value(request.form, "entry_date"),
+                    "notes": text_value(request.form, "notes"),
+                    "id_card_path": _save_form_upload("id_card_attachment"),
+                    "is_attendance": 1 if request.form.get("is_attendance") else 0,
+                    "salary_type": text_value(request.form, "salary_type") or "日薪",
+                    "salary_rate": float(text_value(request.form, "salary_rate") or 0.0),
+                }
+            )
+            flash("人员档案已成功录入。", "success")
+        except sqlite3.IntegrityError:
+            flash("录入失败：该身份证号已被登记。", "danger")
         return redirect(url_for("web.people"))
     
     active_tab = request.args.get("tab", "people")
@@ -1166,27 +1179,31 @@ def edit_voucher(voucher_id: int):
 
 @bp.route("/people/<int:person_id>/edit", methods=["POST"])
 def edit_person(person_id: int):
-    repo.update_person(
-        person_id,
-        {
-            "name": required_text(request.form, "name", "姓名"),
-            "id_number": required_text(request.form, "id_number", "身份证号"),
-            "gender": text_value(request.form, "gender"),
-            "birth_date": text_value(request.form, "birth_date"),
-            "age": int(text_value(request.form, "age") or 0) or None,
-            "phone": text_value(request.form, "phone"),
-            "address": text_value(request.form, "address"),
-            "job_type": text_value(request.form, "job_type"),
-            "bank_card": text_value(request.form, "bank_card"),
-            "bank_name": text_value(request.form, "bank_name"),
-            "entry_date": text_value(request.form, "entry_date"),
-            "notes": text_value(request.form, "notes"),
-            "id_card_path": _save_form_upload("id_card_attachment"),
-            "is_attendance": 1 if request.form.get("is_attendance") else 0,
-            "salary_type": text_value(request.form, "salary_type") or "日薪",
-            "salary_rate": float(text_value(request.form, "salary_rate") or 0.0),
-        }
-    )
+    try:
+        repo.update_person(
+            person_id,
+            {
+                "name": required_text(request.form, "name", "姓名"),
+                "id_number": required_text(request.form, "id_number", "身份证号"),
+                "gender": text_value(request.form, "gender"),
+                "birth_date": text_value(request.form, "birth_date"),
+                "age": int(text_value(request.form, "age") or 0) or None,
+                "phone": text_value(request.form, "phone"),
+                "address": text_value(request.form, "address"),
+                "job_type": text_value(request.form, "job_type"),
+                "bank_card": text_value(request.form, "bank_card"),
+                "bank_name": text_value(request.form, "bank_name"),
+                "entry_date": text_value(request.form, "entry_date"),
+                "notes": text_value(request.form, "notes"),
+                "id_card_path": _save_form_upload("id_card_attachment"),
+                "is_attendance": 1 if request.form.get("is_attendance") else 0,
+                "salary_type": text_value(request.form, "salary_type") or "日薪",
+                "salary_rate": float(text_value(request.form, "salary_rate") or 0.0),
+            }
+        )
+        flash("人员档案已成功修改。", "success")
+    except sqlite3.IntegrityError:
+        flash("修改失败：该身份证号已被登记。", "danger")
     return redirect(url_for("web.people"))
 
 
@@ -1375,7 +1392,11 @@ def edit_company(company_id: int):
         "phone": text_value(request.form, "phone"),
         "notes": text_value(request.form, "notes"),
     }
-    repo.update_company(company_id, data)
+    try:
+        repo.update_company(company_id, data)
+        flash("合作单位信息已成功修改。", "success")
+    except sqlite3.IntegrityError:
+        flash("修改失败：该公司名称已存在。", "danger")
     return redirect(url_for("web.qualifications"))
 
 
@@ -1389,7 +1410,11 @@ def add_company():
         "notes": text_value(request.form, "notes"),
         "is_main": 0,
     }
-    repo.create_company(data)
+    try:
+        repo.create_company(data)
+        flash("合作单位已成功添加。", "success")
+    except sqlite3.IntegrityError:
+        flash("添加失败：该公司名称已存在。", "danger")
     return redirect(url_for("web.qualifications"))
 
 
