@@ -61,7 +61,7 @@
       <div class="review-grid">
         {% for item in items if item.status != '已确认' %}
           {% set data = item.recognized_json|fromjson %}
-          <div class="review-card" id="item-card-{{ item.id }}">
+          <div class="review-card" id="item-card-{{ item.id }}" data-status="{{ item.status }}">
             <div class="review-card-header">
               <div class="card-title-group">
                 {% if item.item_type == 'voucher' %}
@@ -85,7 +85,17 @@
             </div>
             
             <div class="review-card-body">
-              <div class="review-split">
+              {% if item.status == '识别中' %}
+                <div class="review-status-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; width: 100%; text-align: center;">
+                  <div class="loading-spinner" style="width: 40px; height: 40px; border: 4px solid rgba(15, 118, 110, 0.1); border-left-color: var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
+                  <style>
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                  </style>
+                  <h3 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">AI 正在智能识别提取中...</h3>
+                  <p style="font-size: 13px; color: var(--text-secondary); max-width: 400px; margin: 0 auto;">系统正在使用大模型对上传的凭证文件进行深度识别与字段解析，通常需要 5-15 秒，请稍后，本页面将自动刷新状态。</p>
+                </div>
+              {% else %}
+                <div class="review-split">
                 <!-- Left: Preview -->
                 <div class="review-visualizer">
                   {% set filename = item.stored_path|upload_name %}
@@ -308,7 +318,7 @@
                   <!-- Form for deleting -->
                   <form id="delete-form-{{ item.id }}" action="{{ url_for('web.delete_batch_item', item_id=item.id) }}" method="post" style="display: none;"></form>
                 </div>
-              </div>
+              {% endif %}
             </div>
           </div>
         {% else %}
@@ -357,7 +367,12 @@
                   {% endif %}
                 </td>
                 <td>
-                  {% if item.status == '待确认' %}
+                  {% if item.status == '识别中' %}
+                    <span class="badge badge-loading" style="background: rgba(13, 148, 136, 0.1); color: var(--primary-color); border: 1px solid rgba(13, 148, 136, 0.2);"><span style="display:inline-block; width: 6px; height: 6px; border-radius:50%; background:var(--primary-color); margin-right: 4px; animation: pulse 1s infinite alternate;"></span>{{ item.status }}</span>
+                    <style>
+                      @keyframes pulse { 0% { opacity: 0.3; } 100% { opacity: 1; } }
+                    </style>
+                  {% elif item.status == '待确认' %}
                     <span class="badge badge-warning">{{ item.status }}</span>
                   {% elif item.status == '已识别' %}
                     <span class="badge badge-info">{{ item.status }}</span>
@@ -480,6 +495,14 @@ function toggleExpiryDate(itemId) {
 document.addEventListener('DOMContentLoaded', () => {
   const savedTab = localStorage.getItem('active_batch_tab') || 'review-workspace';
   switchTab(savedTab);
+
+  // 检测是否有识别中的卡片，如果有，则定时自动重新加载以展示最新状态
+  const processingCards = document.querySelectorAll('.review-card[data-status="识别中"]');
+  if (processingCards.length > 0) {
+    setTimeout(() => {
+      location.reload();
+    }, 3500);
+  }
 });
 
 // Fullscreen image viewer

@@ -12,6 +12,38 @@ from construction_maintenance import repositories as repo
 from construction_maintenance.web.forms import required_text
 from construction_maintenance.web.forms import text_value
 from construction_maintenance.services.ocr import recognize_batch_upload
+from concurrent.futures import ThreadPoolExecutor
+
+ocr_executor = ThreadPoolExecutor(max_workers=3)
+
+
+def _async_ocr_worker(app, item_id: int, stored_path_str: str, item_type: str):
+    from pathlib import Path
+    import json
+    from construction_maintenance.services.ocr import recognize_batch_upload
+
+    with app.app_context():
+        try:
+            stored_path = Path(stored_path_str)
+            ocr_result = recognize_batch_upload(stored_path, item_type)
+
+            recognized_json = json.dumps(ocr_result.data, ensure_ascii=False)
+            repo.update_batch_item_recognition(
+                item_id,
+                status=ocr_result.status,
+                recognized_json=recognized_json,
+                confidence=ocr_result.confidence,
+            )
+        except Exception as exc:
+            repo.update_batch_item_recognition(
+                item_id,
+                status="待确认",
+                recognized_json=json.dumps(
+                    {"message": f"OCR 识别失败，请人工确认：{exc}"},
+                    ensure_ascii=False,
+                ),
+                confidence=None,
+            )
 
 bp = Blueprint("web", __name__)
 
@@ -638,34 +670,56 @@ def batch():
     if request.method == "POST":
         item_type = text_value(request.form, "item_type") or "voucher"
         upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
+        app = current_app._get_current_object()
+        
         for file in request.files.getlist("files"):
             if not file.filename:
                 continue
             stored = save_upload(upload_folder, file)
             
-            try:
-                ocr_result = recognize_batch_upload(stored, item_type)
-                status = ocr_result.status
-                recognized_json = json.dumps(ocr_result.data, ensure_ascii=False)
-                confidence = ocr_result.confidence
-            except Exception as exc:
-                status = "待确认"
-                recognized_json = json.dumps(
-                    {"message": f"OCR 识别失败，请人工确认：{exc}"},
-                    ensure_ascii=False,
-                )
-                confidence = None
+            if current_app.config.get("TESTING"):
+                try:
+                    ocr_result = recognize_batch_upload(stored, item_type)
+                    status = ocr_result.status
+                    recognized_json = json.dumps(ocr_result.data, ensure_ascii=False)
+                    confidence = ocr_result.confidence
+                except Exception as exc:
+                    status = "待确认"
+                    recognized_json = json.dumps(
+                        {"message": f"OCR 识别失败，请人工确认：{exc}"},
+                        ensure_ascii=False,
+                    )
+                    confidence = None
 
-            repo.create_batch_item(
-                {
-                    "item_type": item_type,
-                    "source_filename": file.filename,
-                    "stored_path": stored.name,
-                    "status": status,
-                    "recognized_json": recognized_json,
-                    "confidence": confidence,
-                }
-            )
+                repo.create_batch_item(
+                    {
+                        "item_type": item_type,
+                        "source_filename": file.filename,
+                        "stored_path": stored.name,
+                        "status": status,
+                        "recognized_json": recognized_json,
+                        "confidence": confidence,
+                    }
+                )
+            else:
+                # 生产与开发模式下，进行异步多线程处理
+                item_id = repo.create_batch_item(
+                    {
+                        "item_type": item_type,
+                        "source_filename": file.filename,
+                        "stored_path": stored.name,
+                        "status": "识别中",
+                        "recognized_json": json.dumps({"message": "正在进行 AI 智能识别..."}, ensure_ascii=False),
+                        "confidence": None,
+                    }
+                )
+                ocr_executor.submit(
+                    _async_ocr_worker,
+                    app,
+                    item_id,
+                    str(stored),
+                    item_type
+                )
         return redirect(url_for("web.batch"))
     return render_template(
         "batch.html",
