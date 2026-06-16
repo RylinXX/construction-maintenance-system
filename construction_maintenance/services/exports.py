@@ -172,11 +172,8 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
         for d in range(1, total_days + 1):
             date_str = f"{month}-{d:02d}"
             shift = attendance_dict.get(person["id"], {}).get(date_str, None)
-            if shift == "白班":
-                row_data.append("白")
-                day_count += 1
-            elif shift == "夜班":
-                row_data.append("夜")
+            if shift in ("白班", "夜班", "上班"):
+                row_data.append("上")
                 day_count += 1
             elif shift == "请假":
                 row_data.append("假")

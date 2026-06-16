@@ -91,8 +91,8 @@ def test_build_attendance_workbook(app, tmp_path):
     # 检查数据
     assert sheet["A2"].value == "李小华"
     assert sheet["B2"].value == "410000199001019999"
-    # C2 (1日) 应该是 "白"
-    assert sheet["C2"].value == "白"
+    # C2 (1日) 应该是 "上"
+    assert sheet["C2"].value == "上"
     # D2 (2日) 应该是 "假"
     assert sheet["D2"].value == "假"
 

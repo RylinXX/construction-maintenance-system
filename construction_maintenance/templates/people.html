@@ -336,7 +336,7 @@
       <div class="panel-header" style="flex-wrap: wrap; gap: 16px; align-items: center;">
         <div>
           <h2 class="panel-title">{{ icon('checklist') }} 施工人员月度考勤表</h2>
-          <p class="panel-subtitle">当前大表共装载了 <strong style="color: var(--primary-color);">{{ attendance_people|length }}</strong> 名考勤人员。点击单元格在【无】→【白班】→【夜班】→【请假】之间循环切换，横向滑动查看完整日期。</p>
+          <p class="panel-subtitle">当前大表共装载了 <strong style="color: var(--primary-color);">{{ attendance_people|length }}</strong> 名考勤人员。点击单元格在【无】→【上班】→【请假】之间循环切换，横向滑动查看完整日期。</p>
         </div>
         <div class="toolbar-actions" style="margin-left: auto;">
           <!-- HSL Custom Styled Legend -->
@@ -345,10 +345,7 @@
               <span style="display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border-color); background: var(--surface-color);"></span> 休息/无
             </span>
             <span style="display: inline-flex; align-items: center; gap: 4px;">
-              <span style="display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: var(--info-bg); border: 1px solid var(--info-text);"></span> 白班
-            </span>
-            <span style="display: inline-flex; align-items: center; gap: 4px;">
-              <span style="display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: #1e40af; border: 1px solid #1e40af;"></span> 夜班
+              <span style="display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: var(--info-bg); border: 1px solid var(--info-text);"></span> 上班
             </span>
             <span style="display: inline-flex; align-items: center; gap: 4px;">
               <span style="display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: #fef3c7; border: 1px solid #d97706;"></span> 请假
@@ -419,19 +416,17 @@
               </td>
               {% for day in days %}
                 {% set shift = attendance_dict.get(person.id, {}).get(day.date_str, None) %}
-                <td class="attendance-cell {% if shift == '白班' %}cell-day{% elif shift == '夜班' %}cell-night{% elif shift == '请假' %}cell-leave{% else %}cell-none{% endif %} {% if day.is_weekend %}weekend-cell{% endif %}" 
+                <td class="attendance-cell {% if shift in ('白班', '夜班', '上班') %}cell-day{% elif shift == '请假' %}cell-leave{% else %}cell-none{% endif %} {% if day.is_weekend %}weekend-cell{% endif %}" 
                     data-date="{{ day.date_str }}" 
                     data-shift="{{ shift or '' }}" 
                     onclick="toggleAttendanceCell(this, {{ person.id }}, '{{ day.date_str }}')">
-                  {% if shift == '白班' %}白{% elif shift == '夜班' %}夜{% elif shift == '请假' %}假{% endif %}
+                  {% if shift in ('白班', '夜班', '上班') %}上{% elif shift == '请假' %}假{% endif %}
                 </td>
               {% endfor %}
               <td class="stats-column">
                 <div class="stats-wrapper" style="display: flex; justify-content: center; gap: 8px;">
-                  <span class="stats-badge day-badge" title="白班"><strong class="day-count">{{ stats.day }}</strong> 白</span>
-                  <span class="stats-badge night-badge" title="夜班"><strong class="night-count">{{ stats.night }}</strong> 夜</span>
+                  <span class="stats-badge day-badge" title="上班"><strong class="day-count">{{ stats.day }}</strong> 上</span>
                   <span class="stats-badge leave-badge" title="请假" style="background: #fef3c7; color: #d97706;"><strong class="leave-count">{{ stats.leave }}</strong> 假</span>
-                  <span class="stats-badge total-badge" title="出勤天数" style="font-weight: 800; background: var(--hover-bg); color: var(--secondary-color);"><strong class="total-count">{{ stats.total }}</strong> 天</span>
                 </div>
               </td>
             </tr>
@@ -1293,19 +1288,16 @@
           <input type="month" id="quick_fill_month" class="form-input" required readonly style="background: var(--surface-muted); color: var(--text-secondary); cursor: not-allowed;">
         </div>
 
-        <div class="form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
+        <div class="form-grid" style="grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px;">
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" for="quick_fill_day" style="font-size: 12px; margin-bottom: 4px;">白班天数</label>
+            <label class="form-label" for="quick_fill_day" style="font-size: 12px; margin-bottom: 4px;">上班天数</label>
             <input type="number" id="quick_fill_day" min="0" max="31" class="form-input" style="padding: 6px 10px; font-size: 13px;" value="0" required>
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" for="quick_fill_night" style="font-size: 12px; margin-bottom: 4px;">夜班天数</label>
-            <input type="number" id="quick_fill_night" min="0" max="31" class="form-input" style="padding: 6px 10px; font-size: 13px;" value="0" required>
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label" for="quick_fill_leave" style="font-size: 12px; margin-bottom: 4px;">请假天数</label>
             <input type="number" id="quick_fill_leave" min="0" max="31" class="form-input" style="padding: 6px 10px; font-size: 13px;" value="0" required>
           </div>
+          <input type="hidden" id="quick_fill_night" value="0">
         </div>
 
         <div class="form-group">
@@ -2001,11 +1993,9 @@ function toggleAttendanceCell(cell, personId, dateStr) {
   const currentShift = cell.getAttribute('data-shift') || '';
   let nextShift = '';
   
-  if (currentShift === '') {
-    nextShift = '白班';
-  } else if (currentShift === '白班') {
-    nextShift = '夜班';
-  } else if (currentShift === '夜班') {
+  if (currentShift === '' || currentShift === '休息') {
+    nextShift = '上班';
+  } else if (currentShift === '白班' || currentShift === '夜班' || currentShift === '上班') {
     nextShift = '请假';
   } else if (currentShift === '请假') {
     nextShift = '';
@@ -2037,19 +2027,19 @@ function toggleAttendanceCell(cell, personId, dateStr) {
       const prevShift = cell.getAttribute('data-shift') || '';
       
       cell.setAttribute('data-shift', nextShift);
-      cell.className = `attendance-cell ${nextShift === '白班' ? 'cell-day' : (nextShift === '夜班' ? 'cell-night' : (nextShift === '请假' ? 'cell-leave' : 'cell-none'))} ${cell.classList.contains('weekend-cell') ? 'weekend-cell' : ''}`;
-      cell.innerText = nextShift === '白班' ? '白' : (nextShift === '夜班' ? '夜' : (nextShift === '请假' ? '假' : ''));
+      cell.className = `attendance-cell ${nextShift === '上班' ? 'cell-day' : (nextShift === '请假' ? 'cell-leave' : 'cell-none')} ${cell.classList.contains('weekend-cell') ? 'weekend-cell' : ''}`;
+      cell.innerText = nextShift === '上班' ? '上' : (nextShift === '请假' ? '假' : '');
       
       updateRowStats(cell.closest('tr'), prevShift, nextShift);
       updateGlobalMetrics(prevShift, nextShift);
     } else {
-      cell.innerText = currentShift === '白班' ? '白' : (currentShift === '夜班' ? '夜' : (currentShift === '请假' ? '假' : ''));
+      cell.innerText = (currentShift === '白班' || currentShift === '夜班' || currentShift === '上班') ? '上' : (currentShift === '请假' ? '假' : '');
       alert("保存失败: " + (data.message || "未知错误"));
     }
   })
   .catch(error => {
     cell.classList.remove('cell-loading');
-    cell.innerText = currentShift === '白班' ? '白' : (currentShift === '夜班' ? '夜' : (currentShift === '请假' ? '假' : ''));
+    cell.innerText = (currentShift === '白班' || currentShift === '夜班' || currentShift === '上班') ? '上' : (currentShift === '请假' ? '假' : '');
     alert("网络通信异常，考勤未能同步保存，请刷新后重试。");
     console.error(error);
   });
@@ -2057,71 +2047,50 @@ function toggleAttendanceCell(cell, personId, dateStr) {
 
 function updateRowStats(row, prev, next) {
   const dayCountEl = row.querySelector('.day-count');
-  const nightCountEl = row.querySelector('.night-count');
   const leaveCountEl = row.querySelector('.leave-count');
-  const totalCountEl = row.querySelector('.total-count');
+  
+  if (!dayCountEl || !leaveCountEl) return;
   
   let dayVal = parseInt(dayCountEl.innerText) || 0;
-  let nightVal = parseInt(nightCountEl.innerText) || 0;
   let leaveVal = parseInt(leaveCountEl.innerText) || 0;
-  let totalVal = parseInt(totalCountEl.innerText) || 0;
   
-  if (prev === '白班') {
+  if (prev === '白班' || prev === '夜班' || prev === '上班') {
     dayVal = Math.max(0, dayVal - 1);
-    totalVal = Math.max(0, totalVal - 1);
-  } else if (prev === '夜班') {
-    nightVal = Math.max(0, nightVal - 1);
-    totalVal = Math.max(0, totalVal - 1);
   } else if (prev === '请假') {
     leaveVal = Math.max(0, leaveVal - 1);
   }
   
-  if (next === '白班') {
+  if (next === '上班' || next === '白班' || next === '夜班') {
     dayVal += 1;
-    totalVal += 1;
-  } else if (next === '夜班') {
-    nightVal += 1;
-    totalVal += 1;
   } else if (next === '请假') {
     leaveVal += 1;
   }
   
   dayCountEl.innerText = dayVal;
-  nightCountEl.innerText = nightVal;
   leaveCountEl.innerText = leaveVal;
-  totalCountEl.innerText = totalVal;
 }
 
 function updateGlobalMetrics(prev, next) {
   const totalShiftsEl = document.getElementById('metric-total-shifts');
   const dayShiftsEl = document.getElementById('metric-day-shifts');
-  const nightShiftsEl = document.getElementById('metric-night-shifts');
   
-  if (!totalShiftsEl || !dayShiftsEl || !nightShiftsEl) return;
+  if (!totalShiftsEl || !dayShiftsEl) return;
   
   let totalShifts = parseInt(totalShiftsEl.innerText) || 0;
   let dayShifts = parseInt(dayShiftsEl.innerText) || 0;
-  let nightShifts = parseInt(nightShiftsEl.innerText) || 0;
   
-  if (prev === '白班') {
+  if (prev === '白班' || prev === '夜班' || prev === '上班') {
     dayShifts = Math.max(0, dayShifts - 1);
-    totalShifts = Math.max(0, totalShifts - 1);
-  } else if (prev === '夜班') {
-    nightShifts = Math.max(0, nightShifts - 1);
     totalShifts = Math.max(0, totalShifts - 1);
   }
   
-  if (next === '白班') {
+  if (next === '上班' || next === '白班' || next === '夜班') {
     dayShifts += 1;
-    totalShifts += 1;
-  } else if (next === '夜班') {
-    nightShifts += 1;
     totalShifts += 1;
   }
   
   totalShiftsEl.innerText = totalShifts;
   dayShiftsEl.innerText = dayShifts;
-  nightShiftsEl.innerText = nightShifts;
 }
 
 function saveAttendanceSettings(event) {

@@ -283,19 +283,18 @@ def _render_people_and_attendance(active_tab):
     for p in attendance_people:
         p_id = p["id"]
         p_att = attendance_dict.get(p_id, {})
-        p_day = sum(1 for s in p_att.values() if s == "白班")
-        p_night = sum(1 for s in p_att.values() if s == "夜班")
+        p_day = sum(1 for s in p_att.values() if s in ("白班", "夜班", "上班"))
         p_leave = sum(1 for s in p_att.values() if s == "请假")
         person_stats[p_id] = {
             "day": p_day,
-            "night": p_night,
+            "night": 0,
             "leave": p_leave,
-            "total": p_day + p_night,
+            "total": p_day,
         }
 
-    total_shifts = len(raw_attendance)
-    day_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "白班")
-    night_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "夜班")
+    total_shifts = sum(1 for r in raw_attendance if r["shift_type"] in ("白班", "夜班", "上班"))
+    day_shifts = total_shifts
+    night_shifts = 0
     leave_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "请假")
 
     salary_summary = repo.get_salary_summary_by_month(month)
@@ -1319,8 +1318,7 @@ def quick_fill_person_attendance():
             target_dates = [f"{month}-{d:02d}" for d in range(1, num_days + 1)]
             
         shifts_pool = (
-            ["白班"] * day_shifts + 
-            ["夜班"] * night_shifts + 
+            ["上班"] * (day_shifts + night_shifts) + 
             ["请假"] * leave_shifts
         )
         

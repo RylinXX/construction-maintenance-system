@@ -65,12 +65,12 @@ def test_import_attendance_workbook(app, tmp_path):
         records = repo.list_attendance_by_month("2026-06")
         assert len(records) == 3
         
-        # 校验 1日白班、2日夜班、3日请假
+        # 校验 1日上班、2日上班、3日请假
         rec_1 = next(r for r in records if r["work_date"] == "2026-06-01")
-        assert rec_1["shift_type"] == "白班"
+        assert rec_1["shift_type"] == "上班"
         
         rec_2 = next(r for r in records if r["work_date"] == "2026-06-02")
-        assert rec_2["shift_type"] == "夜班"
+        assert rec_2["shift_type"] == "上班"
         
         rec_3 = next(r for r in records if r["work_date"] == "2026-06-03")
         assert rec_3["shift_type"] == "请假"

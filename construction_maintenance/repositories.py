@@ -711,10 +711,8 @@ def get_salary_summary_by_month(month: str) -> list[dict[str, Any]]:
         shift = r["shift_type"]
         if pid not in att_map:
             att_map[pid] = {"day": 0, "night": 0, "leave": 0}
-        if shift == "白班":
+        if shift in ("白班", "夜班", "上班"):
             att_map[pid]["day"] += 1
-        elif shift == "夜班":
-            att_map[pid]["night"] += 1
         elif shift == "请假":
             att_map[pid]["leave"] += 1
             

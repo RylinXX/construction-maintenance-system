@@ -109,10 +109,8 @@ def import_attendance_workbook(file_path: Path, month: str) -> dict:
             val_str = str(val).strip() if val is not None else ""
 
             shift_type = None
-            if val_str in ("白", "白班"):
-                shift_type = "白班"
-            elif val_str in ("夜", "夜班"):
-                shift_type = "夜班"
+            if val_str in ("白", "白班", "夜", "夜班", "上", "上班"):
+                shift_type = "上班"
             elif val_str in ("假", "请假"):
                 shift_type = "请假"
 

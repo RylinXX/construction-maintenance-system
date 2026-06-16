@@ -255,20 +255,16 @@ def init_db() -> None:
                         attendance_dates.append((date_str, "请假"))
                     elif name_hash % 5 == 0 and d == 28:
                         attendance_dates.append((date_str, "请假"))
-                    elif (name_hash + d) % 2 == 0:
-                        attendance_dates.append((date_str, "白班"))
                     else:
-                        attendance_dates.append((date_str, "夜班"))
+                        attendance_dates.append((date_str, "上班"))
                 
                 # 6月考勤 (1号~3号)
                 for d in range(1, 4):
                     date_str = f"2026-06-0{d}"
-                    if (name_hash + d) % 3 == 0:
-                        attendance_dates.append((date_str, "白班"))
-                    elif (name_hash + d) % 3 == 1:
-                        attendance_dates.append((date_str, "夜班"))
-                    else:
+                    if (name_hash + d) % 3 == 2:
                         attendance_dates.append((date_str, "请假"))
+                    else:
+                        attendance_dates.append((date_str, "上班"))
 
                 db.executemany(
                     "insert into attendance (person_id, work_date, shift_type) values (?, ?, ?)",
@@ -431,5 +427,7 @@ def init_db() -> None:
         safe_insert_payment("黄林刚", "2026-06-02", "工资发放", 1200.00, "发放5月工资")
         safe_insert_payment("李效良", "2026-06-02", "工资发放", 1000.00, "结清5月部分工钱")
 
+    # 对历史考勤数据进行统一订正，将以往所有的“白班”和“夜班”全部更新为“上班”
+    db.execute("update attendance set shift_type = '上班' where shift_type in ('白班', '夜班')")
     db.commit()
 
