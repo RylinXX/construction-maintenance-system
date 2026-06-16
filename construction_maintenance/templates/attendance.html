@@ -510,10 +510,7 @@ function submitAttendanceImport(event) {
     method: "POST",
     body: formData
   })
-  .then(response => {
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    return response.json();
-  })
+  .then(handleFetchResponse)
   .then(data => {
     if (data.status === 'success') {
       alert("考勤 Excel 导入成功！");
@@ -538,7 +535,7 @@ function submitAttendanceImport(event) {
   .catch(error => {
     btn.disabled = false;
     btn.innerText = '确认导入';
-    alert("网络传输或解析出错，请刷新后重试。");
+    alert("导入失败: " + (error.message || "网络传输或解析出错。"));
     console.error(error);
   });
 }
@@ -577,12 +574,7 @@ function toggleAttendanceCell(cell, personId, dateStr) {
       shift_type: nextShift || null
     })
   })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error("HTTP error " + response.status);
-    }
-    return response.json();
-  })
+  .then(handleFetchResponse)
   .then(data => {
     cell.classList.remove('cell-loading');
     if (data.status === 'success') {
@@ -604,7 +596,7 @@ function toggleAttendanceCell(cell, personId, dateStr) {
   .catch(error => {
     cell.classList.remove('cell-loading');
     cell.innerText = (currentShift === '白班' || currentShift === '夜班' || currentShift === '上班') ? '' : (currentShift === '请假' ? '假' : '');
-    alert("网络通信异常，考勤未能同步保存，请刷新后重试。");
+    alert("考勤同步失败: " + (error.message || "网络通信异常。"));
     console.error(error);
   });
 }
@@ -683,10 +675,7 @@ function saveAttendanceSettings(event) {
     },
     body: JSON.stringify({ is_attendance_map: is_attendance_map })
   })
-  .then(response => {
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    return response.json();
-  })
+  .then(handleFetchResponse)
   .then(data => {
     if (data.status === 'success') {
       closeModal('manageAttendanceModal');
@@ -700,7 +689,7 @@ function saveAttendanceSettings(event) {
   .catch(error => {
     btn.disabled = false;
     btn.innerText = '确认并应用考勤范围';
-    alert("网络请求失败，考勤范围设置未能成功应用。");
+    alert("保存失败: " + (error.message || "网络请求失败。"));
     console.error(error);
   });
 }
@@ -786,10 +775,7 @@ function updateQuotaHelper() {
   text.innerHTML = '<span style="color: var(--text-muted);">正在查询当月工资状况...</span>';
   
   fetch(`/attendance/salary-payments/quota?person_id=${personId}&month=${month}`)
-    .then(response => {
-      if (!response.ok) throw new Error("HTTP " + response.status);
-      return response.json();
-    })
+    .then(handleFetchResponse)
     .then(data => {
       if (data.status === 'success') {
         const earnings = parseFloat(data.earnings).toFixed(2);
@@ -815,7 +801,7 @@ function updateQuotaHelper() {
       }
     })
     .catch(error => {
-      text.innerHTML = '<span style="color: #ef4444;">网络异常，读取限额失败</span>';
+      text.innerHTML = '<span style="color: #ef4444;">读取限额失败: ' + (error.message || "网络异常") + '</span>';
       console.error(error);
     });
 }
@@ -834,10 +820,7 @@ function batchFillAttendance() {
     },
     body: JSON.stringify({ month: month, shift_type: '上班' })
   })
-  .then(response => {
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    return response.json();
-  })
+  .then(handleFetchResponse)
   .then(data => {
     if (data.status === 'success') {
       window.location.reload();
@@ -846,7 +829,7 @@ function batchFillAttendance() {
     }
   })
   .catch(error => {
-    alert("网络请求失败，未能成功批量填报。");
+    alert("批量填报失败: " + (error.message || "网络请求失败。"));
     console.error(error);
   });
 }

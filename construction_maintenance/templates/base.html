@@ -290,9 +290,18 @@
         render() {
           this.goToPage(this.currentPage);
         }
-      }
-
       window.paginators = {};
+
+      // 全局 Fetch 响应统一处理器，用于正确抛出后端的业务错误信息
+      window.handleFetchResponse = function(response) {
+        if (response.ok) {
+          return response.json();
+        }
+        return response.json().then(
+          data => { throw new Error(data.message || `请求失败 (HTTP ${response.status})`); },
+          () => { throw new Error(`请求失败 (HTTP ${response.status})`); }
+        );
+      };
     </script>
   </body>
 </html>
