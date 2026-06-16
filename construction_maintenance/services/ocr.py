@@ -40,8 +40,27 @@ class ArkOcrRecognizer:
                 confidence=None,
             )
 
-        mime_type = mimetypes.guess_type(path.name)[0] or "image/jpeg"
-        image_data = base64.b64encode(path.read_bytes()).decode("ascii")
+        if path.suffix.lower() == ".pdf":
+            try:
+                import fitz
+                doc = fitz.open(path)
+                if len(doc) == 0:
+                    raise ValueError("PDF 文件页数为 0")
+                page = doc[0]
+                pix = page.get_pixmap(dpi=150)
+                img_bytes = pix.tobytes("png")
+                image_data = base64.b64encode(img_bytes).decode("ascii")
+                mime_type = "image/png"
+            except Exception as exc:
+                return BatchOcrResult(
+                    status="待确认",
+                    data={"message": f"PDF 解析或渲染失败，请人工确认：{exc}"},
+                    confidence=None,
+                )
+        else:
+            mime_type = mimetypes.guess_type(path.name)[0] or "image/jpeg"
+            image_data = base64.b64encode(path.read_bytes()).decode("ascii")
+
         payload = {
             "model": self.model,
             "messages": [
@@ -92,7 +111,8 @@ def recognize_batch_upload(
     item_type: str,
     recognizer: ArkOcrRecognizer | None = None,
 ) -> BatchOcrResult:
-    if path.suffix.lower() not in IMAGE_SUFFIXES:
+    suffix = path.suffix.lower()
+    if suffix not in IMAGE_SUFFIXES and suffix != ".pdf":
         return BatchOcrResult(
             status="待确认",
             data={"message": UnsupportedFileType.message},

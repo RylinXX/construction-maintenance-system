@@ -144,7 +144,7 @@ def test_batch_upload_creates_pending_item(client):
     assert "pay.pdf".encode("utf-8") in response.data
     assert "待确认".encode("utf-8") in response.data
     assert "查看文件".encode("utf-8") in response.data
-    assert "暂不支持自动识别 PDF，请人工确认".encode("utf-8") in response.data
+    assert "PDF 解析或渲染失败".encode("utf-8") in response.data
 
 
 def test_batch_upload_records_ocr_result(client, monkeypatch):

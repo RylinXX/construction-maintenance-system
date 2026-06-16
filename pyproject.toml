@@ -1,12 +1,13 @@
 [project]
 name = "construction-maintenance"
-version = "0.2.4"
+version = "0.2.5"
 description = "A lightweight construction engineering maintenance system."
 requires-python = ">=3.11"
 dependencies = [
   "Flask>=3.0",
   "openpyxl>=3.1",
   "python-dateutil>=2.9",
+  "pymupdf>=1.24.0",
 ]
 
 [project.optional-dependencies]
