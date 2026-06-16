@@ -453,7 +453,7 @@ def update_attendance_settings():
 def batch_fill_attendance():
     data = request.get_json() or {}
     month = data.get("month")
-    shift_type = data.get("shift_type", "白班")
+    shift_type = data.get("shift_type", "上班")
     
     if not month:
         return {"status": "error", "message": "缺失必要参数"}, 400

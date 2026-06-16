@@ -345,7 +345,7 @@
               <span style="display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border-color); background: var(--surface-color);"></span> 休息/无
             </span>
             <span style="display: inline-flex; align-items: center; gap: 4px;">
-              <span style="display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: var(--info-bg); border: 1px solid var(--info-text);"></span> 上班
+              <span style="display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: #dcfce7; border: 1px solid #22c55e;"></span> 上班
             </span>
             <span style="display: inline-flex; align-items: center; gap: 4px;">
               <span style="display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: #fef3c7; border: 1px solid #d97706;"></span> 请假
@@ -420,7 +420,7 @@
                     data-date="{{ day.date_str }}" 
                     data-shift="{{ shift or '' }}" 
                     onclick="toggleAttendanceCell(this, {{ person.id }}, '{{ day.date_str }}')">
-                  {% if shift in ('白班', '夜班', '上班') %}上{% elif shift == '请假' %}假{% endif %}
+                  {% if shift in ('白班', '夜班', '上班') %}{% elif shift == '请假' %}假{% endif %}
                 </td>
               {% endfor %}
               <td class="stats-column">
@@ -2028,18 +2028,18 @@ function toggleAttendanceCell(cell, personId, dateStr) {
       
       cell.setAttribute('data-shift', nextShift);
       cell.className = `attendance-cell ${nextShift === '上班' ? 'cell-day' : (nextShift === '请假' ? 'cell-leave' : 'cell-none')} ${cell.classList.contains('weekend-cell') ? 'weekend-cell' : ''}`;
-      cell.innerText = nextShift === '上班' ? '上' : (nextShift === '请假' ? '假' : '');
+      cell.innerText = nextShift === '上班' ? '' : (nextShift === '请假' ? '假' : '');
       
       updateRowStats(cell.closest('tr'), prevShift, nextShift);
       updateGlobalMetrics(prevShift, nextShift);
     } else {
-      cell.innerText = (currentShift === '白班' || currentShift === '夜班' || currentShift === '上班') ? '上' : (currentShift === '请假' ? '假' : '');
+      cell.innerText = (currentShift === '白班' || currentShift === '夜班' || currentShift === '上班') ? '' : (currentShift === '请假' ? '假' : '');
       alert("保存失败: " + (data.message || "未知错误"));
     }
   })
   .catch(error => {
     cell.classList.remove('cell-loading');
-    cell.innerText = (currentShift === '白班' || currentShift === '夜班' || currentShift === '上班') ? '上' : (currentShift === '请假' ? '假' : '');
+    cell.innerText = (currentShift === '白班' || currentShift === '夜班' || currentShift === '上班') ? '' : (currentShift === '请假' ? '假' : '');
     alert("网络通信异常，考勤未能同步保存，请刷新后重试。");
     console.error(error);
   });
@@ -2200,7 +2200,7 @@ function updateQuotaHelper() {
 // 一键自动填报全员工作日考勤
 function batchFillAttendance() {
   const month = document.getElementById('monthSelect').value;
-  if (!confirm(`您确定要一键将 ${month} 月份所有考勤人员的【工作日（周一至周五）】自动填报为「白班」吗？\n（注：这会覆盖已有的冲突打卡，但不会填报周六和周日）`)) {
+  if (!confirm(`您确定要一键将 ${month} 月份所有考勤人员的【工作日（周一至周五）】自动填报为「上班」吗？\n（注：这会覆盖已有的冲突打卡，但不会填报周六和周日）`)) {
     return;
   }
   
@@ -2209,7 +2209,7 @@ function batchFillAttendance() {
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ month: month, shift_type: '白班' })
+    body: JSON.stringify({ month: month, shift_type: '上班' })
   })
   .then(response => {
     if (!response.ok) throw new Error("HTTP " + response.status);

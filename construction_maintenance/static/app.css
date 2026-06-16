@@ -2210,13 +2210,13 @@ textarea.form-input:focus {
   background-color: var(--hover-bg);
 }
 
-/* 白班 HSL 配色：浅天蓝 */
+/* 上班 HSL 配色：醒目的浅绿色 */
 .attendance-cell.cell-day {
-  background-color: var(--info-bg) !important;
-  color: var(--info-text) !important;
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
 }
 .attendance-cell.cell-day:hover {
-  filter: brightness(0.95);
+  background-color: #bbf7d0 !important;
 }
 
 /* 夜班 HSL 配色：深海蓝配白色 */
