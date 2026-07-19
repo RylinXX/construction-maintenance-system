@@ -4,37 +4,49 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登录 - 建筑工程维护系统</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.5">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.6">
   </head>
   <body class="login-page">
     <main class="login-layout">
       <section class="login-showcase" aria-label="系统界面展示">
-        <img
-          class="login-showcase-image"
-          src="{{ url_for('static', filename='login-showcase.png') }}"
-          alt="建筑工程维护系统数据看板界面"
-        >
-        <div class="login-showcase-band">
-          <span class="login-showcase-kicker">CONSTRUCTION OPERATIONS</span>
-          <strong>建筑工程维护系统</strong>
+        <header class="login-showcase-brand">
+          <span class="login-showcase-mark" aria-hidden="true">
+            <img src="{{ url_for('static', filename='icons/hardhat.png') }}" alt="">
+          </span>
+          <span>
+            <small>CAM SYSTEM</small>
+            <strong>建筑工程维护系统</strong>
+          </span>
+        </header>
+
+        <div class="login-showcase-copy">
+          <span>CONSTRUCTION DATA WORKSPACE</span>
+          <strong>工程运营集中工作台</strong>
         </div>
+
+        <figure class="login-showcase-window">
+          <img
+            src="{{ url_for('static', filename='login-showcase.png') }}"
+            alt="建筑工程维护系统数据看板界面"
+          >
+        </figure>
+
+        <span class="login-showcase-accent" aria-hidden="true"></span>
       </section>
 
       <section class="login-access" aria-labelledby="login-title">
         <div class="login-access-inner">
-          <header class="login-brand">
-            <span class="login-brand-mark" aria-hidden="true">
-              <img src="{{ url_for('static', filename='icons/hardhat.png') }}" alt="">
-            </span>
-            <span class="login-brand-copy">
-              <span class="login-brand-kicker">CAM SYSTEM</span>
-              <span class="login-brand-name">工程维护工作台</span>
+          <header class="login-access-header">
+            <span class="login-access-label">SECURE ACCESS</span>
+            <span class="login-access-status">
+              <span aria-hidden="true"></span>
+              服务在线
             </span>
           </header>
 
           <div class="login-heading">
-            <p class="login-eyebrow">管理员入口</p>
-            <h1 id="login-title">登录系统</h1>
+            <p>管理员登录</p>
+            <h1 id="login-title">欢迎回来</h1>
           </div>
 
           {% if request.method == 'POST' %}
@@ -49,14 +61,17 @@
 
             <div class="login-field">
               <label for="login-username">用户名</label>
-              <input
-                id="login-username"
-                name="username"
-                autocomplete="username"
-                inputmode="text"
-                autofocus
-                required
-              >
+              <div class="login-input-control">
+                <img src="{{ url_for('static', filename='icons/user.png') }}" alt="">
+                <input
+                  id="login-username"
+                  name="username"
+                  autocomplete="username"
+                  inputmode="text"
+                  autofocus
+                  required
+                >
+              </div>
             </div>
 
             <div class="login-field">
@@ -81,10 +96,16 @@
               </div>
             </div>
 
-            <button class="login-submit" type="submit">登录系统</button>
+            <button class="login-submit" type="submit">
+              <span>进入工作台</span>
+              <span class="login-submit-arrow" aria-hidden="true">→</span>
+            </button>
           </form>
 
-          <p class="login-footnote">仅限授权人员访问</p>
+          <footer class="login-footnote">
+            <span>仅限授权人员访问</span>
+            <span>v0.2.16</span>
+          </footer>
         </div>
       </section>
     </main>
