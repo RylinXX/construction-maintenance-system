@@ -63,6 +63,12 @@ def test_login_requires_csrf_and_valid_credentials(secure_client):
     assert 'name="username"'.encode() in response.data
     assert 'name="password"'.encode() in response.data
     assert "login-password-toggle".encode() in response.data
+    assert "login-showcase.png".encode() in response.data
+    showcase = secure_client.get(
+        "/static/login-showcase.png", base_url="https://localhost"
+    )
+    assert showcase.status_code == 200
+    assert showcase.content_type == "image/png"
     cookie = response.headers["Set-Cookie"]
     assert "Secure" in cookie
     assert "HttpOnly" in cookie

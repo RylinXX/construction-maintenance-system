@@ -4,81 +4,89 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登录 - 建筑工程维护系统</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.5">
   </head>
   <body class="login-page">
-    <main class="login-shell">
-      <header class="login-brand">
-        <span class="login-brand-mark" aria-hidden="true">
-          <img src="{{ url_for('static', filename='icons/hardhat.png') }}" alt="">
-        </span>
-        <span class="login-brand-copy">
-          <span class="login-brand-kicker">CONSTRUCTION OPERATIONS</span>
-          <span class="login-brand-name">建筑工程维护系统</span>
-        </span>
-      </header>
-
-      <section class="login-panel" aria-labelledby="login-title">
-        <div class="login-panel-header">
-          <div>
-            <p class="login-eyebrow">安全入口</p>
-            <h1 id="login-title">管理员登录</h1>
-          </div>
-          <span class="login-system-status">
-            <span aria-hidden="true"></span>
-            内部系统
-          </span>
+    <main class="login-layout">
+      <section class="login-showcase" aria-label="系统界面展示">
+        <img
+          class="login-showcase-image"
+          src="{{ url_for('static', filename='login-showcase.png') }}"
+          alt="建筑工程维护系统数据看板界面"
+        >
+        <div class="login-showcase-band">
+          <span class="login-showcase-kicker">CONSTRUCTION OPERATIONS</span>
+          <strong>建筑工程维护系统</strong>
         </div>
-
-      {% if request.method == 'POST' %}
-        <div class="login-alert" role="alert">
-          <img src="{{ url_for('static', filename='icons/error.png') }}" alt="">
-          <span>用户名或密码错误，请重新输入。</span>
-        </div>
-      {% endif %}
-
-        <form class="login-form" method="post" action="{{ url_for('web.login', next=next) if next else url_for('web.login') }}">
-          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-
-          <div class="login-field">
-            <label for="login-username">用户名</label>
-            <input
-              id="login-username"
-              name="username"
-              autocomplete="username"
-              inputmode="text"
-              autofocus
-              required
-            >
-          </div>
-
-          <div class="login-field">
-            <label for="login-password">密码</label>
-            <div class="login-password-field">
-              <input
-                id="login-password"
-                type="password"
-                name="password"
-                autocomplete="current-password"
-                required
-              >
-              <button
-                class="login-password-toggle"
-                type="button"
-                aria-label="显示密码"
-                aria-pressed="false"
-                title="显示密码"
-              >
-                <img src="{{ url_for('static', filename='icons/preview.png') }}" alt="">
-              </button>
-            </div>
-          </div>
-
-          <button class="login-submit" type="submit">登录系统</button>
-        </form>
       </section>
 
-      <p class="login-footnote">受保护的内部管理系统</p>
+      <section class="login-access" aria-labelledby="login-title">
+        <div class="login-access-inner">
+          <header class="login-brand">
+            <span class="login-brand-mark" aria-hidden="true">
+              <img src="{{ url_for('static', filename='icons/hardhat.png') }}" alt="">
+            </span>
+            <span class="login-brand-copy">
+              <span class="login-brand-kicker">CAM SYSTEM</span>
+              <span class="login-brand-name">工程维护工作台</span>
+            </span>
+          </header>
+
+          <div class="login-heading">
+            <p class="login-eyebrow">管理员入口</p>
+            <h1 id="login-title">登录系统</h1>
+          </div>
+
+          {% if request.method == 'POST' %}
+            <div class="login-alert" role="alert">
+              <img src="{{ url_for('static', filename='icons/error.png') }}" alt="">
+              <span>用户名或密码错误，请重新输入。</span>
+            </div>
+          {% endif %}
+
+          <form class="login-form" method="post" action="{{ url_for('web.login', next=next) if next else url_for('web.login') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+            <div class="login-field">
+              <label for="login-username">用户名</label>
+              <input
+                id="login-username"
+                name="username"
+                autocomplete="username"
+                inputmode="text"
+                autofocus
+                required
+              >
+            </div>
+
+            <div class="login-field">
+              <label for="login-password">密码</label>
+              <div class="login-password-field">
+                <input
+                  id="login-password"
+                  type="password"
+                  name="password"
+                  autocomplete="current-password"
+                  required
+                >
+                <button
+                  class="login-password-toggle"
+                  type="button"
+                  aria-label="显示密码"
+                  aria-pressed="false"
+                  title="显示密码"
+                >
+                  <img src="{{ url_for('static', filename='icons/preview.png') }}" alt="">
+                </button>
+              </div>
+            </div>
+
+            <button class="login-submit" type="submit">登录系统</button>
+          </form>
+
+          <p class="login-footnote">仅限授权人员访问</p>
+        </div>
+      </section>
     </main>
 
     <script>
