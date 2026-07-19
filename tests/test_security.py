@@ -59,6 +59,10 @@ def test_unauthenticated_requests_are_blocked(secure_client):
 def test_login_requires_csrf_and_valid_credentials(secure_client):
     response = secure_client.get("/login", base_url="https://localhost")
     assert response.status_code == 200
+    assert "建筑工程维护系统".encode() in response.data
+    assert 'name="username"'.encode() in response.data
+    assert 'name="password"'.encode() in response.data
+    assert "login-password-toggle".encode() in response.data
     cookie = response.headers["Set-Cookie"]
     assert "Secure" in cookie
     assert "HttpOnly" in cookie
