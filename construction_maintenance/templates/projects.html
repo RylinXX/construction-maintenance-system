@@ -91,7 +91,8 @@
       <button type="button" class="modal-close" onclick="closeModal('addProjectModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" class="premium-form">
+<form method="post" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           <div class="form-group full-width">
             <label class="form-label" for="name">项目名称 <span class="required">*</span></label>
@@ -140,7 +141,8 @@
       <button type="button" class="modal-close" onclick="closeModal('editProjectModal-{{ project.id }}')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('web.edit_project', project_id=project.id) }}" class="premium-form">
+<form method="post" action="{{ url_for('web.edit_project', project_id=project.id) }}" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           <div class="form-group full-width">
             <label class="form-label" for="edit-name-{{ project.id }}">项目名称 <span class="required">*</span></label>

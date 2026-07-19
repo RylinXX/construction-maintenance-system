@@ -14,6 +14,8 @@ def app(tmp_path: Path):
             "TESTING": True,
             "DATABASE": tmp_path / "test.sqlite3",
             "UPLOAD_FOLDER": tmp_path / "uploads",
+            "AUTH_REQUIRED": False,
+            "CSRF_ENABLED": False,
         }
     )
     return app

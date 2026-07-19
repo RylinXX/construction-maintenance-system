@@ -1,0 +1,232 @@
+{% from "_icons.html" import icon %}
+{% set data = item.recognized_json|fromjson %}
+<div class="review-card" id="item-card-{{ item.id }}" data-status="{{ item.status }}">
+  <div class="review-card-header">
+    <div class="card-title-group">
+      {% if item.item_type == 'voucher' %}
+        <span class="badge badge-info">费用凭证</span>
+      {% elif item.item_type == 'qualification' %}
+        <span class="badge badge-success">企业资质</span>
+      {% else %}
+        <span class="badge badge-purple">身份证件</span>
+      {% endif %}
+      <span class="card-filename" title="{{ item.source_filename }}">{{ item.source_filename|upload_name }}</span>
+    </div>
+    <div class="card-meta">
+      {% if item.confidence is not none %}
+        {% set conf_percent = (item.confidence * 100)|int %}
+        <span class="badge {% if item.confidence >= 0.85 %}badge-success{% elif item.confidence >= 0.50 %}badge-warning{% else %}badge-danger{% endif %}">
+          AI 置信度: {{ conf_percent }}%
+        </span>
+      {% endif %}
+      <span class="text-muted" style="font-size: 12px;">{{ item.created_at }}</span>
+    </div>
+  </div>
+
+  <div class="review-card-body">
+    {% if item.status == '识别中' %}
+      <div class="review-status-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; width: 100%; text-align: center;">
+        <div class="loading-spinner" style="width: 40px; height: 40px; border: 4px solid rgba(15, 118, 110, 0.1); border-left-color: var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
+        <style>
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        </style>
+        <h3 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">AI 正在智能识别提取中...</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); max-width: 400px; margin: 0 auto;">系统正在使用大模型对上传的凭证文件进行深度识别与字段解析，通常需要 5-15 秒，请稍后，本页面将自动刷新状态。</p>
+      </div>
+    {% else %}
+      <div class="review-split">
+      <!-- Left: Preview -->
+      <div class="review-visualizer">
+        {% set filename = item.stored_path|upload_name %}
+        {% set lower_name = filename.lower() %}
+        {% if lower_name.endswith('.png') or lower_name.endswith('.jpg') or lower_name.endswith('.jpeg') or lower_name.endswith('.webp') or lower_name.endswith('.bmp') %}
+          <div class="preview-img-container" onclick="openZoomModal('{{ url_for('web.download_attachment', filename=filename) }}')">
+            <img class="review-img" src="{{ url_for('web.download_attachment', filename=filename) }}" alt="凭证原件">
+            <div class="zoom-overlay">{{ icon('search') }} 点击放大原图</div>
+          </div>
+        {% else %}
+          <div class="preview-fallback-card">
+            <div class="fallback-icon">{{ icon('document') }}</div>
+            <div class="fallback-title">{{ item.source_filename }}</div>
+            <a class="btn btn-sm btn-secondary" href="{{ url_for('web.download_attachment', filename=filename) }}" target="_blank">
+              {{ icon('download') }} 下载原文件 ({{ filename.split('.')[-1]|upper }})
+            </a>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Right: Edit Form -->
+      <div class="review-form-container">
+<form id="form-confirm-{{ item.id }}" action="{{ url_for('web.confirm_batch_item', item_id=item.id) }}" method="post" class="review-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          {% if item.item_type == 'voucher' %}
+            <!-- Voucher form fields -->
+            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label required">归属工程项目</label>
+                <select class="form-select" name="project_id" required>
+                  <option value="">-- 选择归属工程项目 --</option>
+                  {% for p in projects %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label required">费用日期</label>
+                <input type="date" class="form-input" name="voucher_date" value="{{ data.voucher_date or '' }}" required>
+              </div>
+            </div>
+
+            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label">费用分类</label>
+                <select class="form-select" name="voucher_type">
+                  {% for cat in categories %}
+                    <option value="{{ cat }}" {% if data.voucher_type == cat or (not data.voucher_type and cat == '其它') %}selected{% endif %}>{{ cat }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label required">凭证金额 (元)</label>
+                <input type="number" step="0.01" class="form-input" name="amount" value="{{ data.amount or '' }}" required>
+              </div>
+            </div>
+
+            {% if data.payment_method %}
+            <div class="form-group" style="margin-bottom: 12px; font-size: 13px;">
+              <span class="text-muted">AI 识别付款方式：</span>
+              <span class="badge badge-secondary" style="background: var(--surface-subtle); color: var(--text-primary); padding: 2px 8px; font-size: 12px;">{{ data.payment_method }}</span>
+            </div>
+            {% endif %}
+
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label class="form-label">凭证备注说明</label>
+              <input type="text" class="form-input" name="notes" value="{% if data.notes %}{{ data.notes }}{% if data.payment_method %} (付款方式: {{ data.payment_method }}){% endif %}{% else %}{{ item.source_filename.split('.')[0] }}{% if data.payment_method %} (付款方式: {{ data.payment_method }}){% endif %}{% endif %}">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label">经办/录入人</label>
+              <input type="text" class="form-input" name="entry_user" value="会计">
+            </div>
+          {% elif item.item_type == 'qualification' %}
+            <!-- Qualification form fields -->
+            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label required">关联合作公司</label>
+                <select class="form-select" name="company_id" required>
+                  <option value="" disabled selected>-- 请选择合作公司 --</option>
+                  {% for c in companies %}
+                    <option value="{{ c.id }}" {% if data.company_name == c.name or (c.is_main and not data.company_name) %}selected{% endif %}>{{ c.name }} {% if c.is_main %}(主公司){% endif %}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label required">资质证书/证照名称</label>
+                <input list="qual_names_list_{{ item.id }}" class="form-input" name="name_select" value="{{ data.name_select or '' }}" placeholder="请输入或选择资质证书" required>
+                <datalist id="qual_names_list_{{ item.id }}">
+                  <option value="营业执照"></option>
+                  <option value="开户证明"></option>
+                  <option value="开票信息"></option>
+                  <option value="建筑资质"></option>
+                  <option value="安全生产资质"></option>
+                  <option value="八大员人员证书"></option>
+                  <option value="法人身份证"></option>
+                </datalist>
+              </div>
+            </div>
+
+            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label">证书/证照统一编号</label>
+                <input type="text" class="form-input font-mono font-semibold" name="certificate_no" value="{{ data.certificate_no or '' }}" placeholder="统一社会信用代码或证书编号(选填)">
+              </div>
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label">发证日期</label>
+                <input type="date" class="form-input" name="issue_date" value="{{ data.issue_date or '' }}">
+              </div>
+            </div>
+
+            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px; align-items: flex-end;">
+              <div class="form-group" style="flex: 1.2; margin: 0;">
+                <label class="form-label">证书到期日期</label>
+                <input type="date" id="expiry_date_{{ item.id }}" class="form-input" name="expiry_date" value="{{ data.expiry_date or '' }}" {% if data.is_long_term %}disabled style="background-color: var(--line-light);"{% endif %}>
+              </div>
+              <div class="form-group" style="flex: 0.8; margin: 0; padding-bottom: 12px; display: flex; align-items: center; justify-content: center;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--text-primary);">
+                  <input type="checkbox" id="is_long_term_{{ item.id }}" name="is_long_term" value="1" onchange="toggleExpiryDate({{ item.id }})" {% if data.is_long_term %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                  <span>长期有效</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label">资质核准范围/证书备注</label>
+              <input type="text" class="form-input" name="notes" value="{{ data.notes or '' }}" placeholder="例如：可承担单项合同额3000万元以下的建筑工程施工...">
+            </div>
+          {% else %}
+            <!-- Personnel form fields -->
+            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label required">员工姓名</label>
+                <input type="text" class="form-input" name="name" value="{{ data.name or '' }}" required>
+              </div>
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label required">身份证号</label>
+                <input type="text" class="form-input" name="id_number" value="{{ data.id_number or '' }}" required>
+              </div>
+            </div>
+
+            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label">性别</label>
+                <select class="form-select" name="gender">
+                  <option value="">未知</option>
+                  <option value="男" {% if data.gender == '男' %}selected{% endif %}>男</option>
+                  <option value="女" {% if data.gender == '女' %}selected{% endif %}>女</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label">出生日期</label>
+                <input type="text" class="form-input" name="birth_date" value="{{ data.birth_date or '' }}" placeholder="YYYY-MM-DD">
+              </div>
+            </div>
+
+            <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label">联系电话</label>
+                <input type="text" class="form-input" name="phone" value="{{ data.phone or '' }}">
+              </div>
+              <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label">工作岗位</label>
+                <input type="text" class="form-input" name="job_type" value="{{ data.job_type or '' }}">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label class="form-label">户籍家庭住址</label>
+              <input type="text" class="form-input" name="address" value="{{ data.address or '' }}">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label">备注信息</label>
+              <input type="text" class="form-input" name="notes" value="{{ data.notes or '' }}">
+            </div>
+          {% endif %}
+
+          <div class="review-actions">
+            <button type="submit" class="btn btn-success">
+              {{ icon('save') }} 确认导入
+            </button>
+            <button type="button" class="btn btn-outline-danger" onclick="submitDelete({{ item.id }})">
+              {{ icon('delete') }} 忽略该项
+            </button>
+          </div>
+        </form>
+
+        <!-- Form for deleting -->
+<form id="delete-form-{{ item.id }}" action="{{ url_for('web.delete_batch_item', item_id=item.id) }}" method="post" style="display: none;"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"></form>
+      </div>
+      </div>
+    {% endif %}
+  </div>
+</div>

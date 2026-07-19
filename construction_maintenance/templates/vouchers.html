@@ -91,7 +91,8 @@
       <button type="button" class="modal-close" onclick="closeModal('addVoucherModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" class="premium-form">
+<form method="post" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label" for="voucher_date">凭证日期 <span class="required">*</span></label>
@@ -145,7 +146,8 @@
       <button type="button" class="modal-close" onclick="closeModal('importVoucherModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('web.batch') }}" enctype="multipart/form-data" class="premium-form">
+<form method="post" action="{{ url_for('web.batch') }}" enctype="multipart/form-data" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <input type="hidden" name="item_type" value="voucher">
         <div class="form-grid">
           <div class="form-group full-width">

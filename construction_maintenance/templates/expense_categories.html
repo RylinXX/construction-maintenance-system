@@ -30,7 +30,7 @@
           {% for category in categories %}
           <tr>
             <td>
-              <form id="edit-category-{{ category.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=category.id) }}"></form>
+<form id="edit-category-{{ category.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=category.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"></form>
               <input form="edit-category-{{ category.id }}" class="form-input category-name-input" name="name" type="text" value="{{ category.name }}" required>
             </td>
             <td>
@@ -72,7 +72,8 @@
       <button type="button" class="modal-close" onclick="closeModal('addCategoryModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" class="premium-form">
+<form method="post" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label" for="name">科目名称 <span class="required">*</span></label>

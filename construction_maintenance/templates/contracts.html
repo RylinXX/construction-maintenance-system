@@ -168,7 +168,8 @@
       <button type="button" class="modal-close" onclick="closeModal('addContractModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" enctype="multipart/form-data" class="premium-form">
+<form method="post" enctype="multipart/form-data" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           <div class="form-group full-width">
             <label class="form-label" for="name">合同名称 <span class="required">*</span></label>
@@ -226,7 +227,8 @@
       <button type="button" class="modal-close" onclick="closeModal('editContractModal-{{ contract.id }}')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('web.edit_contract', contract_id=contract.id) }}" enctype="multipart/form-data" class="premium-form">
+<form method="post" action="{{ url_for('web.edit_contract', contract_id=contract.id) }}" enctype="multipart/form-data" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           <div class="form-group full-width">
             <label class="form-label" for="edit-name-{{ contract.id }}">合同名称 <span class="required">*</span></label>

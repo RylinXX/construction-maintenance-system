@@ -4,6 +4,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}建筑工程维护系统{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -113,6 +114,12 @@
                 <span class="avatar" aria-hidden="true">管</span>
                 <span class="username">系统管理员</span>
               </div>
+              {% if config.get('AUTH_REQUIRED', True) %}
+                <form method="post" action="{{ url_for('web.logout') }}" class="logout-form">
+                  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                  <button type="submit">退出</button>
+                </form>
+              {% endif %}
             </div>
           </div>
         </header>
@@ -290,7 +297,42 @@
         render() {
           this.goToPage(this.currentPage);
         }
+      }
       window.paginators = {};
+
+      // Add the session token to legacy HTML forms and same-origin JSON requests.
+      (function() {
+        const token = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (!token) return;
+        document.querySelectorAll('form').forEach(function(form) {
+          const method = (form.getAttribute('method') || 'get').toUpperCase();
+          if (method === 'GET' || method === 'HEAD') return;
+          if (!form.querySelector('input[name="_csrf"]')) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = '_csrf';
+            input.value = token;
+            form.appendChild(input);
+          }
+        });
+
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = function(input, init) {
+          init = init || {};
+          const method = (init.method || (input && input.method) || 'GET').toUpperCase();
+          let sameOrigin = true;
+          try {
+            const requestUrl = typeof input === 'string' ? new URL(input, window.location.href) : new URL(input.url);
+            sameOrigin = requestUrl.origin === window.location.origin;
+          } catch (error) {}
+          if (sameOrigin && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+            const headers = new Headers(init.headers || {});
+            if (!headers.has('X-CSRF-Token')) headers.set('X-CSRF-Token', token);
+            init = Object.assign({}, init, {headers: headers});
+          }
+          return originalFetch(input, init);
+        };
+      })();
 
       // 全局 Fetch 响应统一处理器，用于正确抛出后端的业务错误信息
       window.handleFetchResponse = function(response) {

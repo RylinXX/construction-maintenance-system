@@ -131,7 +131,7 @@ CAM/
 
 ## 🚀 快速开始与本地部署 (Quick Start)
 
-系统无需繁琐复杂的环境配置，开箱即用。以下为 Windows PowerShell / Linux 终端下的标准部署流程：
+以下为 Windows PowerShell / Linux 终端下的标准部署流程。认证默认开启，启动前必须配置会话密钥和管理员凭据。
 
 ### 1. 克隆/拉取项目并创建虚拟环境
 ```powershell
@@ -154,7 +154,29 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-### 3. 运行开发服务器
+### 3. 配置运行环境
+
+| 环境变量 | 必需 | 说明 |
+|---|---|---|
+| `CAM_SECRET_KEY` | 是 | Flask 会话签名密钥，应使用高强度随机值 |
+| `CAM_ADMIN_USERNAME` | 是 | 管理员登录名 |
+| `CAM_ADMIN_PASSWORD_HASH` | 是 | Werkzeug 格式的密码哈希，不能填写明文密码 |
+| `CAM_AUTH_REQUIRED` | 否 | 是否启用登录认证，默认 `1` |
+| `CAM_CSRF_ENABLED` | 否 | 是否启用 CSRF 防护，默认 `1` |
+| `ARK_API_KEY` | OCR 必需 | 火山方舟 API 密钥；未配置时文件保留为待人工确认 |
+| `ARK_BASE_URL` | 否 | 火山方舟 API 地址 |
+| `ARK_MODEL` | 否 | OCR 使用的模型名称 |
+
+生成随机会话密钥和管理员密码哈希：
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+python -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('replace-this-password'))"
+```
+
+将输出分别配置为 `CAM_SECRET_KEY` 和 `CAM_ADMIN_PASSWORD_HASH`，并设置 `CAM_ADMIN_USERNAME`。生产环境应通过 systemd `EnvironmentFile`、容器 Secret 或等效的密钥管理方式注入，禁止提交到 Git。
+
+### 4. 运行开发服务器
 ```powershell
 # 启动 Flask 系统并激活热重载 (Hot Reload) 调试模式
 flask --app construction_maintenance run --debug
@@ -165,7 +187,7 @@ flask --app construction_maintenance run --debug
 
 ## 🧪 自动化测试驱动开发 (TDD Verification)
 
-本系统在构建过程中贯彻了**测试驱动开发 (TDD)** 指导思想，编写了 14+ 个单元测试用例，覆盖了从表结构定义、仓储读写操作、Excel 导出单元到 Web 完整交互链路的断言验证。
+本系统的自动化测试覆盖表结构、仓储读写、Excel 导入导出、OCR 载荷、认证与 CSRF，以及 Web 完整交互链路。
 
 如需运行所有自动化测试用例，只需在工程根目录下执行：
 ```powershell

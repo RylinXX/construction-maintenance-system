@@ -7,6 +7,9 @@ from flask import render_template
 from flask import request
 from flask import url_for
 from flask import flash, send_file
+from construction_maintenance.security import credentials_valid
+from construction_maintenance.security import login_user, logout_user
+from construction_maintenance.security import safe_redirect_target
 
 from construction_maintenance import repositories as repo
 from construction_maintenance.web.forms import required_text
@@ -103,6 +106,26 @@ def fromjson_filter(value: str) -> dict:
         return {}
 
 
+@bp.route("/login", methods=["GET", "POST"])
+def login():
+    next_target = request.args.get("next")
+    if request.method == "POST":
+        if credentials_valid(
+            request.form.get("username", ""), request.form.get("password", "")
+        ):
+            login_user()
+            return redirect(safe_redirect_target(next_target, url_for("web.dashboard")))
+        return render_template("login.html", next=next_target), 401
+
+    return render_template("login.html", next=next_target)
+
+
+@bp.post("/logout")
+def logout():
+    logout_user()
+    return redirect(url_for("web.login"))
+
+
 def _download_name_for_upload(filename: str) -> str:
     name = upload_name(filename)
     if "." in name:
@@ -141,7 +164,9 @@ def expense_categories():
         except sqlite3.IntegrityError:
             flash("添加失败：该科目名称已存在。", "danger")
         redirect_url = request.form.get("redirect")
-        return redirect(redirect_url or url_for("web.expense_categories"))
+        return redirect(
+            safe_redirect_target(redirect_url, url_for("web.expense_categories"))
+        )
 
     return render_template(
         "expense_categories.html",
@@ -164,7 +189,9 @@ def edit_expense_category(category_id: int):
     except sqlite3.IntegrityError:
         flash("修改失败：该科目名称已存在。", "danger")
     redirect_url = request.form.get("redirect")
-    return redirect(redirect_url or url_for("web.expense_categories"))
+    return redirect(
+        safe_redirect_target(redirect_url, url_for("web.expense_categories"))
+    )
 
 
 @bp.route("/projects", methods=["GET", "POST"])
@@ -223,7 +250,9 @@ def vouchers():
                 "entry_user": text_value(request.form, "entry_user"),
             }
         )
-        return redirect(request.referrer or url_for("web.vouchers"))
+        return redirect(
+            safe_redirect_target(request.referrer, url_for("web.vouchers"))
+        )
     
     # 动态支持按项目进行过滤
     filter_project_id = request.args.get("project_id", type=int)
@@ -730,6 +759,70 @@ def batch():
     )
 
 
+def _get_batch_item_summary(item):
+    import json
+    try:
+        parsed = json.loads(item["recognized_json"])
+    except Exception:
+        return item["recognized_json"] or ""
+
+    parts = []
+    if item["item_type"] == "voucher":
+        if parsed.get("voucher_date"):
+            parts.append(f"日期: {parsed['voucher_date']}")
+        if parsed.get("amount"):
+            parts.append(f"金额: ¥{parsed['amount']}")
+        if parsed.get("payment_method"):
+            parts.append(f"方式: {parsed['payment_method']}")
+        if parsed.get("notes"):
+            parts.append(f"备注: {parsed['notes']}")
+    elif item["item_type"] == "qualification":
+        if parsed.get("company_name"):
+            parts.append(f"公司: {parsed['company_name']}")
+        if parsed.get("name_select"):
+            parts.append(f"名称: {parsed['name_select']}")
+        if parsed.get("certificate_no"):
+            parts.append(f"编号: {parsed['certificate_no']}")
+        if parsed.get("notes"):
+            parts.append(f"备注: {parsed['notes']}")
+    else:  # person
+        if parsed.get("name"):
+            parts.append(f"姓名: {parsed['name']}")
+        if parsed.get("id_number"):
+            parts.append(f"号码: {parsed['id_number']}")
+        if parsed.get("notes"):
+            parts.append(f"备注: {parsed['notes']}")
+
+    return " | ".join(parts) if parts else item["recognized_json"] or ""
+
+
+@bp.route("/batch/item/<int:item_id>/render")
+def render_batch_item(item_id: int):
+    item = repo.get_batch_item(item_id)
+    if not item:
+        return {"error": "Item not found"}, 404
+
+    html = render_template(
+        "_batch_card.html",
+        item=item,
+        projects=repo.list_projects(),
+        categories=repo.list_expense_category_names(),
+        companies=repo.list_companies(),
+    )
+
+    conf_val = ""
+    if item["confidence"] is not None:
+        conf_val = f"{int(item['confidence'] * 100)}%"
+
+    return {
+        "id": item["id"],
+        "status": item["status"],
+        "confidence": conf_val,
+        "summary": _get_batch_item_summary(item),
+        "html": html
+    }
+
+
 @bp.post("/batch/<int:item_id>/confirm")
 def confirm_batch_item(item_id: int):
     item = repo.get_batch_item(item_id)
@@ -856,13 +949,12 @@ def confirm_batch_item(item_id: int):
                 flash("请选择已有的关联合作公司，或填写新增合作单位名称", "danger")
                 return redirect(url_for("web.batch"))
 
-        cert_name = name_custom if name_select == "CUSTOM" else name_select
+        cert_name = name_select
+        if not cert_name or cert_name == "CUSTOM":
+            cert_name = name_custom
+        cert_name = (cert_name or "").strip()
         if not cert_name:
             flash("资质证书/证照名称不能为空", "danger")
-            return redirect(url_for("web.batch"))
-
-        if not certificate_no:
-            flash("资质证书/证照编号不能为空", "danger")
             return redirect(url_for("web.batch"))
 
         attachment_path = item["stored_path"] or ""
@@ -871,7 +963,7 @@ def confirm_batch_item(item_id: int):
             repo.create_qualification({
                 "company_id": company_id,
                 "name": cert_name,
-                "certificate_no": certificate_no,
+                "certificate_no": certificate_no or "",
                 "issue_date": issue_date,
                 "expiry_date": "" if is_long_term else expiry_date,
                 "is_long_term": is_long_term,
@@ -996,7 +1088,9 @@ def edit_contract(contract_id: int):
 
     repo.update_contract(contract_id, data)
     flash("合同更新成功。", "success")
-    return redirect(request.referrer or url_for("web.contracts"))
+    return redirect(
+        safe_redirect_target(request.referrer, url_for("web.contracts"))
+    )
 
 
 @bp.route("/contracts/<int:contract_id>/delete", methods=["POST"])
@@ -1227,7 +1321,9 @@ def edit_voucher(voucher_id: int):
             "entry_user": text_value(request.form, "entry_user"),
         }
     )
-    return redirect(request.referrer or url_for("web.vouchers"))
+    return redirect(
+        safe_redirect_target(request.referrer, url_for("web.vouchers"))
+    )
 
 
 @bp.route("/people/<int:person_id>/edit", methods=["POST"])

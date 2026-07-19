@@ -40,26 +40,41 @@ class ArkOcrRecognizer:
                 confidence=None,
             )
 
-        if path.suffix.lower() == ".pdf":
-            try:
-                import fitz
-                doc = fitz.open(path)
+        # 尝试使用 PyMuPDF (fitz) 统一加载 PDF 和常见图片，并限制最大边长不超过 1200 像素
+        # 以防大图或高清 PDF Base64 体积过大（导致接口报 HTTP 400 Bad Request）
+        try:
+            import fitz
+
+            with fitz.open(path) as doc:
                 if len(doc) == 0:
-                    raise ValueError("PDF 文件页数为 0")
+                    raise ValueError("文件内容为空")
                 page = doc[0]
-                pix = page.get_pixmap(dpi=150)
+                max_side = max(page.rect.width, page.rect.height)
+                is_pdf = path.suffix.lower() == ".pdf"
+                scale = 1200 / max_side if is_pdf or max_side > 1200 else 1.0
+                pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale))
                 img_bytes = pix.tobytes("png")
-                image_data = base64.b64encode(img_bytes).decode("ascii")
-                mime_type = "image/png"
-            except Exception as exc:
+
+            image_data = base64.b64encode(img_bytes).decode("ascii")
+            mime_type = "image/png"
+        except Exception as exc:
+            # 如果是 PDF 且解析产生任何异常，直接报错（PDF 降级读二进制流对大模型没有意义）
+            if path.suffix.lower() == ".pdf":
                 return BatchOcrResult(
                     status="待确认",
                     data={"message": f"PDF 解析或渲染失败，请人工确认：{exc}"},
                     confidence=None,
                 )
-        else:
-            mime_type = mimetypes.guess_type(path.name)[0] or "image/jpeg"
-            image_data = base64.b64encode(path.read_bytes()).decode("ascii")
+            # 如果是图片处理产生任何异常，优雅降级退回原生读取
+            try:
+                mime_type = mimetypes.guess_type(path.name)[0] or "image/jpeg"
+                image_data = base64.b64encode(path.read_bytes()).decode("ascii")
+            except Exception as read_exc:
+                return BatchOcrResult(
+                    status="待确认",
+                    data={"message": f"加载文件失败，请人工确认：{read_exc}"},
+                    confidence=None,
+                )
 
         payload = {
             "model": self.model,

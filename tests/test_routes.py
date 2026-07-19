@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from construction_maintenance.db import get_db
 
 
@@ -673,3 +675,145 @@ def test_contract_routes(client, app):
         assert "编辑后路由测试合同".encode("utf-8") not in res.data
 
 
+def test_render_batch_item_route(client, app):
+    from construction_maintenance.repositories import create_batch_item
+    import json
+
+    with app.app_context():
+        item_id = create_batch_item({
+            "item_type": "voucher",
+            "source_filename": "test_render.png",
+            "stored_path": "test_render.png",
+            "status": "已识别",
+            "recognized_json": json.dumps({
+                "voucher_date": "2026-06-16",
+                "amount": 999.5,
+                "payment_method": "微信支付",
+                "notes": "渲染测试"
+            }),
+            "confidence": 0.95
+        })
+
+        response = client.get(f"/batch/item/{item_id}/render")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["id"] == item_id
+        assert data["status"] == "已识别"
+        assert data["confidence"] == "95%"
+        assert "金额: ¥999.5" in data["summary"]
+        assert "test_render.png" in data["html"]
+
+
+def test_batch_item_summary_without_notes_stays_compact():
+    from construction_maintenance.web.routes import _get_batch_item_summary
+
+    summary = _get_batch_item_summary(
+        {
+            "item_type": "voucher",
+            "recognized_json": json.dumps(
+                {
+                    "voucher_date": "2026-06-16",
+                    "amount": 999.5,
+                    "payment_method": "微信支付",
+                }
+            ),
+        }
+    )
+
+    assert summary == "日期: 2026-06-16 | 金额: ¥999.5 | 方式: 微信支付"
+
+
+def test_confirm_batch_qualification_success_no_certificate_no(client, app):
+    from construction_maintenance.repositories import create_batch_item, create_company, get_batch_item, list_qualifications
+    import json
+
+    with app.app_context():
+        comp_id = create_company({
+            "name": "测试合作公司",
+            "credit_code": "",
+            "legal_person": "",
+            "phone": "",
+            "notes": ""
+        })
+        item_id = create_batch_item({
+            "item_type": "qualification",
+            "source_filename": "qual.png",
+            "stored_path": "qual.png",
+            "status": "待确认",
+            "recognized_json": json.dumps({
+                "company_name": "测试合作公司",
+                "name_select": "营业执照",
+                "certificate_no": "",  # 空编号
+                "is_long_term": True
+            })
+        })
+
+        response = client.post(
+            f"/batch/{item_id}/confirm",
+            data={
+                "company_id": str(comp_id),
+                "name_select": "营业执照",
+                "certificate_no": "",  # 编号留空提交
+                "is_long_term": "1"
+            },
+            follow_redirects=True
+        )
+
+        assert response.status_code == 200
+        # 确认已生成且导入成功
+        item = get_batch_item(item_id)
+        assert item["status"] == "已确认"
+
+        quals = list_qualifications()
+        # 查找是否存在导入的证书且 certificate_no 为空值
+        target_qual = [q for q in quals if q["company_id"] == comp_id and q["name"] == "营业执照"]
+        assert len(target_qual) > 0
+        assert target_qual[0]["certificate_no"] == ""
+
+
+def test_confirm_batch_qualification_custom_name(client, app):
+    from construction_maintenance.repositories import create_batch_item, create_company, get_batch_item, list_qualifications
+    import json
+
+    with app.app_context():
+        comp_id = create_company({
+            "name": "测试合作公司2",
+            "credit_code": "",
+            "legal_person": "",
+            "phone": "",
+            "notes": ""
+        })
+        item_id = create_batch_item({
+            "item_type": "qualification",
+            "source_filename": "qual2.png",
+            "stored_path": "qual2.png",
+            "status": "待确认",
+            "recognized_json": json.dumps({
+                "company_name": "测试合作公司2",
+                "name_select": "电力工程施工总承包",  # 自定义手写值
+                "certificate_no": "DL-123456",
+                "is_long_term": True
+            })
+        })
+
+        response = client.post(
+            f"/batch/{item_id}/confirm",
+            data={
+                "company_id": str(comp_id),
+                "name_select": "电力工程施工总承包",  # 手写值提交
+                "certificate_no": "DL-123456",
+                "is_long_term": "1"
+            },
+            follow_redirects=True
+        )
+
+        assert response.status_code == 200
+        # 确认已生成且导入成功
+        item = get_batch_item(item_id)
+        assert item["status"] == "已确认"
+
+        quals = list_qualifications()
+        # 查找是否存在导入的自定义资质证书
+        target_qual = [q for q in quals if q["company_id"] == comp_id and q["name"] == "电力工程施工总承包"]
+        assert len(target_qual) > 0
+        assert target_qual[0]["certificate_no"] == "DL-123456"

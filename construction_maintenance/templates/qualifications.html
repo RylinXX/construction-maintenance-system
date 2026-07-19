@@ -438,7 +438,8 @@
       <button type="button" class="modal-close" onclick="closeModal('addQualificationModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" enctype="multipart/form-data" class="premium-form">
+<form method="post" enctype="multipart/form-data" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           <!-- Physical Attachment Upload Area & AI/OCR Parser Trigger -->
           <div class="form-group full-width" style="margin-bottom: 8px;">
@@ -860,7 +861,8 @@ document.addEventListener("DOMContentLoaded", function() {
       <button type="button" class="modal-close" onclick="closeModal('editQualificationModal-{{ item.id }}')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('web.edit_qualification', qualification_id=item.id) }}" enctype="multipart/form-data" class="premium-form">
+<form method="post" action="{{ url_for('web.edit_qualification', qualification_id=item.id) }}" enctype="multipart/form-data" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           
           <div class="form-group">
@@ -931,7 +933,8 @@ document.addEventListener("DOMContentLoaded", function() {
       <button type="button" class="modal-close" onclick="closeModal('addCompanyModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('web.add_company') }}" class="premium-form">
+<form method="post" action="{{ url_for('web.add_company') }}" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           <div class="form-group full-width">
             <label class="form-label" for="add-company-name">单位/公司名称 <span class="required">*</span></label>
@@ -972,7 +975,8 @@ document.addEventListener("DOMContentLoaded", function() {
       <button type="button" class="modal-close" onclick="closeModal('editCompanyModal-{{ company.id }}')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('web.edit_company', company_id=company.id) }}" class="premium-form">
+<form method="post" action="{{ url_for('web.edit_company', company_id=company.id) }}" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           
           <div class="form-group full-width">

@@ -151,7 +151,8 @@
       <button type="button" class="modal-close" onclick="closeModal('addVoucherModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('web.vouchers') }}" class="premium-form">
+<form method="post" action="{{ url_for('web.vouchers') }}" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <!-- Automatically link voucher to current project context -->
         <input type="hidden" name="project_id" value="{{ project.id }}">
         
@@ -407,7 +408,8 @@ document.querySelectorAll('form').forEach(form => {
       <button type="button" class="modal-close" onclick="closeModal('editVoucherModal-{{ voucher.id }}')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('web.edit_voucher', voucher_id=voucher.id) }}" class="premium-form">
+<form method="post" action="{{ url_for('web.edit_voucher', voucher_id=voucher.id) }}" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label" for="edit-date-{{ voucher.id }}">凭证日期 <span class="required">*</span></label>
@@ -454,7 +456,8 @@ document.querySelectorAll('form').forEach(form => {
       <button type="button" class="modal-close" onclick="closeModal('addCategoryModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <form method="post" action="{{ url_for('web.expense_categories') }}" class="premium-form">
+<form method="post" action="{{ url_for('web.expense_categories') }}" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <!-- Redirect to stay on project vouchers page -->
         <input type="hidden" name="redirect" value="{{ request.url }}">
         <div class="form-grid">
@@ -509,7 +512,8 @@ document.querySelectorAll('form').forEach(form => {
             {% for category in categories %}
             <tr>
               <td>
-                <form id="edit-category-{{ category.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=category.id) }}">
+<form id="edit-category-{{ category.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=category.id) }}">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
                   <input type="hidden" name="redirect" value="{{ request.url }}">
                 </form>
                 <input form="edit-category-{{ category.id }}" class="form-input" style="width: 100%; padding: 6px 12px; font-size: 13px;" name="name" type="text" value="{{ category.name }}" required>

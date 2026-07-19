@@ -9,7 +9,10 @@ DEFAULT_DATABASE = INSTANCE_DIR / "construction.sqlite3"
 DEFAULT_UPLOAD_FOLDER = BASE_DIR / "uploads"
 ARK_BASE_URL = os.getenv("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
 ARK_MODEL = os.getenv("ARK_MODEL", "doubao-seed-2-0-pro-260215")
-ARK_API_KEY = os.getenv(
-    "ARK_API_KEY",
-    "ark-5f20ce3d-45e4-407a-ae78-e6bc0357e401-5e232",
-)
+ARK_API_KEY = os.getenv("ARK_API_KEY", "")
+
+SECRET_KEY = os.getenv("CAM_SECRET_KEY")
+ADMIN_USERNAME = os.getenv("CAM_ADMIN_USERNAME")
+ADMIN_PASSWORD_HASH = os.getenv("CAM_ADMIN_PASSWORD_HASH")
+AUTH_REQUIRED = os.getenv("CAM_AUTH_REQUIRED", "1") == "1"
+CSRF_ENABLED = os.getenv("CAM_CSRF_ENABLED", "1") == "1"

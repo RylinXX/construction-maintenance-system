@@ -11,7 +11,8 @@
       <h2 class="panel-title">{{ icon('import') }} 批量上传文件</h2>
       <p class="panel-subtitle">支持批量拖拽或选择多个凭证发票、身份证扫描件，进入系统队列并使用 AI 自动识别内容。</p>
     </div>
-    <form method="post" enctype="multipart/form-data" class="premium-form">
+<form method="post" enctype="multipart/form-data" class="premium-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <div class="form-grid">
         <div class="form-group full-width">
           <label class="form-label" for="item_type">文件类型科目</label>
@@ -48,10 +49,10 @@
 
     <!-- Tab Buttons -->
     <div class="review-tabs">
-      <button type="button" class="review-tab-btn active" onclick="switchTab('review-workspace')">
+      <button type="button" class="review-tab-btn active" data-tab="review-workspace" onclick="switchTab('review-workspace')">
         待审核导入 ({{ items|rejectattr('status', 'equalto', '已确认')|list|length }})
       </button>
-      <button type="button" class="review-tab-btn" onclick="switchTab('upload-history')">
+      <button type="button" class="review-tab-btn" data-tab="upload-history" onclick="switchTab('upload-history')">
         全部任务与历史 ({{ items|length }})
       </button>
     </div>
@@ -60,267 +61,7 @@
     <div id="review-workspace" class="review-tab-content">
       <div class="review-grid">
         {% for item in items if item.status != '已确认' %}
-          {% set data = item.recognized_json|fromjson %}
-          <div class="review-card" id="item-card-{{ item.id }}" data-status="{{ item.status }}">
-            <div class="review-card-header">
-              <div class="card-title-group">
-                {% if item.item_type == 'voucher' %}
-                  <span class="badge badge-info">费用凭证</span>
-                {% elif item.item_type == 'qualification' %}
-                  <span class="badge badge-success">企业资质</span>
-                {% else %}
-                  <span class="badge badge-purple">身份证件</span>
-                {% endif %}
-                <span class="card-filename" title="{{ item.source_filename }}">{{ item.source_filename|upload_name }}</span>
-              </div>
-              <div class="card-meta">
-                {% if item.confidence is not none %}
-                  {% set conf_percent = (item.confidence * 100)|int %}
-                  <span class="badge {% if item.confidence >= 0.85 %}badge-success{% elif item.confidence >= 0.50 %}badge-warning{% else %}badge-danger{% endif %}">
-                    AI 置信度: {{ conf_percent }}%
-                  </span>
-                {% endif %}
-                <span class="text-muted" style="font-size: 12px;">{{ item.created_at }}</span>
-              </div>
-            </div>
-            
-            <div class="review-card-body">
-              {% if item.status == '识别中' %}
-                <div class="review-status-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; width: 100%; text-align: center;">
-                  <div class="loading-spinner" style="width: 40px; height: 40px; border: 4px solid rgba(15, 118, 110, 0.1); border-left-color: var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
-                  <style>
-                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                  </style>
-                  <h3 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">AI 正在智能识别提取中...</h3>
-                  <p style="font-size: 13px; color: var(--text-secondary); max-width: 400px; margin: 0 auto;">系统正在使用大模型对上传的凭证文件进行深度识别与字段解析，通常需要 5-15 秒，请稍后，本页面将自动刷新状态。</p>
-                </div>
-              {% else %}
-                <div class="review-split">
-                <!-- Left: Preview -->
-                <div class="review-visualizer">
-                  {% set filename = item.stored_path|upload_name %}
-                  {% set lower_name = filename.lower() %}
-                  {% if lower_name.endswith('.png') or lower_name.endswith('.jpg') or lower_name.endswith('.jpeg') or lower_name.endswith('.webp') or lower_name.endswith('.bmp') %}
-                    <div class="preview-img-container" onclick="openZoomModal('{{ url_for('web.download_attachment', filename=filename) }}')">
-                      <img class="review-img" src="{{ url_for('web.download_attachment', filename=filename) }}" alt="凭证原件">
-                      <div class="zoom-overlay">{{ icon('search') }} 点击放大原图</div>
-                    </div>
-                  {% else %}
-                    <div class="preview-fallback-card">
-                      <div class="fallback-icon">{{ icon('document') }}</div>
-                      <div class="fallback-title">{{ item.source_filename }}</div>
-                      <a class="btn btn-sm btn-secondary" href="{{ url_for('web.download_attachment', filename=filename) }}" target="_blank">
-                        {{ icon('download') }} 下载原文件 ({{ filename.split('.')[-1]|upper }})
-                      </a>
-                    </div>
-                  {% endif %}
-                </div>
-
-                <!-- Right: Edit Form -->
-                <div class="review-form-container">
-                  <form id="form-confirm-{{ item.id }}" action="{{ url_for('web.confirm_batch_item', item_id=item.id) }}" method="post" class="review-form">
-                    {% if item.item_type == 'voucher' %}
-                      <!-- Voucher form fields -->
-                      <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label required">归属工程项目</label>
-                          <select class="form-select" name="project_id" required>
-                            <option value="">-- 选择归属工程项目 --</option>
-                            {% for p in projects %}
-                              <option value="{{ p.id }}">{{ p.name }}</option>
-                            {% endfor %}
-                          </select>
-                        </div>
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label required">费用日期</label>
-                          <input type="date" class="form-input" name="voucher_date" value="{{ data.voucher_date or '' }}" required>
-                        </div>
-                      </div>
-
-                      <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label">费用分类</label>
-                          <select class="form-select" name="voucher_type">
-                            {% for cat in categories %}
-                              <option value="{{ cat }}" {% if data.voucher_type == cat or (not data.voucher_type and cat == '其它') %}selected{% endif %}>{{ cat }}</option>
-                            {% endfor %}
-                          </select>
-                        </div>
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label required">凭证金额 (元)</label>
-                          <input type="number" step="0.01" class="form-input" name="amount" value="{{ data.amount or '' }}" required>
-                        </div>
-                      </div>
-
-                      {% if data.payment_method %}
-                      <div class="form-group" style="margin-bottom: 12px; font-size: 13px;">
-                        <span class="text-muted">AI 识别付款方式：</span>
-                        <span class="badge badge-secondary" style="background: var(--surface-subtle); color: var(--text-primary); padding: 2px 8px; font-size: 12px;">{{ data.payment_method }}</span>
-                      </div>
-                      {% endif %}
-
-                      <div class="form-group" style="margin-bottom: 12px;">
-                        <label class="form-label">凭证备注说明</label>
-                        <input type="text" class="form-input" name="notes" value="{% if data.notes %}{{ data.notes }}{% if data.payment_method %} (付款方式: {{ data.payment_method }}){% endif %}{% else %}{{ item.source_filename.split('.')[0] }}{% if data.payment_method %} (付款方式: {{ data.payment_method }}){% endif %}{% endif %}">
-                      </div>
-
-                      <div class="form-group" style="margin-bottom: 16px;">
-                        <label class="form-label">经办/录入人</label>
-                        <input type="text" class="form-input" name="entry_user" value="会计">
-                      </div>
-                    {% elif item.item_type == 'qualification' %}
-                      <!-- Qualification form fields -->
-                      <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label">关联合作公司</label>
-                          <select class="form-select" name="company_id">
-                            <option value="">-- 新增合作单位 (在右侧填写) --</option>
-                            {% for c in companies %}
-                              <option value="{{ c.id }}" {% if data.company_name == c.name or (c.is_main and not data.company_name) %}selected{% endif %}>{{ c.name }} {% if c.is_main %}(主公司){% endif %}</option>
-                            {% endfor %}
-                          </select>
-                        </div>
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label">或 新增合作单位名称</label>
-                          <input type="text" class="form-input" name="company_name" value="{{ data.company_name or '' }}" placeholder="不填则使用左侧关联公司">
-                        </div>
-                      </div>
-
-                      <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label required">资质证书/证照名称</label>
-                          <select class="form-select" id="name_select_{{ item.id }}" name="name_select" onchange="toggleNameCustom({{ item.id }})" required>
-                            <option value="" disabled>-- 请选择资质证书 --</option>
-                            <option value="营业执照" {% if data.name_select == '营业执照' %}selected{% endif %}>营业执照</option>
-                            <option value="开户证明" {% if data.name_select == '开户证明' %}selected{% endif %}>开户证明</option>
-                            <option value="开票信息" {% if data.name_select == '开票信息' %}selected{% endif %}>开票信息</option>
-                            <option value="建筑资质" {% if data.name_select == '建筑资质' %}selected{% endif %}>建筑资质</option>
-                            <option value="安全生产资质" {% if data.name_select == '安全生产资质' %}selected{% endif %}>安全生产资质</option>
-                            <option value="八大员人员证书" {% if data.name_select == '八大员人员证书' %}selected{% endif %}>八大员人员证书</option>
-                            <option value="法人身份证" {% if data.name_select == '法人身份证' %}selected{% endif %}>法人身份证</option>
-                            {% set is_custom = data.name_select not in ['营业执照', '开户证明', '开票信息', '建筑资质', '安全生产资质', '八大员人员证书', '法人身份证'] %}
-                            <option value="CUSTOM" {% if is_custom or not data.name_select %}selected{% endif %}>自定义输入新证书...</option>
-                          </select>
-                        </div>
-                        {% set is_custom = data.name_select not in ['营业执照', '开户证明', '开票信息', '建筑资质', '安全生产资质', '八大员人员证书', '法人身份证'] %}
-                        <div class="form-group" id="name_custom_group_{{ item.id }}" style="flex: 1; margin: 0; {% if not is_custom and data.name_select %}display: none;{% endif %}">
-                          <label class="form-label required">自定义证照/资质名称</label>
-                          <input type="text" id="name_custom_{{ item.id }}" class="form-input" name="name_custom" value="{% if is_custom %}{{ data.name_select or '' }}{% endif %}" placeholder="例如：电力工程施工总承包" {% if is_custom or not data.name_select %}required{% endif %}>
-                        </div>
-                      </div>
-
-                      <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label required">证书/证照统一编号</label>
-                          <input type="text" class="form-input font-mono font-semibold" name="certificate_no" value="{{ data.certificate_no or '' }}" placeholder="统一社会信用代码或证书编号" required>
-                        </div>
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label">发证日期</label>
-                          <input type="date" class="form-input" name="issue_date" value="{{ data.issue_date or '' }}">
-                        </div>
-                      </div>
-
-                      <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px; align-items: flex-end;">
-                        <div class="form-group" style="flex: 1.2; margin: 0;">
-                          <label class="form-label">证书到期日期</label>
-                          <input type="date" id="expiry_date_{{ item.id }}" class="form-input" name="expiry_date" value="{{ data.expiry_date or '' }}" {% if data.is_long_term %}disabled style="background-color: var(--line-light);"{% endif %}>
-                        </div>
-                        <div class="form-group" style="flex: 0.8; margin: 0; padding-bottom: 12px; display: flex; align-items: center; justify-content: center;">
-                          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--text-primary);">
-                            <input type="checkbox" id="is_long_term_{{ item.id }}" name="is_long_term" value="1" onchange="toggleExpiryDate({{ item.id }})" {% if data.is_long_term %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
-                            <span>长期有效</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      <div style="border: 1px dashed var(--line-light); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: var(--bg);">
-                        <div style="font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 8px;">新增合作单位时选填信息：</div>
-                        <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 8px;">
-                          <div class="form-group" style="flex: 1; margin: 0;">
-                            <label class="form-label" style="font-size: 12.5px;">统一社会信用代码</label>
-                            <input type="text" class="form-input font-mono" name="credit_code" value="{{ data.credit_code or '' }}" placeholder="9141...">
-                          </div>
-                          <div class="form-group" style="flex: 1; margin: 0;">
-                            <label class="form-label" style="font-size: 12.5px;">公司法定代表人</label>
-                            <input type="text" class="form-input" name="legal_person" value="{{ data.legal_person or '' }}">
-                          </div>
-                        </div>
-                        <div class="form-group" style="margin: 0;">
-                          <label class="form-label" style="font-size: 12.5px;">联系电话</label>
-                          <input type="text" class="form-input" name="phone" value="{{ data.phone or '' }}">
-                        </div>
-                      </div>
-
-                      <div class="form-group" style="margin-bottom: 16px;">
-                        <label class="form-label">资质核准范围/证书备注</label>
-                        <input type="text" class="form-input" name="notes" value="{{ data.notes or '' }}" placeholder="例如：可承担单项合同额3000万元以下的建筑工程施工...">
-                      </div>
-                    {% else %}
-                      <!-- Personnel form fields -->
-                      <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label required">员工姓名</label>
-                          <input type="text" class="form-input" name="name" value="{{ data.name or '' }}" required>
-                        </div>
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label required">身份证号</label>
-                          <input type="text" class="form-input" name="id_number" value="{{ data.id_number or '' }}" required>
-                        </div>
-                      </div>
-
-                      <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label">性别</label>
-                          <select class="form-select" name="gender">
-                            <option value="">未知</option>
-                            <option value="男" {% if data.gender == '男' %}selected{% endif %}>男</option>
-                            <option value="女" {% if data.gender == '女' %}selected{% endif %}>女</option>
-                          </select>
-                        </div>
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label">出生日期</label>
-                          <input type="text" class="form-input" name="birth_date" value="{{ data.birth_date or '' }}" placeholder="YYYY-MM-DD">
-                        </div>
-                      </div>
-
-                      <div class="form-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label">联系电话</label>
-                          <input type="text" class="form-input" name="phone" value="{{ data.phone or '' }}">
-                        </div>
-                        <div class="form-group" style="flex: 1; margin: 0;">
-                          <label class="form-label">工作岗位</label>
-                          <input type="text" class="form-input" name="job_type" value="{{ data.job_type or '' }}">
-                        </div>
-                      </div>
-
-                      <div class="form-group" style="margin-bottom: 12px;">
-                        <label class="form-label">户籍家庭住址</label>
-                        <input type="text" class="form-input" name="address" value="{{ data.address or '' }}">
-                      </div>
-
-                      <div class="form-group" style="margin-bottom: 16px;">
-                        <label class="form-label">备注信息</label>
-                        <input type="text" class="form-input" name="notes" value="{{ data.notes or '' }}">
-                      </div>
-                    {% endif %}
-
-                    <div class="review-actions">
-                      <button type="submit" class="btn btn-success">
-                        {{ icon('save') }} 确认导入
-                      </button>
-                      <button type="button" class="btn btn-outline-danger" onclick="submitDelete({{ item.id }})">
-                        {{ icon('delete') }} 忽略该项
-                      </button>
-                    </div>
-                  </form>
-                  
-                  <!-- Form for deleting -->
-                  <form id="delete-form-{{ item.id }}" action="{{ url_for('web.delete_batch_item', item_id=item.id) }}" method="post" style="display: none;"></form>
-                </div>
-              {% endif %}
-            </div>
-          </div>
+          {% include "_batch_card.html" %}
         {% else %}
           <div class="empty-state">
             <span class="empty-icon">{{ icon('checklist') }}</span>
@@ -366,7 +107,7 @@
                     </a>
                   {% endif %}
                 </td>
-                <td>
+                <td id="history-status-{{ item.id }}">
                   {% if item.status == '识别中' %}
                     <span class="badge badge-loading" style="background: rgba(13, 148, 136, 0.1); color: var(--primary-color); border: 1px solid rgba(13, 148, 136, 0.2);"><span style="display:inline-block; width: 6px; height: 6px; border-radius:50%; background:var(--primary-color); margin-right: 4px; animation: pulse 1s infinite alternate;"></span>{{ item.status }}</span>
                     <style>
@@ -380,14 +121,14 @@
                     <span class="badge badge-success">{{ item.status }}</span>
                   {% endif %}
                 </td>
-                <td class="font-mono">
+                <td id="history-confidence-{{ item.id }}" class="font-mono">
                   {% if item.confidence is not none %}
                     {{ (item.confidence * 100)|int }}%
                   {% else %}
                     -
                   {% endif %}
                 </td>
-                <td class="font-mono text-muted text-xs" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <td id="history-summary-{{ item.id }}" class="font-mono text-muted text-xs" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                   {% set parsed = item.recognized_json|fromjson %}
                   {% if item.item_type == 'voucher' %}
                     {% if parsed.voucher_date %}日期: {{ parsed.voucher_date }} | {% endif %}
@@ -442,26 +183,30 @@
 <script>
 // Switch between Workspace Tab and History Tab
 function switchTab(tabId) {
-  const tabs = document.querySelectorAll('.review-tab-content');
-  tabs.forEach(tab => {
-    if (tab.id === tabId) {
-      tab.classList.remove('hidden');
-    } else {
-      tab.classList.add('hidden');
-    }
-  });
+  try {
+    const tabs = document.querySelectorAll('.review-tab-content');
+    tabs.forEach(tab => {
+      if (tab.id === tabId) {
+        tab.classList.remove('hidden');
+      } else {
+        tab.classList.add('hidden');
+      }
+    });
 
-  const buttons = document.querySelectorAll('.review-tab-btn');
-  buttons.forEach(btn => {
-    if (btn.getAttribute('onclick').includes(tabId)) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
+    const buttons = document.querySelectorAll('.review-tab-btn');
+    buttons.forEach(btn => {
+      if (btn.getAttribute('data-tab') === tabId) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
 
-  // Store tab selection in localStorage
-  localStorage.setItem('active_batch_tab', tabId);
+    // Store tab selection in localStorage
+    localStorage.setItem('active_batch_tab', tabId);
+  } catch (err) {
+    console.error('switchTab error:', err);
+  }
 }
 
 function toggleNameCustom(itemId) {
@@ -493,17 +238,82 @@ function toggleExpiryDate(itemId) {
 
 // Restore tab selection on load
 document.addEventListener('DOMContentLoaded', () => {
-  const savedTab = localStorage.getItem('active_batch_tab') || 'review-workspace';
-  switchTab(savedTab);
-
-  // 检测是否有识别中的卡片，如果有，则定时自动重新加载以展示最新状态
-  const processingCards = document.querySelectorAll('.review-card[data-status="识别中"]');
-  if (processingCards.length > 0) {
-    setTimeout(() => {
-      location.reload();
-    }, 3500);
+  try {
+    const savedTab = localStorage.getItem('active_batch_tab') || 'review-workspace';
+    switchTab(savedTab);
+  } catch (err) {
+    console.error('Init active tab error:', err);
   }
+
+  // Start polling
+  pollProcessingCards();
 });
+
+// Poll processing cards status dynamically and replace them when finished
+function pollProcessingCards() {
+  try {
+    const processingCards = document.querySelectorAll('.review-card[data-status="识别中"]');
+    if (processingCards.length === 0) return;
+
+    processingCards.forEach(card => {
+      try {
+        const itemId = card.id.replace('item-card-', '');
+        fetch(`/batch/item/${itemId}/render`)
+          .then(res => {
+            if (!res.ok) throw new Error('Render response not ok');
+            return res.json();
+          })
+          .then(data => {
+            try {
+              if (data && data.status !== '识别中') {
+                // Replace workspace card dynamically
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = (data.html || '').trim();
+                const newCard = tempDiv.firstElementChild;
+                if (newCard && card.parentNode) {
+                  card.parentNode.replaceChild(newCard, card);
+                }
+
+                // Update corresponding history row status
+                const histStatus = document.getElementById(`history-status-${itemId}`);
+                if (histStatus) {
+                  if (data.status === '待确认') {
+                    histStatus.innerHTML = `<span class="badge badge-warning">待确认</span>`;
+                  } else if (data.status === '已识别') {
+                    histStatus.innerHTML = `<span class="badge badge-info">已识别</span>`;
+                  } else {
+                    histStatus.innerHTML = `<span class="badge badge-success">${data.status}</span>`;
+                  }
+                }
+
+                // Update corresponding history row confidence
+                const histConfidence = document.getElementById(`history-confidence-${itemId}`);
+                if (histConfidence) {
+                  histConfidence.textContent = data.confidence || '-';
+                }
+
+                // Update corresponding history row summary
+                const histSummary = document.getElementById(`history-summary-${itemId}`);
+                if (histSummary) {
+                  histSummary.textContent = data.summary || '';
+                }
+              }
+            } catch (innerErr) {
+              console.error('Error handling polled data:', innerErr);
+            }
+          })
+          .catch(err => console.error('Polling status fetch error:', err));
+      } catch (cardErr) {
+        console.error('Error in card loop item:', cardErr);
+      }
+    });
+  } catch (globalErr) {
+    console.error('Error in pollProcessingCards:', globalErr);
+  }
+
+  // Re-poll after 3 seconds
+  setTimeout(pollProcessingCards, 3000);
+}
 
 // Fullscreen image viewer
 function openZoomModal(imgUrl) {
