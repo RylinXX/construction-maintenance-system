@@ -2956,10 +2956,23 @@ textarea.form-input:focus {
   min-width: 0;
   overflow: hidden;
   background: var(--login-brand-bg);
+}
+
+.login-showcase::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 55%;
+  pointer-events: none;
   background-image:
     linear-gradient(var(--login-grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--login-grid-line) 1px, transparent 1px);
   background-size: 44px 44px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 38%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 38%, transparent 100%);
 }
 
 .login-showcase-brand {
