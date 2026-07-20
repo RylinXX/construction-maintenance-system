@@ -131,7 +131,7 @@ CAM/
 
 ## 🚀 快速开始与本地部署 (Quick Start)
 
-以下为 Windows PowerShell / Linux 终端下的标准部署流程。认证默认开启，启动前必须配置会话密钥和管理员凭据。
+以下为 Windows PowerShell / Linux 终端下的标准部署流程。认证默认开启，首次启动前必须配置会话密钥和管理员引导凭据。
 
 ### 1. 克隆/拉取项目并创建虚拟环境
 ```powershell
@@ -159,10 +159,11 @@ pip install -e ".[dev]"
 | 环境变量 | 必需 | 说明 |
 |---|---|---|
 | `CAM_SECRET_KEY` | 是 | Flask 会话签名密钥，应使用高强度随机值 |
-| `CAM_ADMIN_USERNAME` | 是 | 管理员登录名 |
-| `CAM_ADMIN_PASSWORD_HASH` | 是 | Werkzeug 格式的密码哈希，不能填写明文密码 |
+| `CAM_ADMIN_USERNAME` | 首次启动 | 首个超级管理员登录名，也用于无可用超级管理员时的启动恢复 |
+| `CAM_ADMIN_PASSWORD_HASH` | 首次启动 | 引导管理员的 Werkzeug 密码哈希，不能填写明文密码 |
 | `CAM_AUTH_REQUIRED` | 否 | 是否启用登录认证，默认 `1` |
 | `CAM_CSRF_ENABLED` | 否 | 是否启用 CSRF 防护，默认 `1` |
+| `CAM_SESSION_COOKIE_SECURE` | 否 | 是否仅通过 HTTPS 发送会话 Cookie，默认 `1`；仅本地 HTTP 调试时设为 `0` |
 | `ARK_API_KEY` | OCR 必需 | 火山方舟 API 密钥；未配置时文件保留为待人工确认 |
 | `ARK_BASE_URL` | 否 | 火山方舟 API 地址 |
 | `ARK_MODEL` | 否 | OCR 使用的模型名称 |
@@ -174,7 +175,7 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 python -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('replace-this-password'))"
 ```
 
-将输出分别配置为 `CAM_SECRET_KEY` 和 `CAM_ADMIN_PASSWORD_HASH`，并设置 `CAM_ADMIN_USERNAME`。生产环境应通过 systemd `EnvironmentFile`、容器 Secret 或等效的密钥管理方式注入，禁止提交到 Git。
+将输出分别配置为 `CAM_SECRET_KEY` 和 `CAM_ADMIN_PASSWORD_HASH`，并设置 `CAM_ADMIN_USERNAME`。首次启动会将引导账号写入管理员账号表并授予超级管理员权限；此后可在“系统设置”中新增、停用和调整管理员账号。生产环境应通过 systemd `EnvironmentFile`、容器 Secret 或等效的密钥管理方式注入，禁止提交到 Git。
 
 ### 4. 运行开发服务器
 ```powershell

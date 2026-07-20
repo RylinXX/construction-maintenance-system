@@ -31,7 +31,24 @@ def test_schema_contains_core_tables(app):
         "people",
         "qualifications",
         "batch_items",
+        "admin_users",
+        "system_settings",
     }.issubset(table_names)
+
+
+def test_default_system_settings_are_seeded(app):
+    with app.app_context():
+        rows = get_db().execute(
+            "select key, value from system_settings order by key"
+        ).fetchall()
+
+    settings = {row["key"]: row["value"] for row in rows}
+    assert settings == {
+        "organization_name": "工程运营管理中心",
+        "session_timeout_minutes": "120",
+        "support_contact": "",
+        "system_name": "建筑工程维护系统",
+    }
 
 
 def test_default_expense_categories_are_seeded(app):

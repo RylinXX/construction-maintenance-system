@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import sqlite3
 from flask import Blueprint
+from flask import g
 from flask import redirect
 from flask import render_template
 from flask import request
 from flask import url_for
 from flask import flash, send_file
-from construction_maintenance.security import credentials_valid
+from construction_maintenance.security import authenticate_user
 from construction_maintenance.security import login_user, logout_user
+from construction_maintenance.security import require_admin
+from construction_maintenance.security import require_super_admin
 from construction_maintenance.security import safe_redirect_target
 
 from construction_maintenance import repositories as repo
@@ -110,10 +113,13 @@ def fromjson_filter(value: str) -> dict:
 def login():
     next_target = request.args.get("next")
     if request.method == "POST":
-        if credentials_valid(
+        user = authenticate_user(
             request.form.get("username", ""), request.form.get("password", "")
-        ):
-            login_user()
+        )
+        if user:
+            login_user(user)
+            if user["must_change_password"]:
+                return redirect(url_for("web.settings", tab="security"))
             return redirect(safe_redirect_target(next_target, url_for("web.dashboard")))
         return render_template("login.html", next=next_target), 401
 
@@ -124,6 +130,136 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for("web.login"))
+
+
+@bp.get("/settings")
+@require_admin
+def settings():
+    requested_tab = request.args.get("tab", "security")
+    allowed_tabs = {"security"}
+    if g.admin_user["role"] == "super_admin":
+        allowed_tabs.update({"admins", "general"})
+    active_tab = requested_tab if requested_tab in allowed_tabs else "security"
+    return render_template(
+        "settings.html",
+        active_tab=active_tab,
+        admin_users=(
+            repo.list_admin_users()
+            if g.admin_user["role"] == "super_admin"
+            else []
+        ),
+    )
+
+
+@bp.post("/settings/password")
+@require_admin
+def change_password():
+    new_password = request.form.get("new_password", "")
+    if new_password != request.form.get("confirm_password", ""):
+        flash("两次输入的新密码不一致", "danger")
+        return redirect(url_for("web.settings", tab="security"))
+    try:
+        repo.change_own_password(
+            g.admin_user["id"],
+            request.form.get("current_password", ""),
+            new_password,
+        )
+        flash("登录密码已更新，请妥善保管新密码", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("web.settings", tab="security"))
+
+
+@bp.post("/settings/admins")
+@require_super_admin
+def create_admin():
+    password = request.form.get("password", "")
+    if password != request.form.get("confirm_password", ""):
+        flash("两次输入的初始密码不一致", "danger")
+        return redirect(url_for("web.settings", tab="admins"))
+    try:
+        repo.create_admin_user(
+            {
+                "username": request.form.get("username"),
+                "display_name": request.form.get("display_name"),
+                "password": password,
+                "role": request.form.get("role", "admin"),
+                "is_active": request.form.get("is_active") == "1",
+            }
+        )
+        flash("管理员账号已创建，首次登录时须修改密码", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("web.settings", tab="admins"))
+
+
+@bp.post("/settings/admins/<int:user_id>/update")
+@require_super_admin
+def update_admin(user_id: int):
+    try:
+        repo.update_admin_user(
+            user_id,
+            {
+                "display_name": request.form.get("display_name"),
+                "role": request.form.get("role"),
+                "is_active": request.form.get("is_active") == "1",
+            },
+            actor_id=g.admin_user["id"],
+        )
+        flash("管理员账号设置已保存", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("web.settings", tab="admins"))
+
+
+@bp.post("/settings/admins/<int:user_id>/reset-password")
+@require_super_admin
+def reset_admin_password(user_id: int):
+    password = request.form.get("password", "")
+    if password != request.form.get("confirm_password", ""):
+        flash("两次输入的新密码不一致", "danger")
+        return redirect(url_for("web.settings", tab="admins"))
+    try:
+        repo.reset_admin_password(user_id, password)
+        flash("密码已重置，该账号下次登录时须修改密码", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("web.settings", tab="admins"))
+
+
+@bp.post("/settings/general")
+@require_super_admin
+def update_general_settings():
+    system_name = request.form.get("system_name", "").strip()
+    organization_name = request.form.get("organization_name", "").strip()
+    support_contact = request.form.get("support_contact", "").strip()
+    try:
+        timeout_minutes = int(request.form.get("session_timeout_minutes", ""))
+        if not 15 <= timeout_minutes <= 1440:
+            raise ValueError
+    except ValueError:
+        flash("会话超时时间须为 15 至 1440 分钟", "danger")
+        return redirect(url_for("web.settings", tab="general"))
+
+    if not system_name:
+        flash("系统名称不能为空", "danger")
+    elif len(system_name) > 80:
+        flash("系统名称不能超过 80 个字符", "danger")
+    elif len(organization_name) > 100:
+        flash("组织名称不能超过 100 个字符", "danger")
+    elif len(support_contact) > 100:
+        flash("支持联系方式不能超过 100 个字符", "danger")
+    else:
+        repo.update_system_settings(
+            {
+                "system_name": system_name,
+                "organization_name": organization_name,
+                "support_contact": support_contact,
+                "session_timeout_minutes": str(timeout_minutes),
+            }
+        )
+        flash("系统基本设置已保存", "success")
+    return redirect(url_for("web.settings", tab="general"))
 
 
 def _download_name_for_upload(filename: str) -> str:

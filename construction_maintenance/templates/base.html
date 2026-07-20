@@ -5,7 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{% block title %}建筑工程维护系统{% endblock %}</title>
+    <title>{% block title %}{{ system_settings.system_name }}{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='icons/hardhat.png') }}" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
@@ -44,8 +45,8 @@
         <div class="brand-lockup">
           <div class="brand-mark" aria-hidden="true">CM</div>
           <div class="brand-copy">
-            <div class="brand-name">CAM <span>维护系统</span></div>
-            <div class="brand-subtitle">Construction Ops</div>
+            <div class="brand-name">CAM <span>{{ system_settings.system_name }}</span></div>
+            <div class="brand-subtitle">{{ system_settings.organization_name or 'Construction Ops' }}</div>
           </div>
         </div>
 
@@ -81,6 +82,12 @@
             <span class="nav-icon" aria-hidden="true">{{ icon('import') }}</span>
             <span class="nav-label">AI 智能录入</span>
           </a>
+          {% if current_admin %}
+          <a href="{{ url_for('web.settings') }}" class="nav-item {% if request.endpoint and (request.endpoint == 'web.settings' or request.endpoint.startswith('web.change_password') or request.endpoint.startswith('web.create_admin') or request.endpoint.startswith('web.update_admin') or request.endpoint.startswith('web.reset_admin_password') or request.endpoint.startswith('web.update_general_settings')) %}active{% endif %}">
+            <span class="nav-icon" aria-hidden="true">{{ icon('settings') }}</span>
+            <span class="nav-label">系统设置</span>
+          </a>
+          {% endif %}
           <!-- Hidden submenu to satisfy workbench tests -->
           <div class="nav-submenu" style="display: none;">
             <div class="nav-subitem"></div>
@@ -90,8 +97,8 @@
         <div class="sidebar-status">
           <span class="status-dot" aria-hidden="true"></span>
           <div>
-            <strong>维护数据在线</strong>
-            <span>项目 / 人员 / 资质同步管理</span>
+            <strong>{{ system_settings.organization_name or '维护数据在线' }}</strong>
+            <span>{{ system_settings.support_contact or '项目 / 人员 / 资质同步管理' }}</span>
           </div>
         </div>
       </aside>
@@ -111,8 +118,13 @@
                 <span aria-hidden="true">◐</span>
               </button>
               <div class="user-profile">
-                <span class="avatar" aria-hidden="true">管</span>
-                <span class="username">系统管理员</span>
+                <span class="avatar" aria-hidden="true">{{ current_admin.display_name[:1] if current_admin else '管' }}</span>
+                <span class="user-profile-copy">
+                  <span class="username">{{ current_admin.display_name if current_admin else '系统管理员' }}</span>
+                  {% if current_admin %}
+                  <span class="user-role">{{ '超级管理员' if current_admin.role == 'super_admin' else '管理员' }}</span>
+                  {% endif %}
+                </span>
               </div>
               {% if config.get('AUTH_REQUIRED', True) %}
                 <form method="post" action="{{ url_for('web.logout') }}" class="logout-form">

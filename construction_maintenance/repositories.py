@@ -1,9 +1,240 @@
 from __future__ import annotations
 
 import sqlite3
+import re
 from typing import Any
 
-from .db import get_db
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from .db import DEFAULT_SYSTEM_SETTINGS, get_db
+
+
+PASSWORD_MIN_LENGTH = 12
+ADMIN_ROLES = {"admin", "super_admin"}
+ADMIN_USERNAME_PATTERN = re.compile(r"^[\w.@-]+$", re.UNICODE)
+
+
+def _normalized_admin_username(value: Any) -> str:
+    username = str(value or "").strip()
+    if not 3 <= len(username) <= 50:
+        raise ValueError("用户名长度须为 3 至 50 个字符")
+    if not ADMIN_USERNAME_PATTERN.fullmatch(username):
+        raise ValueError("用户名仅可包含字母、数字、中文、点、短横线和下划线")
+    return username
+
+
+def _validated_password(value: Any) -> str:
+    password = str(value or "")
+    if len(password) < PASSWORD_MIN_LENGTH:
+        raise ValueError(f"密码长度不能少于 {PASSWORD_MIN_LENGTH} 位")
+    return password
+
+
+def _validated_admin_role(value: Any) -> str:
+    role = str(value or "")
+    if role not in ADMIN_ROLES:
+        raise ValueError("管理员角色无效")
+    return role
+
+
+def get_admin_user(user_id: int):
+    return get_db().execute(
+        "select * from admin_users where id = ?", (user_id,)
+    ).fetchone()
+
+
+def get_admin_user_by_username(username: str):
+    return get_db().execute(
+        "select * from admin_users where username = ?",
+        (str(username or "").strip(),),
+    ).fetchone()
+
+
+def authenticate_admin_user(username: str, password: str):
+    user = get_admin_user_by_username(username)
+    if (
+        user is None
+        or not user["is_active"]
+        or not check_password_hash(user["password_hash"], password)
+    ):
+        return None
+
+    db = get_db()
+    db.execute(
+        """
+        update admin_users
+        set last_login_at = current_timestamp
+        where id = ?
+        """,
+        (user["id"],),
+    )
+    db.commit()
+    return get_admin_user(user["id"])
+
+
+def list_admin_users():
+    return get_db().execute(
+        """
+        select *
+        from admin_users
+        order by
+            case role when 'super_admin' then 0 else 1 end,
+            is_active desc,
+            username collate nocase
+        """
+    ).fetchall()
+
+
+def count_active_super_admins() -> int:
+    return int(
+        get_db()
+        .execute(
+            """
+            select count(*)
+            from admin_users
+            where role = 'super_admin' and is_active = 1
+            """
+        )
+        .fetchone()[0]
+    )
+
+
+def create_admin_user(data: dict[str, Any]) -> int:
+    username = _normalized_admin_username(data.get("username"))
+    display_name = str(data.get("display_name") or "").strip() or username
+    if len(display_name) > 50:
+        raise ValueError("显示名称不能超过 50 个字符")
+    password = _validated_password(data.get("password"))
+    role = _validated_admin_role(data.get("role", "admin"))
+    is_active = 1 if data.get("is_active", True) else 0
+
+    try:
+        cursor = get_db().execute(
+            """
+            insert into admin_users (
+                username, display_name, password_hash, role, is_active,
+                must_change_password
+            )
+            values (?, ?, ?, ?, ?, 1)
+            """,
+            (
+                username,
+                display_name,
+                generate_password_hash(password),
+                role,
+                is_active,
+            ),
+        )
+    except sqlite3.IntegrityError as exc:
+        raise ValueError("该管理员用户名已存在") from exc
+    get_db().commit()
+    return int(cursor.lastrowid)
+
+
+def update_admin_user(
+    user_id: int, data: dict[str, Any], *, actor_id: int
+) -> None:
+    db = get_db()
+    existing = get_admin_user(user_id)
+    if existing is None:
+        raise ValueError("管理员账号不存在")
+
+    display_name = str(data.get("display_name") or "").strip()
+    if not display_name:
+        raise ValueError("显示名称不能为空")
+    if len(display_name) > 50:
+        raise ValueError("显示名称不能超过 50 个字符")
+    role = _validated_admin_role(data.get("role"))
+    is_active = 1 if data.get("is_active") else 0
+
+    if user_id == actor_id and (role != "super_admin" or not is_active):
+        raise ValueError("不能停用自己或降低自己的权限")
+    removes_active_super_admin = (
+        existing["role"] == "super_admin"
+        and existing["is_active"]
+        and (role != "super_admin" or not is_active)
+    )
+    if removes_active_super_admin and count_active_super_admins() <= 1:
+        raise ValueError("系统必须保留至少一名启用中的超级管理员")
+
+    db.execute(
+        """
+        update admin_users
+        set display_name = ?, role = ?, is_active = ?,
+            updated_at = current_timestamp
+        where id = ?
+        """,
+        (display_name, role, is_active, user_id),
+    )
+    db.commit()
+
+
+def reset_admin_password(user_id: int, password: Any) -> None:
+    if get_admin_user(user_id) is None:
+        raise ValueError("管理员账号不存在")
+    password = _validated_password(password)
+    get_db().execute(
+        """
+        update admin_users
+        set password_hash = ?, must_change_password = 1,
+            updated_at = current_timestamp
+        where id = ?
+        """,
+        (generate_password_hash(password), user_id),
+    )
+    get_db().commit()
+
+
+def change_own_password(
+    user_id: int, current_password: str, new_password: str
+) -> None:
+    user = get_admin_user(user_id)
+    if user is None or not check_password_hash(
+        user["password_hash"], str(current_password or "")
+    ):
+        raise ValueError("当前密码不正确")
+    new_password = _validated_password(new_password)
+    if check_password_hash(user["password_hash"], new_password):
+        raise ValueError("新密码不能与当前密码相同")
+    get_db().execute(
+        """
+        update admin_users
+        set password_hash = ?, must_change_password = 0,
+            updated_at = current_timestamp
+        where id = ?
+        """,
+        (generate_password_hash(new_password), user_id),
+    )
+    get_db().commit()
+
+
+def get_system_settings() -> dict[str, str]:
+    settings = dict(DEFAULT_SYSTEM_SETTINGS)
+    rows = get_db().execute("select key, value from system_settings").fetchall()
+    settings.update({row["key"]: row["value"] for row in rows})
+    return settings
+
+
+def get_system_setting(key: str) -> str:
+    return get_system_settings().get(key, DEFAULT_SYSTEM_SETTINGS.get(key, ""))
+
+
+def update_system_settings(values: dict[str, str]) -> None:
+    db = get_db()
+    for key in DEFAULT_SYSTEM_SETTINGS:
+        if key not in values:
+            continue
+        db.execute(
+            """
+            insert into system_settings (key, value, updated_at)
+            values (?, ?, current_timestamp)
+            on conflict(key) do update set
+                value = excluded.value,
+                updated_at = current_timestamp
+            """,
+            (key, str(values[key])),
+        )
+    db.commit()
 
 
 def normalize_amount(value: Any) -> float:

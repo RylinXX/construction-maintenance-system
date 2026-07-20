@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>登录 - 建筑工程维护系统</title>
+    <title>登录 - {{ system_settings.system_name }}</title>
+    <link rel="icon" href="{{ url_for('static', filename='icons/hardhat.png') }}" type="image/png">
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.6">
   </head>
   <body class="login-page">
@@ -15,7 +16,7 @@
           </span>
           <span>
             <small>CAM SYSTEM</small>
-            <strong>建筑工程维护系统</strong>
+            <strong>{{ system_settings.system_name }}</strong>
           </span>
         </header>
 
@@ -104,7 +105,7 @@
 
           <footer class="login-footnote">
             <span>仅限授权人员访问</span>
-            <span>v0.2.16</span>
+            <span>v{{ config.APP_VERSION }}</span>
           </footer>
         </div>
       </section>

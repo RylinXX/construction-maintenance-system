@@ -18,6 +18,13 @@ DEFAULT_EXPENSE_CATEGORIES = [
     "其它",
 ]
 
+DEFAULT_SYSTEM_SETTINGS = {
+    "system_name": "建筑工程维护系统",
+    "organization_name": "工程运营管理中心",
+    "support_contact": "",
+    "session_timeout_minutes": "120",
+}
+
 
 def get_db() -> sqlite3.Connection:
     if "db" not in g:
@@ -175,8 +182,88 @@ def init_db() -> None:
             notes text not null default '',
             created_at text not null default current_timestamp
         );
+
+        create table if not exists admin_users (
+            id integer primary key autoincrement,
+            username text not null collate nocase unique,
+            display_name text not null,
+            password_hash text not null,
+            role text not null default 'admin'
+                check (role in ('admin', 'super_admin')),
+            is_active integer not null default 1
+                check (is_active in (0, 1)),
+            must_change_password integer not null default 0
+                check (must_change_password in (0, 1)),
+            last_login_at text,
+            created_at text not null default current_timestamp,
+            updated_at text not null default current_timestamp
+        );
+
+        create table if not exists system_settings (
+            key text primary key,
+            value text not null default '',
+            updated_at text not null default current_timestamp
+        );
         """
     )
+    db.executemany(
+        """
+        insert or ignore into system_settings (key, value)
+        values (?, ?)
+        """,
+        DEFAULT_SYSTEM_SETTINGS.items(),
+    )
+
+    bootstrap_username = str(current_app.config.get("ADMIN_USERNAME") or "").strip()
+    bootstrap_password_hash = str(
+        current_app.config.get("ADMIN_PASSWORD_HASH") or ""
+    ).strip()
+    admin_count = db.execute("select count(*) from admin_users").fetchone()[0]
+    if admin_count == 0 and bootstrap_username and bootstrap_password_hash:
+        db.execute(
+            """
+            insert into admin_users (
+                username, display_name, password_hash, role, is_active
+            )
+            values (?, '系统管理员', ?, 'super_admin', 1)
+            """,
+            (bootstrap_username, bootstrap_password_hash),
+        )
+    elif bootstrap_username and bootstrap_password_hash:
+        active_super_admins = db.execute(
+            """
+            select count(*)
+            from admin_users
+            where role = 'super_admin' and is_active = 1
+            """
+        ).fetchone()[0]
+        if active_super_admins == 0:
+            bootstrap_user = db.execute(
+                "select id from admin_users where username = ?",
+                (bootstrap_username,),
+            ).fetchone()
+            if bootstrap_user:
+                db.execute(
+                    """
+                    update admin_users
+                    set password_hash = ?, role = 'super_admin', is_active = 1,
+                        must_change_password = 0,
+                        updated_at = current_timestamp
+                    where id = ?
+                    """,
+                    (bootstrap_password_hash, bootstrap_user["id"]),
+                )
+            else:
+                db.execute(
+                    """
+                    insert into admin_users (
+                        username, display_name, password_hash, role, is_active
+                    )
+                    values (?, '系统管理员', ?, 'super_admin', 1)
+                    """,
+                    (bootstrap_username, bootstrap_password_hash),
+                )
+
     people_columns = {
         row["name"] for row in db.execute("pragma table_info(people)").fetchall()
     }

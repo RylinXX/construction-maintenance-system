@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}系统设置 - {{ system_settings.system_name }}{% endblock %}
+{% block breadcrumb %}系统设置{% endblock %}
+{% block page_subtitle %}账号安全、管理员权限与系统基本信息{% endblock %}
+
+{% block content %}
+<div class="settings-shell animate-slide-up">
+  <nav class="settings-tabs" aria-label="系统设置分类">
+    <a href="{{ url_for('web.settings', tab='security') }}" class="settings-tab {% if active_tab == 'security' %}active{% endif %}">
+      {{ icon('security') }} <span>账号安全</span>
+    </a>
+    {% if current_admin.role == 'super_admin' %}
+    <a href="{{ url_for('web.settings', tab='admins') }}" class="settings-tab {% if active_tab == 'admins' %}active{% endif %}">
+      {{ icon('people') }} <span>管理员账号</span>
+    </a>
+    <a href="{{ url_for('web.settings', tab='general') }}" class="settings-tab {% if active_tab == 'general' %}active{% endif %}">
+      {{ icon('settings') }} <span>基本设置</span>
+    </a>
+    {% endif %}
+  </nav>
+
+  {% if active_tab == 'security' %}
+  <section class="settings-section" aria-labelledby="security-heading">
+    <div class="settings-section-header">
+      <div>
+        <span class="settings-kicker">ACCOUNT SECURITY</span>
+        <h2 id="security-heading">修改登录密码</h2>
+        <p>当前账号：{{ current_admin.display_name }}（{{ current_admin.username }}）</p>
+      </div>
+      <span class="security-status">{{ icon('success') }} 账号已启用</span>
+    </div>
+
+    {% if current_admin.must_change_password %}
+    <div class="settings-notice settings-notice-warning" role="alert">
+      {{ icon('warning') }}
+      <div>
+        <strong>需要更新密码</strong>
+        <span>该密码由管理员重置或创建，请修改后再继续使用其他功能。</span>
+      </div>
+    </div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('web.change_password') }}" class="settings-form settings-form-narrow">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label class="form-label" for="current-password">当前密码 <span class="required">*</span></label>
+        <input class="form-input" id="current-password" name="current_password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="settings-form-row">
+        <div class="form-group">
+          <label class="form-label" for="new-password">新密码 <span class="required">*</span></label>
+          <input class="form-input" id="new-password" name="new_password" type="password" minlength="12" autocomplete="new-password" required>
+          <span class="form-hint">至少 12 位，建议组合使用字母、数字和符号。</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="confirm-password">确认新密码 <span class="required">*</span></label>
+          <input class="form-input" id="confirm-password" name="confirm_password" type="password" minlength="12" autocomplete="new-password" required>
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-primary" type="submit">{{ icon('save') }} 更新密码</button>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+
+  {% if active_tab == 'admins' and current_admin.role == 'super_admin' %}
+  <section class="settings-section" aria-labelledby="admins-heading">
+    <div class="settings-section-header">
+      <div>
+        <span class="settings-kicker">ACCESS CONTROL</span>
+        <h2 id="admins-heading">管理员账号</h2>
+        <p>开通、停用管理员账号，并控制系统管理权限。</p>
+      </div>
+      <button type="button" class="btn btn-primary" onclick="openSettingsModal('create-admin-modal')">
+        {{ icon('add') }} 新增管理员
+      </button>
+    </div>
+
+    <div class="settings-summary">
+      <div><span>账号总数</span><strong>{{ admin_users|length }}</strong></div>
+      <div><span>启用账号</span><strong>{{ admin_users|selectattr('is_active')|list|length }}</strong></div>
+      <div><span>超级管理员</span><strong>{{ admin_users|selectattr('role', 'equalto', 'super_admin')|list|length }}</strong></div>
+    </div>
+
+    <div class="table-container settings-table-wrap">
+      <table class="premium-table settings-admin-table">
+        <thead>
+          <tr>
+            <th>管理员</th>
+            <th>角色</th>
+            <th>状态</th>
+            <th>最后登录</th>
+            <th class="text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for admin in admin_users %}
+          <tr>
+            <td>
+              <div class="admin-identity">
+                <span class="admin-avatar">{{ admin.display_name[:1] }}</span>
+                <div>
+                  <strong>{{ admin.display_name }}</strong>
+                  <span>{{ admin.username }}{% if admin.id == current_admin.id %} · 当前账号{% endif %}</span>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if admin.role == 'super_admin' %}
+              <span class="badge badge-info">超级管理员</span>
+              {% else %}
+              <span class="badge badge-secondary">管理员</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if admin.is_active %}
+              <span class="badge badge-success">已启用</span>
+              {% else %}
+              <span class="badge badge-danger">已停用</span>
+              {% endif %}
+              {% if admin.must_change_password %}
+              <span class="badge badge-warning">待改密码</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">{{ admin.last_login_at or '尚未登录' }}</td>
+            <td class="text-right">
+              <div class="settings-table-actions">
+                <button type="button" class="btn-action-edit" onclick="openSettingsModal('edit-admin-{{ admin.id }}')" title="编辑账号">
+                  {{ icon('edit') }} 编辑
+                </button>
+                <button type="button" class="btn-action-preview" onclick="openSettingsModal('reset-password-{{ admin.id }}')" title="重置密码">
+                  {{ icon('security') }} 重置密码
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div id="create-admin-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">{{ icon('add') }} 新增管理员</h3>
+        <button type="button" class="modal-close" onclick="closeSettingsModal('create-admin-modal')" aria-label="关闭">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{{ url_for('web.create_admin') }}" class="premium-form">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="new-admin-username">用户名 <span class="required">*</span></label>
+              <input class="form-input" id="new-admin-username" name="username" minlength="3" maxlength="50" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="new-admin-name">显示名称 <span class="required">*</span></label>
+              <input class="form-input" id="new-admin-name" name="display_name" maxlength="50" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="new-admin-role">角色</label>
+              <select class="form-select" id="new-admin-role" name="role">
+                <option value="admin">管理员</option>
+                <option value="super_admin">超级管理员</option>
+              </select>
+            </div>
+            <div class="form-group settings-toggle-group">
+              <span class="form-label">账号状态</span>
+              <label class="switch-control">
+                <input type="checkbox" name="is_active" value="1" checked>
+                <span class="switch-track" aria-hidden="true"></span>
+                <span>创建后立即启用</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="new-admin-password">初始密码 <span class="required">*</span></label>
+              <input class="form-input" id="new-admin-password" name="password" type="password" minlength="12" autocomplete="new-password" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="new-admin-confirm">确认初始密码 <span class="required">*</span></label>
+              <input class="form-input" id="new-admin-confirm" name="confirm_password" type="password" minlength="12" autocomplete="new-password" required>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeSettingsModal('create-admin-modal')">取消</button>
+            <button type="submit" class="btn btn-primary">{{ icon('save') }} 创建账号</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% for admin in admin_users %}
+  <div id="edit-admin-{{ admin.id }}" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">{{ icon('edit') }} 编辑管理员</h3>
+        <button type="button" class="modal-close" onclick="closeSettingsModal('edit-admin-{{ admin.id }}')" aria-label="关闭">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{{ url_for('web.update_admin', user_id=admin.id) }}" class="premium-form">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <div class="admin-modal-heading">
+            <span class="admin-avatar">{{ admin.display_name[:1] }}</span>
+            <div><strong>{{ admin.display_name }}</strong><span>{{ admin.username }}</span></div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="edit-name-{{ admin.id }}">显示名称 <span class="required">*</span></label>
+              <input class="form-input" id="edit-name-{{ admin.id }}" name="display_name" value="{{ admin.display_name }}" maxlength="50" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="edit-role-{{ admin.id }}">角色</label>
+              <select class="form-select" id="edit-role-{{ admin.id }}" name="role" {% if admin.id == current_admin.id %}disabled{% endif %}>
+                <option value="admin" {% if admin.role == 'admin' %}selected{% endif %}>管理员</option>
+                <option value="super_admin" {% if admin.role == 'super_admin' %}selected{% endif %}>超级管理员</option>
+              </select>
+              {% if admin.id == current_admin.id %}
+              <input type="hidden" name="role" value="{{ admin.role }}">
+              {% endif %}
+            </div>
+            <div class="form-group full-width settings-toggle-group">
+              <span class="form-label">账号状态</span>
+              <label class="switch-control">
+                <input type="checkbox" name="is_active" value="1" {% if admin.is_active %}checked{% endif %} {% if admin.id == current_admin.id %}disabled{% endif %}>
+                <span class="switch-track" aria-hidden="true"></span>
+                <span>允许该账号登录系统</span>
+              </label>
+              {% if admin.id == current_admin.id %}
+              <input type="hidden" name="is_active" value="1">
+              <span class="form-hint">当前登录账号不能停用或降低权限。</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeSettingsModal('edit-admin-{{ admin.id }}')">取消</button>
+            <button type="submit" class="btn btn-primary">{{ icon('save') }} 保存设置</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="reset-password-{{ admin.id }}" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">{{ icon('security') }} 重置密码</h3>
+        <button type="button" class="modal-close" onclick="closeSettingsModal('reset-password-{{ admin.id }}')" aria-label="关闭">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{{ url_for('web.reset_admin_password', user_id=admin.id) }}" class="premium-form">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <div class="settings-notice">
+            {{ icon('user') }}
+            <div><strong>{{ admin.display_name }}</strong><span>{{ admin.username }} · 重置后首次登录须修改密码</span></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reset-password-value-{{ admin.id }}">新密码 <span class="required">*</span></label>
+            <input class="form-input" id="reset-password-value-{{ admin.id }}" name="password" type="password" minlength="12" autocomplete="new-password" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reset-password-confirm-{{ admin.id }}">确认新密码 <span class="required">*</span></label>
+            <input class="form-input" id="reset-password-confirm-{{ admin.id }}" name="confirm_password" type="password" minlength="12" autocomplete="new-password" required>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeSettingsModal('reset-password-{{ admin.id }}')">取消</button>
+            <button type="submit" class="btn btn-primary">{{ icon('save') }} 确认重置</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% if active_tab == 'general' and current_admin.role == 'super_admin' %}
+  <section class="settings-section" aria-labelledby="general-heading">
+    <div class="settings-section-header">
+      <div>
+        <span class="settings-kicker">SYSTEM PROFILE</span>
+        <h2 id="general-heading">基本设置</h2>
+        <p>维护系统显示信息和登录会话策略。</p>
+      </div>
+    </div>
+
+    <form method="post" action="{{ url_for('web.update_general_settings') }}" class="settings-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="settings-fieldset">
+        <div class="settings-fieldset-heading">
+          {{ icon('settings') }}
+          <div><strong>系统信息</strong><span>用于浏览器标题、侧栏品牌和登录入口。</span></div>
+        </div>
+        <div class="settings-form-row">
+          <div class="form-group">
+            <label class="form-label" for="system-name">系统名称 <span class="required">*</span></label>
+            <input class="form-input" id="system-name" name="system_name" value="{{ system_settings.system_name }}" maxlength="80" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="organization-name">组织名称</label>
+            <input class="form-input" id="organization-name" name="organization_name" value="{{ system_settings.organization_name }}" maxlength="100">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="support-contact">支持联系方式</label>
+          <input class="form-input" id="support-contact" name="support_contact" value="{{ system_settings.support_contact }}" maxlength="100" placeholder="例如：运维电话或邮箱">
+        </div>
+      </div>
+
+      <div class="settings-fieldset">
+        <div class="settings-fieldset-heading">
+          {{ icon('security') }}
+          <div><strong>会话安全</strong><span>账号连续无操作达到设定时间后自动退出。</span></div>
+        </div>
+        <div class="form-group settings-number-field">
+          <label class="form-label" for="session-timeout">会话超时时间</label>
+          <div class="number-input-suffix">
+            <input class="form-input" id="session-timeout" name="session_timeout_minutes" type="number" min="15" max="1440" step="1" value="{{ system_settings.session_timeout_minutes }}" required>
+            <span>分钟</span>
+          </div>
+          <span class="form-hint">允许范围 15 至 1440 分钟，修改后对所有账号生效。</span>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn btn-primary" type="submit">{{ icon('save') }} 保存基本设置</button>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+</div>
+
+<script>
+function openSettingsModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const firstInput = modal.querySelector('input:not([type="hidden"]), select');
+  if (firstInput) window.setTimeout(() => firstInput.focus(), 80);
+}
+
+function closeSettingsModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+window.addEventListener('click', function(event) {
+  if (event.target.classList.contains('modal')) {
+    closeSettingsModal(event.target.id);
+  }
+});
+
+window.addEventListener('keydown', function(event) {
+  if (event.key !== 'Escape') return;
+  document.querySelectorAll('.modal.open').forEach(modal => closeSettingsModal(modal.id));
+});
+</script>
+{% endblock %}
