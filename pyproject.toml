@@ -1,6 +1,6 @@
 [project]
 name = "construction-maintenance"
-version = "0.2.30"
+version = "0.2.31"
 description = "A lightweight construction engineering maintenance system."
 requires-python = ">=3.11"
 dependencies = [

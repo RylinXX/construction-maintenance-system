@@ -2930,10 +2930,10 @@ textarea.form-input:focus {
 
 /* Application login */
 .login-page {
-  --login-brand-bg: #315b8f;
+  --login-brand-bg: #142136;
   --login-brand-accent: #7dd3fc;
   --login-brand-muted: #c7d7e8;
-  --login-grid-line: rgba(255, 255, 255, 0.07);
+  --login-grid-line: rgba(148, 163, 184, 0.16);
   --login-blue: var(--secondary-color);
   --login-blue-hover: #0369a1;
   --login-blue-soft: #eff6ff;
