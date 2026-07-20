@@ -47,8 +47,26 @@ def test_default_system_settings_are_seeded(app):
         "organization_name": "工程运营管理中心",
         "session_timeout_minutes": "120",
         "support_contact": "",
-        "system_name": "建筑工程维护系统",
+        "system_name": "筑序工程运营平台",
     }
+
+
+def test_legacy_system_name_is_upgraded(app):
+    with app.app_context():
+        get_db().execute(
+            """
+            update system_settings
+            set value = '建筑工程维护系统'
+            where key = 'system_name'
+            """
+        )
+        get_db().commit()
+        init_db()
+        system_name = get_db().execute(
+            "select value from system_settings where key = 'system_name'"
+        ).fetchone()["value"]
+
+    assert system_name == "筑序工程运营平台"
 
 
 def test_default_expense_categories_are_seeded(app):

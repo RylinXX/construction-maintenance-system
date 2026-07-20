@@ -19,7 +19,7 @@ DEFAULT_EXPENSE_CATEGORIES = [
 ]
 
 DEFAULT_SYSTEM_SETTINGS = {
-    "system_name": "建筑工程维护系统",
+    "system_name": "筑序工程运营平台",
     "organization_name": "工程运营管理中心",
     "support_contact": "",
     "session_timeout_minutes": "120",
@@ -212,6 +212,13 @@ def init_db() -> None:
         values (?, ?)
         """,
         DEFAULT_SYSTEM_SETTINGS.items(),
+    )
+    db.execute(
+        """
+        update system_settings
+        set value = '筑序工程运营平台', updated_at = current_timestamp
+        where key = 'system_name' and value = '建筑工程维护系统'
+        """
     )
 
     bootstrap_username = str(current_app.config.get("ADMIN_USERNAME") or "").strip()

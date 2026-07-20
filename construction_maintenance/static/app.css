@@ -192,14 +192,15 @@ a {
 .brand-mark {
   width: 42px;
   height: 42px;
-  display: grid;
-  place-items: center;
   flex: 0 0 42px;
+  overflow: hidden;
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
-  color: #FFFFFF;
-  font-size: 14px;
-  font-weight: 800;
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .brand-copy {
@@ -2943,12 +2944,13 @@ textarea.form-input:focus {
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 6px;
-  background: #21304b;
+  background: #172238;
 }
 
 .login-showcase-mark img {
-  width: 27px;
-  height: 27px;
+  width: 100%;
+  height: 100%;
+  display: block;
   object-fit: contain;
 }
 

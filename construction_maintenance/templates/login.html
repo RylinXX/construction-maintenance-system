@@ -5,18 +5,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登录 - {{ system_settings.system_name }}</title>
-    <link rel="icon" href="{{ url_for('static', filename='icons/hardhat.png') }}" type="image/png">
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.8">
+    <link rel="icon" href="{{ url_for('static', filename='brand/zhuxu-mark.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.9">
   </head>
   <body class="login-page">
     <main class="login-layout">
       <section class="login-showcase" aria-label="系统界面展示">
         <header class="login-showcase-brand">
           <span class="login-showcase-mark" aria-hidden="true">
-            <img src="{{ url_for('static', filename='icons/hardhat.png') }}" alt="">
+            <img src="{{ url_for('static', filename='brand/zhuxu-mark.svg') }}" alt="">
           </span>
           <span>
-            <small>CAM OPERATIONS</small>
+            <small>ZHUXU OPERATIONS</small>
             <strong>{{ system_settings.system_name }}</strong>
           </span>
         </header>
@@ -34,7 +34,7 @@
           </figcaption>
           <img
             src="{{ url_for('static', filename='login-showcase.png') }}"
-            alt="建筑工程维护系统数据看板界面"
+            alt="筑序工程运营平台数据看板界面"
           >
         </figure>
 
@@ -128,7 +128,7 @@
             </footer>
           </div>
 
-          <p class="login-footnote">CAM · 建筑工程运营数据管理</p>
+          <p class="login-footnote">筑序 · 工程运营数据管理</p>
         </div>
       </section>
     </main>

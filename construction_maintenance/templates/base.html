@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}{{ system_settings.system_name }}{% endblock %}</title>
-    <link rel="icon" href="{{ url_for('static', filename='icons/hardhat.png') }}" type="image/png">
+    <link rel="icon" href="{{ url_for('static', filename='brand/zhuxu-mark.svg') }}" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
@@ -43,10 +43,12 @@
     <div class="app-container">
       <aside class="sidebar">
         <div class="brand-lockup">
-          <div class="brand-mark" aria-hidden="true">CM</div>
+          <div class="brand-mark" aria-hidden="true">
+            <img src="{{ url_for('static', filename='brand/zhuxu-mark.svg') }}" alt="">
+          </div>
           <div class="brand-copy">
-            <div class="brand-name">CAM <span>{{ system_settings.system_name }}</span></div>
-            <div class="brand-subtitle">{{ system_settings.organization_name or 'Construction Ops' }}</div>
+            <div class="brand-name">筑序 <span>工程运营</span></div>
+            <div class="brand-subtitle">Project Operations</div>
           </div>
         </div>
 
@@ -97,7 +99,7 @@
         <div class="sidebar-status">
           <span class="status-dot" aria-hidden="true"></span>
           <div>
-            <strong>{{ system_settings.organization_name or '维护数据在线' }}</strong>
+            <strong>{{ system_settings.organization_name or '运营数据在线' }}</strong>
             <span>{{ system_settings.support_contact or '项目 / 人员 / 资质同步管理' }}</span>
           </div>
         </div>
@@ -109,7 +111,7 @@
             <div class="page-title-group">
               <div>
                 <h2>{% block breadcrumb %}看板{% endblock %}</h2>
-                <span>{% block page_subtitle %}建筑工程维护数据工作台{% endblock %}</span>
+                <span>{% block page_subtitle %}筑序工程运营数据工作台{% endblock %}</span>
               </div>
             </div>
 

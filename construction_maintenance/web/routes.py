@@ -1265,10 +1265,10 @@ def download_attachment(filename):
         proj = db.execute("select * from projects where id = ?", (contract["project_id"],)).fetchone()
         project_name = proj["name"] if proj else "未知工程项目"
         name = contract["name"]
-        cert_no = f"CAM-CON-{contract['id']:06d}"
+        cert_no = f"ZX-CON-{contract['id']:06d}"
         company_name = project_name
         issue_date = contract["created_at"][:10] if contract["created_at"] else "2026-06-02"
-        notes = contract["notes"] or "该项目合同已通过建筑工程维护系统存证并归档备案，附件处于云端安全托管状态。"
+        notes = contract["notes"] or "该项目合同已通过筑序工程运营平台存证并归档备案，附件处于云端安全托管状态。"
         
         svg_content = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
   <defs>
@@ -1331,12 +1331,12 @@ def download_attachment(filename):
     <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(35 0 -34)">ILE</text>
   </g>
   
-  <text x="400" y="565" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="10.5" fill="#9ca3af">本证书由 CAM 建筑工程维护系统合同备案中心自动签章，具有同等系统存证效力。</text>
+  <text x="400" y="565" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="10.5" fill="#9ca3af">本证书由筑序工程运营平台合同备案中心自动签章，具有同等系统存证效力。</text>
 </svg>"""
     else:
         if not qual:
             name = "企业合规备案证书"
-            cert_no = "CAM-MOCK-998877"
+            cert_no = "ZX-MOCK-998877"
             company_name = "河南城建第一集团有限公司"
             issue_date = "2020-05-10"
             expiry_date = ""
@@ -1350,7 +1350,7 @@ def download_attachment(filename):
             issue_date = qual["issue_date"] or "2020-05-10"
             expiry_date = qual["expiry_date"] or ""
             is_long_term = qual["is_long_term"]
-            notes = qual["notes"] or "经核准，该合作单位此项企业资质证照合法合规，准予在此工程维护系统归档备案。"
+            notes = qual["notes"] or "经核准，该合作单位此项企业资质证照合法合规，准予在筑序工程运营平台归档备案。"
             
         expiry_text = "长期有效" if is_long_term else (expiry_date or "长期有效")
         expiry_color = "#2563eb" if is_long_term else "#dc2626"
@@ -1431,7 +1431,7 @@ def download_attachment(filename):
   </g>
   
   <!-- Footer Legal Text -->
-  <text x="400" y="565" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="10.5" fill="#9ca3af">本证书由 CAM 建筑工程维护系统存证中心自动签章核验，具有同等系统查验效力。</text>
+  <text x="400" y="565" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="10.5" fill="#9ca3af">本证书由筑序工程运营平台存证中心自动签章核验，具有同等系统查验效力。</text>
 </svg>"""
     
     headers = {}

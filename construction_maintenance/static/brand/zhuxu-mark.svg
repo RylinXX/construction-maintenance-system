@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">筑序</title>
+  <rect x="1" y="1" width="62" height="62" rx="10" fill="#172238"/>
+  <path d="M15 17h34L35 30H18" fill="none" stroke="#48B8C7" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M49 47H15l14-13h17" fill="none" stroke="#F5F7FA" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M13 54h38" fill="none" stroke="#C49543" stroke-width="4" stroke-linecap="square"/>
+</svg>
