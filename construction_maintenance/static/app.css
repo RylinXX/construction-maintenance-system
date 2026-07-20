@@ -508,6 +508,45 @@ a {
   background: var(--hover-bg);
 }
 
+.logout-form {
+  display: flex;
+  margin: 0;
+}
+
+.logout-button {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.logout-button:hover {
+  border-color: rgba(239, 68, 68, 0.24);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.logout-button:focus-visible {
+  outline: 2px solid rgba(239, 68, 68, 0.32);
+  outline-offset: 2px;
+}
+
+.logout-button:active {
+  transform: translateY(1px);
+}
+
+.logout-button .inline-icon {
+  width: 18px !important;
+  height: 18px !important;
+}
+
 .avatar {
   width: 28px;
   height: 28px;

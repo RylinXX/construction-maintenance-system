@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.5">
     <script>
       (function() {
         const theme = localStorage.getItem('theme') || 'light';
@@ -113,7 +113,9 @@
               {% if config.get('AUTH_REQUIRED', True) %}
                 <form method="post" action="{{ url_for('web.logout') }}" class="logout-form">
                   <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-                  <button type="submit">退出</button>
+                  <button type="submit" class="logout-button" title="退出登录" aria-label="退出登录">
+                    {{ icon('logout') }}
+                  </button>
                 </form>
               {% endif %}
             </div>
