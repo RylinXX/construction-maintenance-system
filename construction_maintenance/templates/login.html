@@ -1,3 +1,4 @@
+{% from "_icons.html" import icon %}
 <!doctype html>
 <html lang="zh-CN">
   <head>
@@ -5,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登录 - {{ system_settings.system_name }}</title>
     <link rel="icon" href="{{ url_for('static', filename='icons/hardhat.png') }}" type="image/png">
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.6">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.8">
   </head>
   <body class="login-page">
     <main class="login-layout">
@@ -15,98 +16,119 @@
             <img src="{{ url_for('static', filename='icons/hardhat.png') }}" alt="">
           </span>
           <span>
-            <small>CAM SYSTEM</small>
+            <small>CAM OPERATIONS</small>
             <strong>{{ system_settings.system_name }}</strong>
           </span>
         </header>
 
         <div class="login-showcase-copy">
-          <span>CONSTRUCTION DATA WORKSPACE</span>
-          <strong>工程运营集中工作台</strong>
+          <span>CONSTRUCTION OPERATIONS SYSTEM</span>
+          <h1>{{ system_settings.system_name }}</h1>
+          <p>把项目、人员、凭证与企业资质集中到一个可靠的工程运营工作台。</p>
         </div>
 
         <figure class="login-showcase-window">
+          <figcaption>
+            <span class="login-window-controls" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span>PROJECT OPERATIONS / LIVE</span>
+          </figcaption>
           <img
             src="{{ url_for('static', filename='login-showcase.png') }}"
             alt="建筑工程维护系统数据看板界面"
           >
         </figure>
 
-        <span class="login-showcase-accent" aria-hidden="true"></span>
+        <footer class="login-showcase-footer">
+          <span>{{ system_settings.organization_name or '工程运营管理中心' }}</span>
+          <span><i aria-hidden="true"></i> 数据服务正常</span>
+        </footer>
       </section>
 
       <section class="login-access" aria-labelledby="login-title">
-        <div class="login-access-inner">
-          <header class="login-access-header">
-            <span class="login-access-label">SECURE ACCESS</span>
-            <span class="login-access-status">
-              <span aria-hidden="true"></span>
-              服务在线
-            </span>
-          </header>
+        <div class="login-access-meta">
+          <span><i aria-hidden="true"></i> 安全连接</span>
+          <span>v{{ config.APP_VERSION }}</span>
+        </div>
 
-          <div class="login-heading">
-            <p>管理员登录</p>
-            <h1 id="login-title">欢迎回来</h1>
+        <div class="login-access-inner">
+          <div class="login-panel">
+            <header class="login-panel-header">
+              <span class="login-access-label">SECURE ACCESS</span>
+              <div class="login-heading">
+                <h2 id="login-title">登录工作台</h2>
+                <p>使用管理员账号进入系统</p>
+              </div>
+            </header>
+
+            {% if request.method == 'POST' %}
+              <div class="login-alert" role="alert">
+                <img src="{{ url_for('static', filename='icons/error.png') }}" alt="">
+                <span>用户名或密码错误，请重新输入。</span>
+              </div>
+            {% endif %}
+
+            <form class="login-form" method="post" action="{{ url_for('web.login', next=next) if next else url_for('web.login') }}">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+              <div class="login-field">
+                <label for="login-username"><span aria-hidden="true">*</span> 用户名</label>
+                <div class="login-input-control">
+                  <span class="login-user-icon" aria-hidden="true">
+                    {{ icon('user') }}
+                  </span>
+                  <input
+                    id="login-username"
+                    name="username"
+                    autocomplete="username"
+                    inputmode="text"
+                    placeholder="请输入管理员用户名"
+                    autofocus
+                    required
+                  >
+                </div>
+              </div>
+
+              <div class="login-field">
+                <label for="login-password"><span aria-hidden="true">*</span> 密码</label>
+                <div class="login-password-field">
+                  <span class="login-password-icon" aria-hidden="true">
+                    {{ icon('security') }}
+                  </span>
+                  <input
+                    id="login-password"
+                    type="password"
+                    name="password"
+                    autocomplete="current-password"
+                    placeholder="请输入登录密码"
+                    required
+                  >
+                  <button
+                    class="login-password-toggle"
+                    type="button"
+                    aria-label="显示密码"
+                    aria-pressed="false"
+                    title="显示密码"
+                  >
+                    <img src="{{ url_for('static', filename='icons/preview.png') }}" alt="">
+                  </button>
+                </div>
+              </div>
+
+              <button class="login-submit" type="submit">
+                <span>进入系统</span>
+                <span class="login-submit-arrow" aria-hidden="true">→</span>
+              </button>
+            </form>
+
+            <footer class="login-panel-footer">
+              <span class="login-access-status">
+                <i aria-hidden="true"></i>
+                仅限已授权管理员访问
+              </span>
+            </footer>
           </div>
 
-          {% if request.method == 'POST' %}
-            <div class="login-alert" role="alert">
-              <img src="{{ url_for('static', filename='icons/error.png') }}" alt="">
-              <span>用户名或密码错误，请重新输入。</span>
-            </div>
-          {% endif %}
-
-          <form class="login-form" method="post" action="{{ url_for('web.login', next=next) if next else url_for('web.login') }}">
-            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-
-            <div class="login-field">
-              <label for="login-username">用户名</label>
-              <div class="login-input-control">
-                <img src="{{ url_for('static', filename='icons/user.png') }}" alt="">
-                <input
-                  id="login-username"
-                  name="username"
-                  autocomplete="username"
-                  inputmode="text"
-                  autofocus
-                  required
-                >
-              </div>
-            </div>
-
-            <div class="login-field">
-              <label for="login-password">密码</label>
-              <div class="login-password-field">
-                <input
-                  id="login-password"
-                  type="password"
-                  name="password"
-                  autocomplete="current-password"
-                  required
-                >
-                <button
-                  class="login-password-toggle"
-                  type="button"
-                  aria-label="显示密码"
-                  aria-pressed="false"
-                  title="显示密码"
-                >
-                  <img src="{{ url_for('static', filename='icons/preview.png') }}" alt="">
-                </button>
-              </div>
-            </div>
-
-            <button class="login-submit" type="submit">
-              <span>进入工作台</span>
-              <span class="login-submit-arrow" aria-hidden="true">→</span>
-            </button>
-          </form>
-
-          <footer class="login-footnote">
-            <span>仅限授权人员访问</span>
-            <span>v{{ config.APP_VERSION }}</span>
-          </footer>
+          <p class="login-footnote">CAM · 建筑工程运营数据管理</p>
         </div>
       </section>
     </main>
