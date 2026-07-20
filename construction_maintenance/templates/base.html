@@ -11,31 +11,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.4">
     <script>
       (function() {
         const theme = localStorage.getItem('theme') || 'light';
         if (theme === 'dark') {
           document.documentElement.classList.add('dark-theme');
         }
-
-        // 大屏幕自动适配屏幕比例缩放逻辑
-        function adjustZoom() {
-          const width = window.innerWidth;
-          // 当浏览器视口宽度大于 1500px 时，进行等比例无损缩放以充满屏幕，上限限制为 1.4 倍
-          if (width > 1500) {
-            const zoomRatio = Math.min(1.4, width / 1500);
-            document.documentElement.style.zoom = zoomRatio;
-          } else {
-            document.documentElement.style.zoom = '1';
-          }
-        }
-
-        // 初始化执行一次
-        adjustZoom();
-
-        // 监听视口大小变化
-        window.addEventListener('resize', adjustZoom);
       })();
     </script>
   </head>

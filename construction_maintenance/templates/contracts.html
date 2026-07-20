@@ -502,6 +502,35 @@
 .zoom-btn:hover {
   opacity: 0.8;
 }
+
+@media (max-width: 1200px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .metric-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .panel-card {
+    padding: 18px !important;
+  }
+
+  .panel-header {
+    margin-bottom: 20px !important;
+  }
+
+  .toolbar-filters > .form-input,
+  .toolbar-filters > .form-select {
+    width: 100%;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+}
 </style>
 
 <script>
