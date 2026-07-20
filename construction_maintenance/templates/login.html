@@ -6,7 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登录 - {{ system_settings.system_name }}</title>
     <link rel="icon" href="{{ url_for('static', filename='brand/ylt-mark.png') }}?v=2.1.11" type="image/png">
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.14">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.15">
+    <script>
+      (function() {
+        if (localStorage.getItem('theme') === 'dark') {
+          document.documentElement.classList.add('dark-theme');
+        }
+      })();
+    </script>
   </head>
   <body class="login-page">
     <main class="login-layout">
@@ -47,7 +54,12 @@
       <section class="login-access" aria-labelledby="login-title">
         <div class="login-access-meta">
           <span><i aria-hidden="true"></i> 安全连接</span>
-          <span>v{{ config.APP_VERSION }}</span>
+          <span class="login-access-meta-right">
+            <span>v{{ config.APP_VERSION }}</span>
+            <button type="button" class="login-theme-toggle" title="切换深色模式" aria-label="切换深色模式" aria-pressed="false">
+              <span aria-hidden="true">◐</span>
+            </button>
+          </span>
         </div>
 
         <div class="login-access-inner">
@@ -144,6 +156,23 @@
         passwordToggle.setAttribute('title', shouldShow ? '隐藏密码' : '显示密码');
         passwordInput.focus();
       });
+
+      const loginThemeToggle = document.querySelector('.login-theme-toggle');
+      const syncLoginThemeToggle = () => {
+        const isDark = document.documentElement.classList.contains('dark-theme');
+        loginThemeToggle.setAttribute('aria-pressed', String(isDark));
+        loginThemeToggle.setAttribute('aria-label', isDark ? '切换浅色模式' : '切换深色模式');
+        loginThemeToggle.setAttribute('title', isDark ? '切换浅色模式' : '切换深色模式');
+      };
+
+      loginThemeToggle.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark-theme');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        syncLoginThemeToggle();
+        window.dispatchEvent(new Event('themechanged'));
+      });
+
+      syncLoginThemeToggle();
     </script>
   </body>
 </html>

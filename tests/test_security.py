@@ -63,12 +63,13 @@ def test_login_requires_csrf_and_valid_credentials(secure_client):
     assert 'name="username"'.encode() in response.data
     assert 'name="password"'.encode() in response.data
     assert "login-password-toggle".encode() in response.data
+    assert "login-theme-toggle".encode() in response.data
     assert "login-showcase.png".encode() in response.data
     assert "login-panel".encode() in response.data
     assert "YLT DIGITAL".encode() in response.data
     assert "登录工作台".encode() in response.data
     assert "brand/ylt-mark.png".encode() in response.data
-    assert "v0.2.27".encode() in response.data
+    assert "v0.2.28".encode() in response.data
     showcase = secure_client.get(
         "/static/login-showcase.png", base_url="https://localhost"
     )
