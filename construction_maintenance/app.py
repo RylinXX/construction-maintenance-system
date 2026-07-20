@@ -31,7 +31,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SECURE=SESSION_COOKIE_SECURE,
         SESSION_COOKIE_SAMESITE="Lax",
-        APP_VERSION="0.2.24",
+        APP_VERSION="0.2.25",
     )
     if test_config:
         app.config.update(test_config)
