@@ -3115,6 +3115,18 @@ textarea.form-input:focus {
   object-position: left top;
 }
 
+.login-showcase-image-dark {
+  display: none !important;
+}
+
+html.dark-theme .login-showcase-image-light {
+  display: none;
+}
+
+html.dark-theme .login-showcase-image-dark {
+  display: block !important;
+}
+
 .login-showcase-footer {
   position: absolute;
   z-index: 3;

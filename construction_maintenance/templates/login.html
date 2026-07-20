@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登录 - {{ system_settings.system_name }}</title>
     <link rel="icon" href="{{ url_for('static', filename='brand/ylt-mark.png') }}?v=2.1.11" type="image/png">
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.19">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=2.1.20">
     <script>
       (function() {
         if (localStorage.getItem('theme') === 'dark') {
@@ -40,8 +40,14 @@
             <span>PROJECT OPERATIONS / LIVE</span>
           </figcaption>
           <img
-            src="{{ url_for('static', filename='login-showcase.png') }}"
-            alt="营力特数字化系统数据看板界面"
+            class="login-showcase-image-light"
+            src="{{ url_for('static', filename='login-showcase.png') }}?v=2.2.0"
+            alt="营力特数字化系统浅色数据看板界面"
+          >
+          <img
+            class="login-showcase-image-dark"
+            src="{{ url_for('static', filename='login-showcase-dark.png') }}?v=2.2.0"
+            alt="营力特数字化系统深色数据看板界面"
           >
         </figure>
 
