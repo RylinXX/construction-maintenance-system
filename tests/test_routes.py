@@ -9,7 +9,7 @@ def test_dashboard_route_renders(client):
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "筑序工程运营平台".encode("utf-8") in response.data
+    assert "营力特数字化系统".encode("utf-8") in response.data
     assert "项目支出".encode("utf-8") in response.data
 
 

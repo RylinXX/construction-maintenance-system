@@ -1,4 +1,4 @@
-# 筑序工程运营平台 (Zhuxu Project Operations)
+# 营力特数字化系统 (YLT Digital)
 
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=flat-square&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
@@ -6,7 +6,7 @@
 [![TDD](https://img.shields.io/badge/TDD-pytest-FF5722?style=flat-square&logo=pytest&logoColor=white)](https://docs.pytest.org/)
 [![UI Theme](https://img.shields.io/badge/UI-Premium_Emerald-0f766e?style=flat-square)](https://github.com)
 
-筑序是面向建筑工程公司的轻量级工程运营平台，集中管理项目台账、费用凭证、人员档案、合同与企业资质。系统基于 **Python Flask + SQLite + Jinja2 + openpyxl** 构建。
+营力特数字化系统是面向建筑工程公司的轻量级运营平台，集中管理项目台账、费用凭证、人员档案、合同与企业资质。系统基于 **Python Flask + SQLite + Jinja2 + openpyxl** 构建。
 
 ---
 
@@ -182,7 +182,7 @@ python -c "from werkzeug.security import generate_password_hash; print(generate_
 # 启动 Flask 系统并激活热重载 (Hot Reload) 调试模式
 flask --app construction_maintenance run --debug
 ```
-服务启动后，在浏览器中打开 **[http://127.0.0.1:5000](http://127.0.0.1:5000)** 即可进入筑序工程运营平台。
+服务启动后，在浏览器中打开 **[http://127.0.0.1:5000](http://127.0.0.1:5000)** 即可进入营力特数字化系统。
 
 ---
 

@@ -19,7 +19,7 @@ DEFAULT_EXPENSE_CATEGORIES = [
 ]
 
 DEFAULT_SYSTEM_SETTINGS = {
-    "system_name": "筑序工程运营平台",
+    "system_name": "营力特数字化系统",
     "organization_name": "工程运营管理中心",
     "support_contact": "",
     "session_timeout_minutes": "120",
@@ -216,8 +216,9 @@ def init_db() -> None:
     db.execute(
         """
         update system_settings
-        set value = '筑序工程运营平台', updated_at = current_timestamp
-        where key = 'system_name' and value = '建筑工程维护系统'
+        set value = '营力特数字化系统', updated_at = current_timestamp
+        where key = 'system_name'
+          and value in ('建筑工程维护系统', '筑序工程运营平台')
         """
     )
 

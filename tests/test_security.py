@@ -59,15 +59,15 @@ def test_unauthenticated_requests_are_blocked(secure_client):
 def test_login_requires_csrf_and_valid_credentials(secure_client):
     response = secure_client.get("/login", base_url="https://localhost")
     assert response.status_code == 200
-    assert "筑序工程运营平台".encode() in response.data
+    assert "营力特数字化系统".encode() in response.data
     assert 'name="username"'.encode() in response.data
     assert 'name="password"'.encode() in response.data
     assert "login-password-toggle".encode() in response.data
     assert "login-showcase.png".encode() in response.data
     assert "login-panel".encode() in response.data
-    assert "ZHUXU OPERATIONS".encode() in response.data
+    assert "YLT DIGITAL".encode() in response.data
     assert "登录工作台".encode() in response.data
-    assert "v0.2.19".encode() in response.data
+    assert "v0.2.20".encode() in response.data
     showcase = secure_client.get(
         "/static/login-showcase.png", base_url="https://localhost"
     )
