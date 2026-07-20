@@ -2930,7 +2930,7 @@ textarea.form-input:focus {
 
 /* Application login */
 .login-page {
-  --login-brand-bg: #163f68;
+  --login-brand-bg: var(--primary-color);
   --login-brand-accent: #7dd3fc;
   --login-brand-muted: #c7d7e8;
   --login-blue: var(--secondary-color);
@@ -2956,16 +2956,6 @@ textarea.form-input:focus {
   overflow: hidden;
   border-top: 4px solid var(--login-blue);
   background: var(--login-brand-bg);
-}
-
-.login-showcase::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 7%;
-  bottom: 0;
-  width: 1px;
-  background: rgba(125, 211, 252, 0.16);
 }
 
 .login-showcase-brand {
