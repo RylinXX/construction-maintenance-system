@@ -2933,6 +2933,7 @@ textarea.form-input:focus {
   --login-brand-bg: #315b8f;
   --login-brand-accent: #7dd3fc;
   --login-brand-muted: #c7d7e8;
+  --login-grid-line: rgba(255, 255, 255, 0.07);
   --login-blue: var(--secondary-color);
   --login-blue-hover: #0369a1;
   --login-blue-soft: #eff6ff;
@@ -2955,6 +2956,10 @@ textarea.form-input:focus {
   min-width: 0;
   overflow: hidden;
   background: var(--login-brand-bg);
+  background-image:
+    linear-gradient(var(--login-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--login-grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
 }
 
 .login-showcase-brand {
@@ -3442,6 +3447,7 @@ html.dark-theme .login-page {
   --login-brand-bg: #0f172a;
   --login-brand-accent: #7dd3fc;
   --login-brand-muted: #cbd5e1;
+  --login-grid-line: rgba(148, 163, 184, 0.08);
   --login-blue-soft: rgba(56, 189, 248, 0.12);
   --login-border: rgba(148, 163, 184, 0.28);
   background: var(--background-color);
