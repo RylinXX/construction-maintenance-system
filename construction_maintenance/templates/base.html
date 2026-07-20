@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}{{ system_settings.system_name }}{% endblock %}</title>
-    <link rel="icon" href="{{ url_for('static', filename='brand/ylt-mark.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='brand/ylt-mark.png') }}?v=2.1.11" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
@@ -44,7 +44,7 @@
       <aside class="sidebar">
         <div class="brand-lockup">
           <div class="brand-mark" aria-hidden="true">
-            <img src="{{ url_for('static', filename='brand/ylt-mark.svg') }}" alt="">
+            <img src="{{ url_for('static', filename='brand/ylt-mark.png') }}?v=2.1.11" alt="">
           </div>
           <div class="brand-copy">
             <div class="brand-name">营力特 <span>数字化</span></div>
