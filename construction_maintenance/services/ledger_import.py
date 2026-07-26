@@ -79,6 +79,31 @@ class LedgerImportPreview:
         return len(self.project_names)
 
 
+DEMO_PROJECTS = {
+    "中央电视总台项目": ("进行中", "中央电视台", "2026-01-01", "2026-12-31", "包含中央电视总台项目资料"),
+    "军庄项目": ("进行中", "军庄建设方", "2026-02-01", "2026-12-31", "包含军庄资料"),
+    "衙门口项目": ("进行中", "衙门口建设方", "2026-03-01", "2026-12-31", "包含衙门口资料"),
+    "老东山项目": ("已完工", "老东山建设方", "2025-05-01", "2026-05-01", "老东山资料-完工"),
+    "通州潞城项目": ("进行中", "通州区潞城建设", "2026-04-01", "2026-12-31", "通州潞城项目资料"),
+    "内蒙二期项目": ("已完工", "内蒙电力", "2025-06-01", "2026-05-01", "内蒙二期项目-完工"),
+    "首师大八里庄项目": ("进行中", "首师大", "2026-04-15", "2026-12-31", "首师大八里庄项目资料"),
+    "北理工项目": ("已完工", "北京理工大学", "2025-07-01", "2026-05-01", "北理工项目-完工"),
+    "顺义项目": ("进行中", "顺义建设方", "2026-05-01", "2026-12-31", "顺义项目资料"),
+    "通州六合工地项目": ("进行中", "通州区六合", "2026-03-10", "2026-12-31", "通州六合工地"),
+    "新兴项目": ("进行中", "新兴建设方", "2026-02-15", "2026-12-31", "新兴资料"),
+    "梧桐苑项目": ("进行中", "梧桐苑房地产", "2026-01-10", "2026-12-31", "梧桐苑项目资料"),
+}
+DEMO_VOUCHERS = {
+    ("中央电视总台项目", "2026-05-20", "材料费用", 15200.0, "中央电视总台项目采购电缆一批"),
+    ("军庄项目", "2026-05-24", "转账凭证", 4800.0, "军庄项目 - 运输运费报销"),
+    ("中央电视总台项目", "2026-05-28", "油费", 2400.0, "项目车辆5月油卡充值报销凭证"),
+}
+DEMO_CONTRACTS = {
+    ("中央电视总台项目", "中央电视总台项目劳务分包合同", "劳务合同", "contract_metro_labor.pdf"),
+    ("军庄项目", "军庄项目绿化苗木采购合同", "材料商合同", "contract_green_tree.pdf"),
+}
+
+
 def _iso_date(value, *, field: str) -> str:
     if isinstance(value, datetime):
         return value.date().isoformat()
@@ -279,3 +304,224 @@ def parse_ledger_source(path: Path) -> LedgerImportPreview:
         pending_items=tuple(pending_items),
         totals=totals,
     )
+
+
+def _delete_verified_demo_projects(db) -> None:
+    placeholders = ",".join("?" for _ in DEMO_PROJECTS)
+    projects = db.execute(
+        f"select * from projects where name in ({placeholders})",
+        tuple(DEMO_PROJECTS),
+    ).fetchall()
+    if not projects:
+        return
+
+    matching_rows = []
+    for row in projects:
+        actual = (
+            row["status"], row["owner"], row["start_date"],
+            row["end_date"], row["notes"],
+        )
+        if actual == DEMO_PROJECTS[row["name"]]:
+            matching_rows.append(row)
+    if not matching_rows:
+        return
+    if len(projects) != len(DEMO_PROJECTS) or len(matching_rows) != len(DEMO_PROJECTS):
+        raise ValueError("演示项目清单与生产库不一致，停止清理")
+
+    project_ids = {int(row["id"]): row["name"] for row in matching_rows}
+    id_placeholders = ",".join("?" for _ in project_ids)
+    vouchers = db.execute(
+        f"""
+        select project_id, voucher_date, voucher_type, amount, notes
+        from vouchers where project_id in ({id_placeholders})
+        """,
+        tuple(project_ids),
+    ).fetchall()
+    voucher_manifest = {
+        (
+            project_ids[int(row["project_id"])], row["voucher_date"],
+            row["voucher_type"], float(row["amount"]), row["notes"],
+        )
+        for row in vouchers
+    }
+    contracts = db.execute(
+        f"""
+        select project_id, name, contract_type, attachment_path
+        from contracts where project_id in ({id_placeholders})
+        """,
+        tuple(project_ids),
+    ).fetchall()
+    contract_manifest = {
+        (
+            project_ids[int(row["project_id"])], row["name"],
+            row["contract_type"], row["attachment_path"],
+        )
+        for row in contracts
+    }
+    if voucher_manifest != DEMO_VOUCHERS or contract_manifest != DEMO_CONTRACTS:
+        raise ValueError("演示项目下存在非演示财务数据，停止清理")
+    db.execute(
+        f"delete from contracts where project_id in ({id_placeholders})",
+        tuple(project_ids),
+    )
+    db.execute(
+        f"delete from vouchers where project_id in ({id_placeholders})",
+        tuple(project_ids),
+    )
+    db.execute(
+        f"delete from projects where id in ({id_placeholders})",
+        tuple(project_ids),
+    )
+
+
+def apply_ledger_import(
+    preview: LedgerImportPreview,
+    *,
+    replace_demo_projects: bool,
+    actor_admin_id: int | None,
+) -> dict[str, int | float]:
+    from construction_maintenance import repositories as repo
+    from construction_maintenance.db import get_db
+
+    db = get_db()
+    db.execute("begin immediate")
+    try:
+        if replace_demo_projects:
+            _delete_verified_demo_projects(db)
+        main_company = db.execute(
+            "select id from companies where is_main = 1 order by id limit 1"
+        ).fetchone()
+        if main_company is None:
+            raise ValueError("生产库没有主公司，不能创建项目")
+        category_ids = {
+            (row["primary_name"], row["secondary_name"]): int(row["id"])
+            for row in db.execute(
+                """
+                select leaf.id, leaf.name as secondary_name,
+                       parent.name as primary_name
+                from expense_categories leaf
+                join expense_categories parent on parent.id = leaf.parent_id
+                where leaf.is_active = 1 and parent.is_active = 1
+                """
+            ).fetchall()
+        }
+        project_ids: dict[str, int] = {}
+        for project_name in preview.project_names:
+            existing = db.execute(
+                "select id from projects where name = ?", (project_name,)
+            ).fetchone()
+            if existing:
+                project_ids[project_name] = int(existing["id"])
+                continue
+            project_entries = [
+                entry for entry in preview.entries if entry.project_name == project_name
+            ]
+            project_pending = [
+                item for item in preview.pending_items if item.project_name == project_name
+            ]
+            source_dates = [entry.entry_date for entry in project_entries]
+            source_dates.extend(item.item_date for item in project_pending)
+            if not source_dates:
+                raise ValueError(f"项目 {project_name} 没有可导入的账套记录")
+            start_date = min(source_dates)
+            end_of_source_period = max(source_dates)
+            cursor = db.execute(
+                """
+                insert into projects (
+                  company_id, name, status, owner, start_date, end_date, notes
+                ) values (?, ?, '进行中', '', ?, '', ?)
+                """,
+                (
+                    int(main_company["id"]),
+                    project_name,
+                    start_date,
+                    f"标准账套导入；账目期间 {start_date} 至 {end_of_source_period}",
+                ),
+            )
+            project_ids[project_name] = int(cursor.lastrowid)
+
+        inserted_entries = 0
+        for entry in preview.entries:
+            exists = db.execute(
+                "select 1 from vouchers where source_record_id = ?",
+                (entry.source_record_id,),
+            ).fetchone()
+            if exists:
+                continue
+            category_id = category_ids.get(
+                (entry.primary_category, entry.secondary_category)
+            )
+            if category_id is None:
+                raise ValueError(
+                    f"分类不存在: {entry.primary_category}/{entry.secondary_category}"
+                )
+            repo._insert_voucher(db, {
+                "project_id": project_ids[entry.project_name],
+                "voucher_date": entry.entry_date,
+                "transaction_type": entry.transaction_type,
+                "category_id": category_id,
+                "amount": entry.amount,
+                "notes": entry.summary,
+                "handler_name": entry.handler_name,
+                "payment_status": entry.payment_status,
+                "payment_date": entry.payment_date,
+                "payment_notes": entry.payment_notes,
+                "review_status": entry.review_status,
+                "classification_confidence": entry.classification_confidence,
+                "source_record_id": entry.source_record_id,
+                "source_filename": entry.source_filename,
+                "source_sheet": entry.source_sheet,
+                "source_row": entry.source_row,
+                "original_notes": entry.original_notes,
+                "entry_user": "账套导入",
+            })
+            inserted_entries += 1
+
+        inserted_pending = 0
+        for item in preview.pending_items:
+            category_id = category_ids.get(
+                (item.primary_category, item.secondary_category)
+            )
+            if category_id is None:
+                raise ValueError(
+                    f"分类不存在: {item.primary_category}/{item.secondary_category}"
+                )
+            cursor = db.execute(
+                """
+                insert or ignore into ledger_pending_items (
+                  project_id, item_date, summary, suggested_category_id,
+                  handler_name, payment_notes, source_filename, source_sheet,
+                  source_row, issue_type
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    project_ids[item.project_name], item.item_date, item.summary,
+                    category_id, item.handler_name, item.payment_notes,
+                    item.source_filename, item.source_sheet, item.source_row,
+                    item.issue_type,
+                ),
+            )
+            inserted_pending += int(cursor.rowcount > 0)
+        repo._insert_audit(
+            db,
+            actor_admin_id=actor_admin_id,
+            action="import",
+            entity_type="project_ledger",
+            entity_id=None,
+            details={
+                "projects": len(project_ids),
+                "entries": inserted_entries,
+                "pending_items": inserted_pending,
+                "totals": preview.totals,
+            },
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return {
+        "projects": len(project_ids),
+        "entries": inserted_entries,
+        "pending_items": inserted_pending,
+        **preview.totals,
+    }

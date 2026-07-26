@@ -1,10 +1,14 @@
 from pathlib import Path
+from dataclasses import replace
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
 from openpyxl import Workbook, load_workbook
 
+from construction_maintenance import create_app
+from construction_maintenance.db import get_db
 from construction_maintenance.services.ledger_import import parse_ledger_source
+from construction_maintenance.services.ledger_import import apply_ledger_import
 
 
 DETAIL_HEADERS = [
@@ -143,3 +147,98 @@ def test_parser_rejects_duplicate_record_id(tmp_path):
     )
     with pytest.raises(ValueError, match="重复记录编号"):
         parse_ledger_source(invalid)
+
+
+PROTECTED_TABLES = ("companies", "people", "qualifications", "attendance")
+
+
+def counts(db, tables):
+    return {
+        table: db.execute(f"select count(*) from {table}").fetchone()[0]
+        for table in tables
+    }
+
+
+def make_seeded_app(tmp_path):
+    return create_app({
+        "TESTING": True,
+        "DATABASE": tmp_path / "seeded.sqlite3",
+        "UPLOAD_FOLDER": tmp_path / "uploads",
+        "AUTH_REQUIRED": False,
+        "CSRF_ENABLED": False,
+        "SEED_DEMO_DATA": True,
+    })
+
+
+def test_parse_preview_does_not_write_database(tmp_path):
+    app = make_seeded_app(tmp_path)
+    with app.app_context():
+        before = counts(get_db(), ("projects", "vouchers", "contracts"))
+        parse_ledger_source(make_ledger_zip(tmp_path))
+        after = counts(get_db(), ("projects", "vouchers", "contracts"))
+    assert after == before
+
+
+def test_apply_replaces_only_demo_projects_and_is_idempotent(tmp_path):
+    app = make_seeded_app(tmp_path)
+    preview = parse_ledger_source(make_ledger_zip(tmp_path))
+    with app.app_context():
+        db = get_db()
+        protected_before = counts(db, PROTECTED_TABLES)
+        first = apply_ledger_import(
+            preview, replace_demo_projects=True, actor_admin_id=None
+        )
+        protected_after = counts(db, PROTECTED_TABLES)
+        demo_projects = db.execute(
+            "select count(*) from projects where name in ('中央电视总台项目', '军庄项目')"
+        ).fetchone()[0]
+        imported = counts(db, ("projects", "vouchers", "contracts", "ledger_pending_items"))
+        second = apply_ledger_import(
+            preview, replace_demo_projects=True, actor_admin_id=None
+        )
+        repeated = counts(db, ("projects", "vouchers", "contracts", "ledger_pending_items"))
+
+    assert protected_after == protected_before
+    assert demo_projects == 0
+    assert first["projects"] == 1
+    assert first["entries"] == 1
+    assert first["pending_items"] == 1
+    assert imported == {
+        "projects": 1, "vouchers": 1, "contracts": 0,
+        "ledger_pending_items": 1,
+    }
+    assert second["entries"] == 0
+    assert second["pending_items"] == 0
+    assert repeated == imported
+
+
+def test_repeat_import_does_not_treat_real_project_with_demo_name_as_demo(tmp_path):
+    app = make_seeded_app(tmp_path)
+    preview = parse_ledger_source(make_ledger_zip(tmp_path))
+    overlapping = replace(
+        preview,
+        project_names=("老东山项目",),
+        entries=tuple(replace(entry, project_name="老东山项目") for entry in preview.entries),
+        pending_items=tuple(
+            replace(item, project_name="老东山项目") for item in preview.pending_items
+        ),
+    )
+    with app.app_context():
+        apply_ledger_import(
+            overlapping, replace_demo_projects=True, actor_admin_id=None
+        )
+        second = apply_ledger_import(
+            overlapping, replace_demo_projects=True, actor_admin_id=None
+        )
+
+    assert second["entries"] == 0
+    assert second["pending_items"] == 0
+
+
+def test_cli_defaults_to_dry_run(tmp_path):
+    app = make_seeded_app(tmp_path)
+    source = make_ledger_zip(tmp_path)
+    result = app.test_cli_runner().invoke(args=["ledger-import", str(source)])
+    assert result.exit_code == 0
+    assert "DRY RUN" in result.output
+    assert "entries=1" in result.output

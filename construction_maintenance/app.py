@@ -15,6 +15,7 @@ from .config import SESSION_COOKIE_SECURE
 from .config import MAX_CONTENT_LENGTH, SEED_DEMO_DATA
 from .config import SECRET_KEY
 from . import security
+from . import commands
 from .web.routes import bp as web_bp
 
 
@@ -36,7 +37,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         SESSION_COOKIE_SAMESITE="Lax",
         MAX_CONTENT_LENGTH=MAX_CONTENT_LENGTH,
         SEED_DEMO_DATA=SEED_DEMO_DATA,
-        APP_VERSION="0.2.34",
+        APP_VERSION="0.3.0",
     )
     if test_config:
         app.config.update(test_config)
@@ -61,6 +62,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 )
 
     app.register_blueprint(web_bp)
+    commands.init_app(app)
     security.init_app(app)
 
     @app.errorhandler(ValueError)
