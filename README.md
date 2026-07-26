@@ -75,7 +75,7 @@ graph TD
 * **Web/Presentation Layer**：基于 Flask Blueprint 路由与 Jinja2 精美模版，配合安全健壮的 `forms.py` 进行表单清洗。
 * **Service Layer**：包含 `dashboard.py`（指标聚合业务）、`exports.py`（基于 openpyxl 的高级 Excel 格式化）和 `imports.py`（Excel 导入解析）。
 * **Data Access Layer (Repository)**：在 `repositories.py` 中抽象了对 SQLite 数据库的原子化增删改查逻辑，与 Flask 上下文松耦合。
-* **Infrastructure**：`db.py` 负责连接管理、Foreign Key 级联约束激活以及数据库的自动初始化与种子数据（Seed Data）填充。
+* **Infrastructure**：`db.py` 负责连接管理、Foreign Key 约束、WAL 并发模式与数据库初始化；演示数据仅在显式开启时生成。
 
 ---
 
@@ -164,6 +164,8 @@ pip install -e ".[dev]"
 | `CAM_AUTH_REQUIRED` | 否 | 是否启用登录认证，默认 `1` |
 | `CAM_CSRF_ENABLED` | 否 | 是否启用 CSRF 防护，默认 `1` |
 | `CAM_SESSION_COOKIE_SECURE` | 否 | 是否仅通过 HTTPS 发送会话 Cookie，默认 `1`；仅本地 HTTP 调试时设为 `0` |
+| `CAM_SEED_DEMO_DATA` | 否 | 是否初始化演示业务数据，默认 `0`；生产环境禁止开启 |
+| `CAM_MAX_UPLOAD_BYTES` | 否 | 单次请求最大上传字节数，默认 `20971520`（20MB） |
 | `ARK_API_KEY` | OCR 必需 | 火山方舟 API 密钥；未配置时文件保留为待人工确认 |
 | `ARK_BASE_URL` | 否 | 火山方舟 API 地址 |
 | `ARK_MODEL` | 否 | OCR 使用的模型名称 |
@@ -176,6 +178,8 @@ python -c "from werkzeug.security import generate_password_hash; print(generate_
 ```
 
 将输出分别配置为 `CAM_SECRET_KEY` 和 `CAM_ADMIN_PASSWORD_HASH`，并设置 `CAM_ADMIN_USERNAME`。首次启动会将引导账号写入管理员账号表并授予超级管理员权限；此后可在“系统设置”中新增、停用和调整管理员账号。生产环境应通过 systemd `EnvironmentFile`、容器 Secret 或等效的密钥管理方式注入，禁止提交到 Git。
+
+生产部署还应只启用 TLS 1.2/1.3，并让反向代理的上传上限与 `CAM_MAX_UPLOAD_BYTES` 保持一致。参考配置见 `deploy/nginx-pam.conf.example`。
 
 ### 4. 运行开发服务器
 ```powershell

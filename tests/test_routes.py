@@ -72,7 +72,7 @@ def test_people_page_uploads_employee_id_card(client, app):
         data={
             "name": "李工",
             "id_number": "410000199001019999",
-            "id_card_attachment": (BytesIO(b"fake image"), "id-card.jpg"),
+            "id_card_attachment": (BytesIO(b"\xff\xd8\xff\xe0test"), "id-card.jpg"),
         },
         content_type="multipart/form-data",
         follow_redirects=True,
@@ -170,7 +170,7 @@ def test_batch_upload_records_ocr_result(client, monkeypatch):
         "/batch",
         data={
             "item_type": "voucher",
-            "files": (BytesIO(b"fake image"), "pay.jpg"),
+            "files": (BytesIO(b"\xff\xd8\xff\xe0test"), "pay.jpg"),
         },
         content_type="multipart/form-data",
         follow_redirects=True,
@@ -400,7 +400,7 @@ def test_delete_person_removes_entry(client, app):
     assert "待删除测试施工员".encode("utf-8") not in response.data
 
 
-def test_delete_project_removes_project_and_vouchers(client, app):
+def test_delete_project_refuses_to_remove_financial_history(client, app):
     with app.app_context():
         from construction_maintenance.db import init_db
         from construction_maintenance.repositories import create_project, create_voucher
@@ -428,7 +428,8 @@ def test_delete_project_removes_project_and_vouchers(client, app):
         follow_redirects=True,
     )
     assert response.status_code == 200
-    assert "待删除测试项目".encode("utf-8") not in response.data
+    assert "待删除测试项目".encode("utf-8") in response.data
+    assert "不能删除".encode("utf-8") in response.data
 
 
 def test_confirm_batch_voucher_success(client, app):
@@ -655,8 +656,7 @@ def test_contract_routes(client, app):
         assert res.status_code == 200
         assert "编辑后路由测试合同".encode("utf-8") in res.data
         
-        # 4. SVG 证书生成测试 (由于没有物理文件，系统应生成 SVG 模拟合同)
-        # 先更新合同关联的附件名称为特定值，然后下载它
+        # 4. 附件不存在时必须返回 404，不能伪造替代证书。
         repo.update_contract(c_id, {
             "project_id": proj_id,
             "name": "编辑后路由测试合同",
@@ -665,9 +665,7 @@ def test_contract_routes(client, app):
             "attachment_path": "test_contract_file.pdf"
         })
         res = client.get(f"/uploads/test_contract_file.pdf")
-        assert res.status_code == 200
-        assert b"svg" in res.data
-        assert "合同".encode("utf-8") in res.data
+        assert res.status_code == 404
         
         # 5. 删除合同
         res = client.post(f"/contracts/{c_id}/delete", follow_redirects=True)

@@ -11,6 +11,33 @@ from werkzeug.utils import secure_filename
 from construction_maintenance import repositories as repo
 
 
+DOCUMENT_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+SPREADSHEET_EXTENSIONS = {".xlsx"}
+
+
+class UploadValidationError(ValueError):
+    pass
+
+
+def _allowed_extensions(purpose: str) -> set[str]:
+    if purpose == "spreadsheet":
+        return SPREADSHEET_EXTENSIONS
+    return DOCUMENT_EXTENSIONS
+
+
+def _matches_file_signature(suffix: str, header: bytes) -> bool:
+    signatures = {
+        ".pdf": lambda data: data.startswith(b"%PDF-"),
+        ".jpg": lambda data: data.startswith(b"\xff\xd8\xff"),
+        ".jpeg": lambda data: data.startswith(b"\xff\xd8\xff"),
+        ".png": lambda data: data.startswith(b"\x89PNG\r\n\x1a\n"),
+        ".webp": lambda data: data.startswith(b"RIFF") and data[8:12] == b"WEBP",
+        ".bmp": lambda data: data.startswith(b"BM"),
+        ".xlsx": lambda data: data.startswith(b"PK\x03\x04"),
+    }
+    return bool(signatures[suffix](header))
+
+
 def _secure_upload_filename(file: FileStorage) -> str:
     raw_filename = file.filename or "upload"
     filename = secure_filename(raw_filename) or "upload"
@@ -32,8 +59,21 @@ def _secure_upload_filename(file: FileStorage) -> str:
     return filename
 
 
-def save_upload(upload_folder: Path, file: FileStorage) -> Path:
+def save_upload(
+    upload_folder: Path, file: FileStorage, *, purpose: str = "document"
+) -> Path:
     original = _secure_upload_filename(file)
+    suffix = Path(original).suffix.lower()
+    allowed = _allowed_extensions(purpose)
+    if suffix not in allowed:
+        readable = "、".join(sorted(ext.lstrip(".").upper() for ext in allowed))
+        raise UploadValidationError(f"不支持该文件格式，仅允许上传：{readable}")
+
+    header = file.stream.read(16)
+    file.stream.seek(0)
+    if not _matches_file_signature(suffix, header):
+        raise UploadValidationError("文件内容与扩展名不一致或文件已损坏")
+
     filename = f"{uuid4().hex}_{original}"
     upload_folder.mkdir(parents=True, exist_ok=True)
     target = upload_folder / filename

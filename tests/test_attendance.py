@@ -42,7 +42,7 @@ def test_attendance_update_api_workflow(client, app):
         assert len(records) == 1
         assert records[0]["person_id"] == person_id
         assert records[0]["work_date"] == "2026-06-05"
-        assert records[0]["shift_type"] == "白班"
+        assert records[0]["shift_type"] == "上班"
 
     # 4. 更新考勤为夜班
     response = client.post(
@@ -60,7 +60,7 @@ def test_attendance_update_api_workflow(client, app):
     with app.app_context():
         records = repo.list_attendance_by_month("2026-06")
         assert len(records) == 1
-        assert records[0]["shift_type"] == "夜班"
+        assert records[0]["shift_type"] == "上班"
 
     # 5b. 更新考勤为请假
     response = client.post(

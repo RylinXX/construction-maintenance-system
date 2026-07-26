@@ -26,7 +26,7 @@ class FakeRecognizer:
 
 def test_recognize_batch_upload_accepts_images(tmp_path):
     file = FileStorage(
-        stream=BytesIO(b"fake image"),
+        stream=BytesIO(b"\xff\xd8\xff\xe0test"),
         filename="pay.jpg",
         content_type="image/jpeg",
     )
@@ -41,7 +41,7 @@ def test_recognize_batch_upload_accepts_images(tmp_path):
 
 def test_recognize_batch_upload_accepts_pdf(tmp_path):
     file = FileStorage(
-        stream=BytesIO(b"fake pdf data"),
+        stream=BytesIO(b"%PDF-1.4 test"),
         filename="id-card.pdf",
         content_type="application/pdf",
     )

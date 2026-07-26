@@ -13,6 +13,7 @@ from . import repositories as repo
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 PUBLIC_ENDPOINTS = {"web.login", "static"}
+PASSIVE_ENDPOINTS = {"web.render_batch_item"}
 
 
 def get_csrf_token() -> str:
@@ -126,7 +127,8 @@ def _protect_request():
         ):
             return _authentication_failure()
 
-        session["last_activity_at"] = now
+        if endpoint not in PASSIVE_ENDPOINTS:
+            session["last_activity_at"] = now
         g.admin_user = user
 
         password_change_endpoints = {
@@ -152,6 +154,27 @@ def _protect_request():
 def init_app(app) -> None:
     app.before_request(_protect_request)
     app.jinja_env.globals["csrf_token"] = get_csrf_token
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=(), payment=()",
+        )
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
+            "object-src 'none'; form-action 'self'; img-src 'self' data:; "
+            "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'",
+        )
+        if request.is_secure:
+            response.headers.setdefault(
+                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+            )
+        return response
 
     @app.context_processor
     def inject_system_context():

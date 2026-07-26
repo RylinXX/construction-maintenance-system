@@ -17,6 +17,9 @@
     <a href="{{ url_for('web.settings', tab='general') }}" class="settings-tab {% if active_tab == 'general' %}active{% endif %}">
       {{ icon('settings') }} <span>基本设置</span>
     </a>
+    <a href="{{ url_for('web.settings', tab='audit') }}" class="settings-tab {% if active_tab == 'audit' %}active{% endif %}">
+      {{ icon('checklist') }} <span>审计日志</span>
+    </a>
     {% endif %}
   </nav>
 
@@ -62,6 +65,36 @@
         <button class="btn btn-primary" type="submit">{{ icon('save') }} 更新密码</button>
       </div>
     </form>
+  </section>
+  {% endif %}
+
+  {% if active_tab == 'audit' and current_admin.role == 'super_admin' %}
+  <section class="settings-section" aria-labelledby="audit-heading">
+    <div class="settings-section-header">
+      <div>
+        <span class="settings-kicker">AUDIT TRAIL</span>
+        <h2 id="audit-heading">关键操作审计日志</h2>
+        <p>记录财务凭证创建、修改、作废，以及项目和档案删除等关键操作。</p>
+      </div>
+    </div>
+    <div class="table-container settings-table-wrap">
+      <table class="premium-table">
+        <thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>对象</th><th>详情</th></tr></thead>
+        <tbody>
+          {% for event in audit_events %}
+          <tr>
+            <td class="font-mono">{{ event.created_at }}</td>
+            <td>{{ event.actor_name or '系统/历史操作' }}</td>
+            <td><span class="badge badge-secondary">{{ event.action }}</span></td>
+            <td>{{ event.entity_type }} #{{ event.entity_id or '--' }}</td>
+            <td class="text-muted">{{ event.details or '--' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-muted" style="text-align:center; padding:32px;">暂无审计记录</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
   {% endif %}
 

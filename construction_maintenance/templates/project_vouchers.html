@@ -39,7 +39,7 @@
     </div>
     <div class="mini-metric-pill amber">
       <span>凭证记录:</span>
-      <span class="mini-metric-pill-val">{{ vouchers|length }} 张</span>
+      <span class="mini-metric-pill-val">{{ active_voucher_count }} 张有效</span>
     </div>
   </div>
 </div>
@@ -90,7 +90,7 @@
         </thead>
         <tbody id="vouchersTableBody">
           {% for voucher in vouchers %}
-          <tr class="voucher-row" data-category="{{ voucher.voucher_type }}">
+          <tr class="voucher-row" data-category="{{ voucher.voucher_type }}"{% if voucher.is_void %} style="opacity: 0.65;"{% endif %}>
             <td class="font-mono text-dark">{{ voucher.voucher_date }}</td>
             <td>
               {% if voucher.voucher_type == '材料费用' %}
@@ -107,11 +107,25 @@
             </td>
             <td class="text-right font-mono font-semibold text-primary">¥{{ voucher.amount|money }}</td>
             <td>{{ voucher.entry_user or '--' }}</td>
-            <td class="text-muted">{{ voucher.notes or '--' }}</td>
+            <td class="text-muted">
+              {{ voucher.notes or '--' }}
+              {% if voucher.is_void %}
+              <div style="margin-top: 4px;" title="{{ voucher.void_reason }}">作废原因：{{ voucher.void_reason }}</div>
+              {% endif %}
+            </td>
             <td class="text-right">
+              {% if voucher.is_void %}
+              <span class="badge badge-secondary" title="{{ voucher.void_reason }}">已作废</span>
+              {% else %}
               <button type="button" class="btn btn-secondary toolbar-btn" style="padding: 6px 12px; font-size: 13px;" onclick="openModal('editVoucherModal-{{ voucher.id }}')">
                 {{ icon('edit') }} 编辑
               </button>
+              <form method="post" action="{{ url_for('web.void_voucher', voucher_id=voucher.id) }}" style="display:inline;" onsubmit="const value=prompt('请输入作废原因（作废后不可修改）：'); if(!value || !value.trim()) return false; this.elements.reason.value=value.trim();">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <input type="hidden" name="reason" value="">
+                <button type="submit" class="btn btn-secondary toolbar-btn" style="padding: 6px 12px; font-size: 13px;">作废</button>
+              </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -401,6 +415,7 @@ document.querySelectorAll('form').forEach(form => {
 
 <!-- Edit Voucher Modals (Dynamic Loop) -->
 {% for voucher in vouchers %}
+{% if not voucher.is_void %}
 <div id="editVoucherModal-{{ voucher.id }}" class="modal animate-fade-in">
   <div class="modal-content" style="max-width: 650px;">
     <div class="modal-header">
@@ -447,6 +462,7 @@ document.querySelectorAll('form').forEach(form => {
     </div>
   </div>
 </div>
+{% endif %}
 {% endfor %}
 <!-- Add Category Modal Dialog -->
 <div id="addCategoryModal" class="modal">

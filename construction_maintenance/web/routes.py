@@ -13,14 +13,41 @@ from construction_maintenance.security import login_user, logout_user
 from construction_maintenance.security import require_admin
 from construction_maintenance.security import require_super_admin
 from construction_maintenance.security import safe_redirect_target
+from construction_maintenance.security import get_current_admin
 
 from construction_maintenance import repositories as repo
 from construction_maintenance.web.forms import required_text
 from construction_maintenance.web.forms import text_value
 from construction_maintenance.services.ocr import recognize_batch_upload
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date as date_value
+import calendar
+import hashlib
+import time
 
 ocr_executor = ThreadPoolExecutor(max_workers=3)
+
+
+def _parse_month(value: object) -> tuple[str, int, int]:
+    month = str(value or "").strip()
+    try:
+        year_text, month_text = month.split("-", 1)
+        if len(year_text) != 4 or len(month_text) != 2:
+            raise ValueError
+        year, month_number = int(year_text), int(month_text)
+        calendar.monthrange(year, month_number)
+    except (TypeError, ValueError, calendar.IllegalMonthError) as exc:
+        raise ValueError("月份格式无效，请使用 YYYY-MM") from exc
+    return month, year, month_number
+
+
+def _parse_iso_date(value: object, label: str = "日期") -> str:
+    text = str(value or "").strip()
+    try:
+        date_value.fromisoformat(text)
+    except ValueError as exc:
+        raise ValueError(f"{label}格式无效") from exc
+    return text
 
 
 def _async_ocr_worker(app, item_id: int, stored_path_str: str, item_type: str):
@@ -62,7 +89,28 @@ def _voucher_type_choices(project_id: int | None = None) -> list[str]:
     return choices
 
 
-def _save_form_upload(field_name: str) -> str:
+def _actor_id() -> int | None:
+    user = get_current_admin()
+    return int(user["id"]) if user is not None else None
+
+
+def _delete_upload_file(filename: str | None) -> None:
+    from pathlib import Path
+    from flask import current_app
+
+    if not filename:
+        return
+    root = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
+    target = (root / str(filename)).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return
+    if target.is_file():
+        target.unlink()
+
+
+def _save_form_upload(field_name: str, *, purpose: str = "document") -> str:
     from pathlib import Path
     from flask import current_app
     from construction_maintenance.services.imports import save_upload
@@ -72,7 +120,7 @@ def _save_form_upload(field_name: str) -> str:
         return ""
 
     upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
-    stored = save_upload(upload_folder, file)
+    stored = save_upload(upload_folder, file, purpose=purpose)
     return stored.name
 
 
@@ -113,15 +161,23 @@ def fromjson_filter(value: str) -> dict:
 def login():
     next_target = request.args.get("next")
     if request.method == "POST":
-        user = authenticate_user(
-            request.form.get("username", ""), request.form.get("password", "")
-        )
+        username = request.form.get("username", "")
+        raw_key = f"{username.strip().casefold()}|{request.remote_addr or ''}"
+        attempt_key = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+        now = int(time.time())
+        if repo.login_attempt_is_locked(attempt_key, now):
+            return render_template("login.html", next=next_target), 429
+
+        user = authenticate_user(username, request.form.get("password", ""))
         if user:
+            repo.clear_login_failures(attempt_key)
             login_user(user)
             if user["must_change_password"]:
                 return redirect(url_for("web.settings", tab="security"))
             return redirect(safe_redirect_target(next_target, url_for("web.dashboard")))
-        return render_template("login.html", next=next_target), 401
+        locked = repo.record_login_failure(attempt_key, now)
+        status = 429 if locked else 401
+        return render_template("login.html", next=next_target), status
 
     return render_template("login.html", next=next_target)
 
@@ -138,7 +194,7 @@ def settings():
     requested_tab = request.args.get("tab", "security")
     allowed_tabs = {"security"}
     if g.admin_user["role"] == "super_admin":
-        allowed_tabs.update({"admins", "general"})
+        allowed_tabs.update({"admins", "general", "audit"})
     active_tab = requested_tab if requested_tab in allowed_tabs else "security"
     return render_template(
         "settings.html",
@@ -146,6 +202,11 @@ def settings():
         admin_users=(
             repo.list_admin_users()
             if g.admin_user["role"] == "super_admin"
+            else []
+        ),
+        audit_events=(
+            repo.list_audit_events()
+            if g.admin_user["role"] == "super_admin" and active_tab == "audit"
             else []
         ),
     )
@@ -367,8 +428,11 @@ def edit_project(project_id: int):
 
 @bp.route("/projects/<int:project_id>/delete", methods=["POST"])
 def delete_project(project_id: int):
-    repo.delete_project(project_id)
-    flash("工程项目已成功删除。", "success")
+    try:
+        repo.delete_project(project_id, actor_admin_id=_actor_id())
+        flash("工程项目已成功删除。", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
     return redirect(url_for("web.projects"))
 
 
@@ -384,6 +448,7 @@ def vouchers():
                 "notes": text_value(request.form, "notes"),
                 "attachment_path": "",
                 "entry_user": text_value(request.form, "entry_user"),
+                "actor_admin_id": _actor_id(),
             }
         )
         return redirect(
@@ -393,9 +458,11 @@ def vouchers():
     # 动态支持按项目进行过滤
     filter_project_id = request.args.get("project_id", type=int)
     if filter_project_id:
-        vouchers_list = repo.list_vouchers(project_id=filter_project_id)
+        vouchers_list = repo.list_vouchers(
+            project_id=filter_project_id, include_voided=True
+        )
     else:
-        vouchers_list = repo.list_vouchers()
+        vouchers_list = repo.list_vouchers(include_voided=True)
 
     return render_template(
         "vouchers.html",
@@ -414,14 +481,16 @@ def project_vouchers(project_id: int):
     if not project:
         return "Project not found", 404
         
-    vouchers_list = repo.list_vouchers(project_id=project_id)
-    total_spending = sum(float(row["amount"]) for row in vouchers_list)
+    vouchers_list = repo.list_vouchers(project_id=project_id, include_voided=True)
+    active_vouchers = [row for row in vouchers_list if not row["is_void"]]
+    total_spending = sum(float(row["amount"]) for row in active_vouchers)
     
     return render_template(
         "project_vouchers.html",
         project=project,
         vouchers=vouchers_list,
         total_spending=total_spending,
+        active_voucher_count=len(active_vouchers),
         voucher_types=repo.list_expense_category_names(),
         filter_voucher_types=_voucher_type_choices(project_id),
         batch_items=repo.list_batch_items(item_type="voucher"),
@@ -435,7 +504,31 @@ def _render_people_and_attendance(active_tab):
 
     # --- 1. 花名册基础数据 ---
     all_people = repo.list_people()
-    batch_items = repo.list_batch_items(item_type="person")
+    is_attendance_view = active_tab == "attendance"
+    people_query = request.args.get("q", "").strip()
+    filtered_people = all_people
+    if people_query and not is_attendance_view:
+        needle = people_query.casefold()
+        filtered_people = [
+            person
+            for person in all_people
+            if needle
+            in " ".join(
+                str(person[field] or "")
+                for field in ("name", "id_number", "phone", "job_type")
+            ).casefold()
+        ]
+    people_page_size = 15
+    people_total_pages = max(
+        1, (len(filtered_people) + people_page_size - 1) // people_page_size
+    )
+    requested_page = request.args.get("page", 1, type=int) or 1
+    people_page = max(1, min(requested_page, people_total_pages))
+    start = (people_page - 1) * people_page_size
+    visible_people = (
+        [] if is_attendance_view else filtered_people[start : start + people_page_size]
+    )
+    batch_items = [] if is_attendance_view else repo.list_batch_items(item_type="person")
 
     # --- 2. 考勤数据计算 ---
     now = datetime.datetime.now()
@@ -443,10 +536,10 @@ def _render_people_and_attendance(active_tab):
     month = request.args.get("month", current_month_str)
 
     try:
-        year, month_num = map(int, month.split("-"))
-    except (ValueError, TypeError):
+        month, year, month_num = _parse_month(month)
+    except ValueError:
         month = current_month_str
-        year, month_num = map(int, month.split("-"))
+        month, year, month_num = _parse_month(month)
 
     _, total_days = calendar.monthrange(year, month_num)
 
@@ -464,8 +557,8 @@ def _render_people_and_attendance(active_tab):
             "is_weekend": dt.weekday() in (5, 6),
         })
 
-    attendance_people = repo.list_attendance_people()
-    raw_attendance = repo.list_attendance_by_month(month)
+    attendance_people = repo.list_attendance_people() if is_attendance_view else []
+    raw_attendance = repo.list_attendance_by_month(month) if is_attendance_view else []
 
     attendance_dict = {}
     for record in raw_attendance:
@@ -494,13 +587,17 @@ def _render_people_and_attendance(active_tab):
     night_shifts = 0
     leave_shifts = sum(1 for r in raw_attendance if r["shift_type"] == "请假")
 
-    salary_summary = repo.get_salary_summary_by_month(month)
-    salary_payments = repo.list_salary_payments(month=month)
+    salary_summary = repo.get_salary_summary_by_month(month) if is_attendance_view else []
+    salary_payments = repo.list_salary_payments(month=month) if is_attendance_view else []
 
     return render_template(
         "people.html",
         active_tab=active_tab,
-        people=all_people,
+        people=visible_people,
+        people_query=people_query,
+        people_page=people_page,
+        people_total_pages=people_total_pages,
+        people_total_count=len(filtered_people),
         batch_items=batch_items,
         attendance_people=attendance_people,
         all_people=all_people,
@@ -523,7 +620,9 @@ def _render_people_and_attendance(active_tab):
 @bp.route("/people", methods=["GET", "POST"])
 def people():
     if request.method == "POST":
+        attachment_path = ""
         try:
+            attachment_path = _save_form_upload("id_card_attachment")
             repo.create_person(
                 {
                     "name": required_text(request.form, "name", "姓名"),
@@ -538,7 +637,7 @@ def people():
                     "bank_name": text_value(request.form, "bank_name"),
                     "entry_date": text_value(request.form, "entry_date"),
                     "notes": text_value(request.form, "notes"),
-                    "id_card_path": _save_form_upload("id_card_attachment"),
+                    "id_card_path": attachment_path,
                     "is_attendance": 1 if request.form.get("is_attendance") else 0,
                     "salary_type": text_value(request.form, "salary_type") or "日薪",
                     "salary_rate": float(text_value(request.form, "salary_rate") or 0.0),
@@ -546,7 +645,11 @@ def people():
             )
             flash("人员档案已成功录入。", "success")
         except sqlite3.IntegrityError:
+            _delete_upload_file(attachment_path)
             flash("录入失败：该身份证号已被登记。", "danger")
+        except Exception:
+            _delete_upload_file(attachment_path)
+            raise
         return redirect(url_for("web.people"))
     
     active_tab = request.args.get("tab", "people")
@@ -566,6 +669,7 @@ def add_salary_payment():
             data = request.get_json() or {}
         else:
             data = request.form.to_dict()
+        data["actor_admin_id"] = _actor_id()
             
         if not data.get("person_id") or not data.get("payment_date") or not data.get("payment_type") or not data.get("amount"):
             if request.is_json:
@@ -579,10 +683,10 @@ def add_salary_payment():
             return {"status": "success"}
         flash("预支/发薪流水登记成功！", "success")
         return redirect(url_for("web.people", tab="attendance", month=data.get("payment_date")[:7]))
-    except Exception as exc:
+    except (TypeError, ValueError, sqlite3.IntegrityError) as exc:
         if request.is_json:
-            return {"status": "error", "message": str(exc)}, 500
-        flash(f"系统错误：{str(exc)}", "error")
+            return {"status": "error", "message": str(exc)}, 400
+        flash(f"登记失败：{str(exc)}", "error")
         return redirect(url_for("web.people", tab="attendance"))
 
 
@@ -596,6 +700,16 @@ def delete_salary_payment(payment_id):
             redirect_month = target_payment["payment_date"][:7]
             
         repo.delete_salary_payment(payment_id)
+        repo.record_audit(
+            "delete",
+            "salary_payment",
+            payment_id,
+            actor_admin_id=_actor_id(),
+            details={
+                "person_id": target_payment["person_id"] if target_payment else None,
+                "amount": target_payment["amount"] if target_payment else None,
+            },
+        )
         
         if request.is_json:
             return {"status": "success"}
@@ -623,22 +737,34 @@ def update_attendance():
         return {"status": "error", "message": "缺失必要参数"}, 400
 
     try:
-        repo.save_attendance(int(person_id), date, shift_type)
-        return {"status": "success"}
-    except Exception as exc:
-        return {"status": "error", "message": str(exc)}, 500
+        person_id = int(person_id)
+        work_date = _parse_iso_date(date, "考勤日期")
+        if shift_type not in (None, "", "上班", "请假", "白班", "夜班"):
+            raise ValueError("考勤状态无效")
+        if shift_type in ("白班", "夜班"):
+            shift_type = "上班"
+        repo.save_attendance(person_id, work_date, shift_type)
+    except (TypeError, ValueError, sqlite3.IntegrityError) as exc:
+        return {"status": "error", "message": str(exc)}, 400
+    return {"status": "success"}
 
 
 @bp.post("/attendance/settings/update")
 def update_attendance_settings():
     data = request.get_json() or {}
     is_attendance_map = data.get("is_attendance_map", {})
+    if not isinstance(is_attendance_map, dict):
+        return {"status": "error", "message": "考勤名单参数无效"}, 400
     status_map = {}
     for p_id_str, is_att in is_attendance_map.items():
         try:
-            status_map[int(p_id_str)] = int(is_att)
+            person_id = int(p_id_str)
+            status = int(is_att)
+            if status not in (0, 1):
+                raise ValueError
+            status_map[person_id] = status
         except (ValueError, TypeError):
-            continue
+            return {"status": "error", "message": "考勤名单参数无效"}, 400
     try:
         repo.update_people_attendance_status(status_map)
         return {"status": "success"}
@@ -660,8 +786,9 @@ def batch_fill_attendance():
         people = repo.list_attendance_people()
         
         # 计算当月的所有日期
-        import calendar
-        year, m = map(int, month.split("-"))
+        month, year, m = _parse_month(month)
+        if shift_type not in ("上班", "请假"):
+            raise ValueError("考勤状态无效")
         _, num_days = calendar.monthrange(year, m)
         
         db = repo.get_db()
@@ -685,8 +812,8 @@ def batch_fill_attendance():
                 )
         db.commit()
         return {"status": "success"}
-    except Exception as exc:
-        return {"status": "error", "message": str(exc)}, 500
+    except (TypeError, ValueError, sqlite3.IntegrityError) as exc:
+        return {"status": "error", "message": str(exc)}, 400
 
 
 @bp.route("/attendance/salary-payments/quota", methods=["GET"])
@@ -699,6 +826,7 @@ def get_salary_quota():
         
     try:
         pid = int(person_id_str)
+        month, _, _ = _parse_month(month)
         summary = repo.get_salary_summary_by_month(month)
         for item in summary:
             if item["person_id"] == pid:
@@ -716,8 +844,8 @@ def get_salary_quota():
             "payout": 0.0,
             "balance": 0.0
         }
-    except Exception as exc:
-        return {"status": "error", "message": str(exc)}, 500
+    except (TypeError, ValueError) as exc:
+        return {"status": "error", "message": str(exc)}, 400
 
 
 @bp.route("/attendance/export", methods=["GET"])
@@ -731,6 +859,11 @@ def export_attendance():
     if not month:
         import datetime
         month = datetime.datetime.now().strftime("%Y-%m")
+
+    try:
+        month, _, _ = _parse_month(month)
+    except ValueError as exc:
+        return str(exc), 400
 
     try:
         workbook = build_attendance_workbook(month, is_template)
@@ -762,12 +895,19 @@ def import_attendance():
     if not file or not month:
         return {"status": "error", "message": "缺少上传的文件或月份参数"}, 400
 
+    try:
+        month, _, _ = _parse_month(month)
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}, 400
+
     upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
     temp_path = None
     try:
-        temp_path = save_upload(upload_folder, file)
+        temp_path = save_upload(upload_folder, file, purpose="spreadsheet")
         res = import_attendance_workbook(temp_path, month)
         return res
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}, 400
     except Exception as exc:
         return {"status": "error", "message": f"服务器内部错误: {str(exc)}"}, 500
     finally:
@@ -805,18 +945,24 @@ def qualifications():
             stored = save_upload(upload_folder, file)
             attachment_path = stored.name
 
-        repo.create_qualification(
-            {
-                "company_id": company_id,
-                "name": required_text(request.form, "name", "资质名称"),
-                "certificate_no": required_text(request.form, "certificate_no", "证书编号"),
-                "issue_date": text_value(request.form, "issue_date"),
-                "expiry_date": text_value(request.form, "expiry_date"),
-                "is_long_term": 1 if request.form.get("is_long_term") else 0,
-                "attachment_path": attachment_path,
-                "notes": text_value(request.form, "notes"),
-            }
-        )
+        try:
+            repo.create_qualification(
+                {
+                    "company_id": company_id,
+                    "name": required_text(request.form, "name", "资质名称"),
+                    "certificate_no": required_text(
+                        request.form, "certificate_no", "证书编号"
+                    ),
+                    "issue_date": text_value(request.form, "issue_date"),
+                    "expiry_date": text_value(request.form, "expiry_date"),
+                    "is_long_term": 1 if request.form.get("is_long_term") else 0,
+                    "attachment_path": attachment_path,
+                    "notes": text_value(request.form, "notes"),
+                }
+            )
+        except Exception:
+            _delete_upload_file(attachment_path)
+            raise
         return redirect(url_for("web.qualifications"))
     return render_template(
         "qualifications.html",
@@ -834,6 +980,8 @@ def batch():
 
     if request.method == "POST":
         item_type = text_value(request.form, "item_type") or "voucher"
+        if item_type not in {"voucher", "person", "qualification"}:
+            raise ValueError("批量导入类型无效")
         upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
         app = current_app._get_current_object()
         
@@ -1009,6 +1157,7 @@ def confirm_batch_item(item_id: int):
                 "notes": notes,
                 "attachment_path": attachment_path,
                 "entry_user": entry_user,
+                "actor_admin_id": _actor_id(),
             })
             repo.update_batch_item_status(item_id, "已确认")
             flash("凭证成功导入项目台账！", "success")
@@ -1123,6 +1272,15 @@ def delete_batch_item(item_id: int):
 
     try:
         repo.delete_batch_item(item_id)
+        if item["status"] != "已确认":
+            _delete_upload_file(item["stored_path"])
+        repo.record_audit(
+            "delete",
+            "batch_item",
+            item_id,
+            actor_admin_id=_actor_id(),
+            details={"source_filename": item["source_filename"]},
+        )
         flash("批量上传记录已成功忽略并删除。", "success")
     except Exception as exc:
         flash(f"删除失败: {exc}", "danger")
@@ -1164,15 +1322,20 @@ def download_export(export_type: str):
 @bp.route("/contracts", methods=["GET", "POST"])
 def contracts():
     if request.method == "POST":
-        repo.create_contract(
-            {
+        attachment_path = _save_form_upload("attachment")
+        try:
+            repo.create_contract(
+                {
                 "project_id": int(required_text(request.form, "project_id", "归属项目")),
                 "name": required_text(request.form, "name", "合同名称"),
                 "contract_type": required_text(request.form, "contract_type", "合同分类"),
                 "notes": text_value(request.form, "notes"),
-                "attachment_path": _save_form_upload("attachment"),
-            }
-        )
+                "attachment_path": attachment_path,
+                }
+            )
+        except Exception:
+            _delete_upload_file(attachment_path)
+            raise
         flash("新增合同成功。", "success")
         return redirect(url_for("web.contracts"))
 
@@ -1212,6 +1375,9 @@ def contracts():
 
 @bp.route("/contracts/<int:contract_id>/edit", methods=["POST"])
 def edit_contract(contract_id: int):
+    existing = repo.get_contract(contract_id)
+    if existing is None:
+        raise ValueError("合同不存在")
     attachment_path = _save_form_upload("attachment")
     data = {
         "project_id": int(required_text(request.form, "project_id", "归属项目")),
@@ -1222,7 +1388,13 @@ def edit_contract(contract_id: int):
     if attachment_path:
         data["attachment_path"] = attachment_path
 
-    repo.update_contract(contract_id, data)
+    try:
+        repo.update_contract(contract_id, data)
+    except Exception:
+        _delete_upload_file(attachment_path)
+        raise
+    if attachment_path and existing["attachment_path"] != attachment_path:
+        _delete_upload_file(existing["attachment_path"])
     flash("合同更新成功。", "success")
     return redirect(
         safe_redirect_target(request.referrer, url_for("web.contracts"))
@@ -1231,217 +1403,40 @@ def edit_contract(contract_id: int):
 
 @bp.route("/contracts/<int:contract_id>/delete", methods=["POST"])
 def delete_contract(contract_id: int):
+    contract = repo.get_db().execute(
+        "select attachment_path, name from contracts where id = ?", (contract_id,)
+    ).fetchone()
+    if contract is None:
+        raise ValueError("合同不存在")
     repo.delete_contract(contract_id)
+    _delete_upload_file(contract["attachment_path"])
+    repo.record_audit(
+        "delete",
+        "contract",
+        contract_id,
+        actor_admin_id=_actor_id(),
+        details={"name": contract["name"]},
+    )
     flash("合同删除成功。", "success")
     return redirect(url_for("web.contracts"))
 
 
 @bp.route("/uploads/<path:filename>")
 def download_attachment(filename):
-    from flask import send_from_directory, current_app, request, Response
     import mimetypes
-    from pathlib import Path
-    
-    upload_path = Path(current_app.config["UPLOAD_FOLDER"]) / filename
-    as_attachment = request.args.get("download", "0") == "1"
-    
-    if upload_path.exists() and upload_path.is_file():
-        download_name = _download_name_for_upload(filename)
-        return send_from_directory(
-            current_app.config["UPLOAD_FOLDER"], 
-            filename, 
-            as_attachment=as_attachment,
-            download_name=download_name,
-            mimetype=mimetypes.guess_type(download_name)[0],
-        )
-        
-    # If the file does not exist, dynamically generate a gorgeous SVG certificate!
-    db = repo.get_db()
-    qual = db.execute("select * from qualifications where attachment_path = ?", (filename,)).fetchone()
-    contract = db.execute("select * from contracts where attachment_path = ?", (filename,)).fetchone()
-    
-    if contract:
-        # Render gorgeous contract compliance vector SVG
-        proj = db.execute("select * from projects where id = ?", (contract["project_id"],)).fetchone()
-        project_name = proj["name"] if proj else "未知工程项目"
-        name = contract["name"]
-        cert_no = f"YLT-CON-{contract['id']:06d}"
-        company_name = project_name
-        issue_date = contract["created_at"][:10] if contract["created_at"] else "2026-06-02"
-        notes = contract["notes"] or "该项目合同已通过营力特数字化系统存证并归档备案，附件处于云端安全托管状态。"
-        
-        svg_content = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
-  <defs>
-    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f766e" />
-      <stop offset="50%" stop-color="#2dd4bf" />
-      <stop offset="100%" stop-color="#042f2e" />
-    </linearGradient>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#f0fdf4" />
-      <stop offset="100%" stop-color="#f6fbf7" />
-    </linearGradient>
-  </defs>
-  
-  <rect width="800" height="600" fill="url(#bgGrad)" rx="12"/>
-  
-  <rect x="25" y="25" width="750" height="550" fill="none" stroke="url(#emeraldGrad)" stroke-width="4.5" rx="10"/>
-  <rect x="35" y="35" width="730" height="530" fill="none" stroke="#0f766e" stroke-width="1.2" stroke-dasharray="6 3" rx="8" stroke-opacity="0.75"/>
-  
-  <path d="M 35 60 L 60 35 M 35 70 L 70 35" stroke="url(#emeraldGrad)" stroke-width="2"/>
-  <path d="M 765 60 L 740 35 M 765 70 L 730 35" stroke="url(#emeraldGrad)" stroke-width="2"/>
-  <path d="M 35 540 L 60 565 M 35 530 L 70 565" stroke="url(#emeraldGrad)" stroke-width="2"/>
-  <path d="M 765 540 L 740 565 M 765 530 L 730 565" stroke="url(#emeraldGrad)" stroke-width="2"/>
+    from flask import current_app, send_from_directory
 
-  <text x="400" y="95" text-anchor="middle" font-family="'Noto Serif SC', 'SimSun', serif" font-size="28" font-weight="bold" fill="#0f766e" letter-spacing="4">项目合规合同存证证书</text>
-  <text x="400" y="122" text-anchor="middle" font-family="'Inter', sans-serif" font-size="11" font-weight="700" fill="#0d9488" letter-spacing="2">PROJECT CONTRACT COMPLIANCE ARCHIVE</text>
-  
-  <path d="M 220 140 L 360 140 M 440 140 L 580 140" stroke="url(#emeraldGrad)" stroke-width="1.5"/>
-  <circle cx="400" cy="140" r="4.5" fill="#0f766e"/>
-  
-  <g font-family="'Microsoft YaHei', sans-serif" font-size="15" fill="#374151" transform="translate(110, 0)">
-    <text x="40" y="200" font-weight="bold" fill="#6b7280" font-size="14.5">归属工程项目：</text>
-    <text x="170" y="200" font-weight="bold" font-size="17" fill="#111827">{company_name}</text>
-    
-    <text x="40" y="255" font-weight="bold" fill="#6b7280" font-size="14.5">合同存证类别：</text>
-    <text x="170" y="255" font-weight="bold" font-size="18" fill="#0f766e">{contract['contract_type']}</text>
-    
-    <text x="40" y="310" font-weight="bold" fill="#6b7280" font-size="14.5">合同备案名称：</text>
-    <text x="170" y="310" font-weight="bold" font-size="17" fill="#111827">{name}</text>
-    
-    <text x="40" y="365" font-weight="bold" fill="#6b7280" font-size="14.5">系统存证编号：</text>
-    <text x="170" y="365" font-family="monospace" font-weight="bold" font-size="18" fill="#111827">{cert_no}</text>
-    
-    <text x="40" y="420" font-weight="bold" fill="#6b7280" font-size="14.5">备案登记日期：</text>
-    <text x="170" y="420" font-weight="bold" font-size="16" fill="#111827">{issue_date}</text>
-
-    <text x="40" y="475" font-weight="bold" fill="#6b7280" font-size="14.5">合同存证备注：</text>
-    <text x="170" y="475" font-size="13.5" fill="#4b5563" font-weight="500" width="400">{notes}</text>
-  </g>
-  
-  <g transform="translate(615, 435)">
-    <circle cx="0" cy="0" r="54" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-opacity="0.85"/>
-    <circle cx="0" cy="0" r="50" fill="none" stroke="#dc2626" stroke-width="1" stroke-opacity="0.85" stroke-dasharray="3 1.5"/>
-    <polygon points="0,-14 4,-3 15,-3 6,4 10,15 0,8 -10,15 -6,4 -15,-3 -4,-3" fill="#dc2626" fill-opacity="0.85"/>
-    <text x="0" y="36" text-anchor="middle" font-family="'SimSun', serif" font-size="9" font-weight="bold" fill="#dc2626" fill-opacity="0.85" letter-spacing="1">合同存证专用章</text>
-    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(-35 0 -34)">C</text>
-    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(-17 0 -34)">A</text>
-    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(0 0 -34)">M</text>
-    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(17 0 -34)">F</text>
-    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#dc2626" fill-opacity="0.85" transform="rotate(35 0 -34)">ILE</text>
-  </g>
-  
-  <text x="400" y="565" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="10.5" fill="#9ca3af">本证书由营力特数字化系统合同备案中心自动签章，具有同等系统存证效力。</text>
-</svg>"""
-    else:
-        if not qual:
-            name = "企业合规备案证书"
-            cert_no = "YLT-MOCK-998877"
-            company_name = "河南城建第一集团有限公司"
-            issue_date = "2020-05-10"
-            expiry_date = ""
-            is_long_term = True
-            notes = "系统智能存证与企业官方合规双签章备案文件"
-        else:
-            company = db.execute("select * from companies where id = ?", (qual["company_id"],)).fetchone()
-            company_name = company["name"] if company else "合作单位"
-            name = qual["name"]
-            cert_no = qual["certificate_no"]
-            issue_date = qual["issue_date"] or "2020-05-10"
-            expiry_date = qual["expiry_date"] or ""
-            is_long_term = qual["is_long_term"]
-            notes = qual["notes"] or "经核准，该合作单位此项企业资质证照合法合规，准予在营力特数字化系统归档备案。"
-            
-        expiry_text = "长期有效" if is_long_term else (expiry_date or "长期有效")
-        expiry_color = "#2563eb" if is_long_term else "#dc2626"
-        
-        # Golden and Navy Elegant Vector SVG
-        svg_content = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
-  <defs>
-    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#c5a880" />
-      <stop offset="50%" stop-color="#e2d1b9" />
-      <stop offset="100%" stop-color="#9a7e58" />
-    </linearGradient>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#fdfdfb" />
-      <stop offset="100%" stop-color="#f6f3eb" />
-    </linearGradient>
-  </defs>
-  
-  <!-- Background -->
-  <rect width="800" height="600" fill="url(#bgGrad)" rx="12"/>
-  
-  <!-- Elegant Border -->
-  <rect x="25" y="25" width="750" height="550" fill="none" stroke="url(#goldGrad)" stroke-width="4.5" rx="10"/>
-  <rect x="35" y="35" width="730" height="530" fill="none" stroke="#1e3a8a" stroke-width="1.2" stroke-dasharray="6 3" rx="8" stroke-opacity="0.75"/>
-  
-  <!-- Corner Ornaments -->
-  <path d="M 35 60 L 60 35 M 35 70 L 70 35" stroke="url(#goldGrad)" stroke-width="2"/>
-  <path d="M 765 60 L 740 35 M 765 70 L 730 35" stroke="url(#goldGrad)" stroke-width="2"/>
-  <path d="M 35 540 L 60 565 M 35 530 L 70 565" stroke="url(#goldGrad)" stroke-width="2"/>
-  <path d="M 765 540 L 740 565 M 765 530 L 730 565" stroke="url(#goldGrad)" stroke-width="2"/>
-
-  <!-- Top Title -->
-  <text x="400" y="95" text-anchor="middle" font-family="'Noto Serif SC', 'SimSun', serif" font-size="28" font-weight="bold" fill="#1e3a8a" letter-spacing="4">企业合规备案与资质证书</text>
-  <text x="400" y="122" text-anchor="middle" font-family="'Inter', sans-serif" font-size="11" font-weight="700" fill="#a89068" letter-spacing="2">ENTERPRISE COMPLIANCE &amp; QUALIFICATION FILE</text>
-  
-  <!-- Decorative Divider Line -->
-  <path d="M 220 140 L 360 140 M 440 140 L 580 140" stroke="url(#goldGrad)" stroke-width="1.5"/>
-  <circle cx="400" cy="140" r="4.5" fill="#1e3a8a"/>
-  
-  <!-- Main Certificate Body -->
-  <g font-family="'Microsoft YaHei', sans-serif" font-size="15" fill="#374151" transform="translate(110, 0)">
-    <!-- Company Name -->
-    <text x="40" y="200" font-weight="bold" fill="#6b7280" font-size="14.5">企业单位名称：</text>
-    <text x="170" y="200" font-weight="bold" font-size="18.5" fill="#111827">{company_name}</text>
-    
-    <!-- Document Name -->
-    <text x="40" y="255" font-weight="bold" fill="#6b7280" font-size="14.5">资质证照类别：</text>
-    <text x="170" y="255" font-weight="bold" font-size="18.5" fill="#1d4ed8">{name}</text>
-    
-    <!-- Cert No -->
-    <text x="40" y="310" font-weight="bold" fill="#6b7280" font-size="14.5">证书登记编号：</text>
-    <text x="170" y="310" font-family="monospace" font-weight="bold" font-size="18" fill="#111827">{cert_no}</text>
-    
-    <!-- Issue Date -->
-    <text x="40" y="365" font-weight="bold" fill="#6b7280" font-size="14.5">证书发证日期：</text>
-    <text x="170" y="365" font-weight="bold" font-size="16" fill="#111827">{issue_date}</text>
-    
-    <!-- Expiry Date -->
-    <text x="40" y="420" font-weight="bold" fill="#6b7280" font-size="14.5">资质有效期限：</text>
-    <text x="170" y="420" font-weight="bold" font-size="16" fill="{expiry_color}">{expiry_text}</text>
-
-    <!-- Notes -->
-    <text x="40" y="475" font-weight="bold" fill="#6b7280" font-size="14.5">官方核准备注：</text>
-    <text x="170" y="475" font-size="13.5" fill="#4b5563" font-weight="500" width="400">{notes}</text>
-  </g>
-  
-  <!-- Red Official Seal / Stamp -->
-  <g transform="translate(615, 435)">
-    <circle cx="0" cy="0" r="54" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-opacity="0.85"/>
-    <circle cx="0" cy="0" r="50" fill="none" stroke="#ef4444" stroke-width="1" stroke-opacity="0.85" stroke-dasharray="3 1.5"/>
-    <polygon points="0,-14 4,-3 15,-3 6,4 10,15 0,8 -10,15 -6,4 -15,-3 -4,-3" fill="#ef4444" fill-opacity="0.85"/>
-    <text x="0" y="36" text-anchor="middle" font-family="'SimSun', serif" font-size="9" font-weight="bold" fill="#ef4444" fill-opacity="0.85" letter-spacing="1">资质审核专用章</text>
-    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#ef4444" fill-opacity="0.85" transform="rotate(-35 0 -34)">中</text>
-    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#ef4444" fill-opacity="0.85" transform="rotate(-17 0 -34)">华</text>
-    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#ef4444" fill-opacity="0.85" transform="rotate(0 0 -34)">建</text>
-    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#ef4444" fill-opacity="0.85" transform="rotate(17 0 -34)">筑</text>
-    <text x="0" y="-34" text-anchor="middle" font-family="'SimSun', serif" font-size="9.5" font-weight="bold" fill="#ef4444" fill-opacity="0.85" transform="rotate(35 0 -34)">部</text>
-  </g>
-  
-  <!-- Footer Legal Text -->
-  <text x="400" y="565" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="10.5" fill="#9ca3af">本证书由营力特数字化系统存证中心自动签章核验，具有同等系统查验效力。</text>
-</svg>"""
-    
-    headers = {}
-    if as_attachment:
-        dn = filename
-        if not dn.endswith('.svg'):
-            dn = dn.rsplit('.', 1)[0] + '.svg'
-        headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{dn}"
-        
-    return Response(svg_content, mimetype="image/svg+xml", headers=headers)
+    download_name = _download_name_for_upload(filename)
+    mimetype = mimetypes.guess_type(download_name)[0] or "application/octet-stream"
+    safe_inline = mimetype == "application/pdf" or mimetype.startswith("image/")
+    as_attachment = request.args.get("download", "0") == "1" or not safe_inline
+    return send_from_directory(
+        current_app.config["UPLOAD_FOLDER"],
+        filename,
+        as_attachment=as_attachment,
+        download_name=download_name,
+        mimetype=mimetype,
+    )
 
 
 
@@ -1455,6 +1450,7 @@ def edit_voucher(voucher_id: int):
             "amount": required_text(request.form, "amount", "金额"),
             "notes": text_value(request.form, "notes"),
             "entry_user": text_value(request.form, "entry_user"),
+            "actor_admin_id": _actor_id(),
         }
     )
     return redirect(
@@ -1462,8 +1458,27 @@ def edit_voucher(voucher_id: int):
     )
 
 
+@bp.post("/vouchers/<int:voucher_id>/void")
+def void_voucher(voucher_id: int):
+    repo.void_voucher(
+        voucher_id,
+        required_text(request.form, "reason", "作废原因"),
+        actor_admin_id=_actor_id(),
+    )
+    flash("凭证已作废并保留在历史台账中。", "success")
+    return redirect(
+        safe_redirect_target(request.referrer, url_for("web.vouchers"))
+    )
+
+
 @bp.route("/people/<int:person_id>/edit", methods=["POST"])
 def edit_person(person_id: int):
+    existing = repo.get_db().execute(
+        "select id_card_path from people where id = ?", (person_id,)
+    ).fetchone()
+    if existing is None:
+        raise ValueError("人员不存在")
+    attachment_path = _save_form_upload("id_card_attachment")
     try:
         repo.update_person(
             person_id,
@@ -1480,21 +1495,44 @@ def edit_person(person_id: int):
                 "bank_name": text_value(request.form, "bank_name"),
                 "entry_date": text_value(request.form, "entry_date"),
                 "notes": text_value(request.form, "notes"),
-                "id_card_path": _save_form_upload("id_card_attachment"),
+                "id_card_path": attachment_path,
                 "is_attendance": 1 if request.form.get("is_attendance") else 0,
                 "salary_type": text_value(request.form, "salary_type") or "日薪",
                 "salary_rate": float(text_value(request.form, "salary_rate") or 0.0),
             }
         )
+        if attachment_path and existing["id_card_path"] != attachment_path:
+            _delete_upload_file(existing["id_card_path"])
         flash("人员档案已成功修改。", "success")
     except sqlite3.IntegrityError:
+        _delete_upload_file(attachment_path)
         flash("修改失败：该身份证号已被登记。", "danger")
+    except Exception:
+        _delete_upload_file(attachment_path)
+        raise
     return redirect(url_for("web.people"))
 
 
 @bp.route("/people/<int:person_id>/delete", methods=["POST"])
 def delete_person(person_id: int):
-    repo.delete_person(person_id)
+    person = repo.get_db().execute(
+        "select id_card_path, name from people where id = ?", (person_id,)
+    ).fetchone()
+    if person is None:
+        raise ValueError("人员不存在")
+    try:
+        repo.delete_person(person_id)
+    except ValueError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("web.people"))
+    _delete_upload_file(person["id_card_path"])
+    repo.record_audit(
+        "delete",
+        "person",
+        person_id,
+        actor_admin_id=_actor_id(),
+        details={"name": person["name"]},
+    )
     flash("人员电子档案已成功删除。", "success")
     return redirect(url_for("web.people"))
 
@@ -1527,6 +1565,7 @@ def add_person_salary_sheet(person_id: int):
         return {"status": "error", "message": "结算月份不能为空"}, 400
         
     try:
+        settle_month, _, _ = _parse_month(settle_month)
         should_work = float(data.get("should_work_days", 30))
         actual_work = float(data.get("actual_work_days", 30))
         rate = float(data.get("salary_rate", 0.0))
@@ -1543,7 +1582,8 @@ def add_person_salary_sheet(person_id: int):
         "salary_rate": rate,
         "earnings": earnings,
         "paid_amount": paid,
-        "notes": data.get("notes", "").strip()
+        "notes": data.get("notes", "").strip(),
+        "actor_admin_id": _actor_id(),
     })
     
     sheets = repo.list_salary_sheets_by_person(person_id)
@@ -1559,6 +1599,13 @@ def delete_person_salary_sheet_item(item_id: int):
     person_id = row[0]
     
     repo.delete_salary_sheet_item(item_id)
+    repo.record_audit(
+        "delete",
+        "salary_sheet",
+        item_id,
+        actor_admin_id=_actor_id(),
+        details={"person_id": person_id},
+    )
     
     sheets = repo.list_salary_sheets_by_person(person_id)
     return {"status": "success", "data": sheets}
@@ -1585,7 +1632,10 @@ def quick_fill_person_attendance():
         import calendar
         import datetime
         
-        year, m = map(int, month.split("-"))
+        person_id = int(person_id)
+        month, year, m = _parse_month(month)
+        if min(day_shifts, night_shifts, leave_shifts) < 0:
+            raise ValueError("天数不能为负数")
         _, num_days = calendar.monthrange(year, m)
         
         workdays = []
@@ -1629,12 +1679,18 @@ def quick_fill_person_attendance():
             
         db.commit()
         return {"status": "success"}
-    except Exception as exc:
-        return {"status": "error", "message": str(exc)}, 500
+    except (TypeError, ValueError, sqlite3.IntegrityError) as exc:
+        return {"status": "error", "message": str(exc)}, 400
 
 
 @bp.route("/qualifications/<int:qualification_id>/edit", methods=["POST"])
 def edit_qualification(qualification_id: int):
+    existing = repo.get_db().execute(
+        "select attachment_path from qualifications where id = ?",
+        (qualification_id,),
+    ).fetchone()
+    if existing is None:
+        raise ValueError("资质证书不存在")
     company_id = int(required_text(request.form, "company_id", "公司"))
     from pathlib import Path
     from flask import current_app
@@ -1656,13 +1712,33 @@ def edit_qualification(qualification_id: int):
         stored = save_upload(upload_folder, file)
         data["attachment_path"] = stored.name
         
-    repo.update_qualification(qualification_id, data)
+    try:
+        repo.update_qualification(qualification_id, data)
+    except Exception:
+        _delete_upload_file(data.get("attachment_path"))
+        raise
+    if data.get("attachment_path") and existing["attachment_path"] != data["attachment_path"]:
+        _delete_upload_file(existing["attachment_path"])
     return redirect(url_for("web.qualifications"))
 
 
 @bp.route("/qualifications/<int:qualification_id>/delete", methods=["POST"])
 def delete_qualification(qualification_id: int):
+    qualification = repo.get_db().execute(
+        "select attachment_path, name from qualifications where id = ?",
+        (qualification_id,),
+    ).fetchone()
+    if qualification is None:
+        raise ValueError("资质证书不存在")
     repo.delete_qualification(qualification_id)
+    _delete_upload_file(qualification["attachment_path"])
+    repo.record_audit(
+        "delete",
+        "qualification",
+        qualification_id,
+        actor_admin_id=_actor_id(),
+        details={"name": qualification["name"]},
+    )
     flash("资质证书已成功删除。", "success")
     return redirect(url_for("web.qualifications"))
 
@@ -1728,125 +1804,36 @@ def delete_company(company_id: int):
 
 @bp.route("/qualifications/recognize", methods=["POST"])
 def recognize_qualification():
-    from flask import jsonify
+    from flask import current_app, jsonify
     from pathlib import Path
-    from flask import current_app
     from construction_maintenance.services.imports import save_upload
-    from construction_maintenance.services.ocr import recognize_batch_upload
 
     file = request.files.get("attachment")
     if not file or not file.filename:
         return jsonify({"success": False, "error": "没有上传文件"}), 400
+    if not current_app.config.get("ARK_API_KEY"):
+        return jsonify({"success": False, "error": "AI 识别服务未配置，请人工录入"}), 503
 
-    # Try real AI OCR recognition if API key is configured
-    api_key = current_app.config.get("ARK_API_KEY")
-    if api_key:
-        upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
-        stored = save_upload(upload_folder, file)
-        try:
-            ocr_result = recognize_batch_upload(stored, "qualification")
-            if ocr_result.status == "已识别":
-                res_data = ocr_result.data
-                mapped_data = {
-                    "name_select": res_data.get("name_select") or "CUSTOM",
-                    "certificate_no": res_data.get("certificate_no") or "",
-                    "credit_code": res_data.get("credit_code") or "",
-                    "legal_person": res_data.get("legal_person") or "",
-                    "issue_date": res_data.get("issue_date") or "",
-                    "expiry_date": res_data.get("expiry_date") or "",
-                    "is_long_term": bool(res_data.get("is_long_term")),
-                    "notes": res_data.get("notes") or "",
-                    "company_name": res_data.get("company_name") or "",
-                }
-                return jsonify({"success": True, "data": mapped_data})
-        except Exception:
-            pass # fall back to mock extraction
+    stored = save_upload(Path(current_app.config["UPLOAD_FOLDER"]), file)
+    try:
+        ocr_result = recognize_batch_upload(stored, "qualification")
+    finally:
+        stored.unlink(missing_ok=True)
 
-    filename = file.filename.lower()
-    data = {}
-    if "营业执照" in filename or "business" in filename or "license" in filename:
-        data = {
-            "name_select": "营业执照",
-            "certificate_no": "91410100MA3X6789X0",
-            "credit_code": "91410100MA3X6789X0",
-            "legal_person": "张建国",
-            "issue_date": "2018-05-10",
-            "is_long_term": True,
-            "notes": "统一社会信用代码：91410100MA3X6789X0，成立日期：2018-05-10"
-        }
-    elif "身份证" in filename or "id" in filename or "法人" in filename:
-        data = {
-            "name_select": "法人身份证",
-            "certificate_no": "410102197001018888",
-            "credit_code": "",
-            "legal_person": "张建国",
-            "issue_date": "2020-01-01",
-            "expiry_date": "2040-01-01",
-            "is_long_term": False,
-            "notes": "法定代表人：张建国，身份证号：410102197001018888，有效期二十年。"
-        }
-    elif "安全" in filename or "safety" in filename or "aq" in filename:
-        data = {
-            "name_select": "安全生产资质",
-            "certificate_no": "AQ-1056789",
-            "credit_code": "",
-            "legal_person": "",
-            "issue_date": "2023-08-10",
-            "expiry_date": "2026-08-10",
-            "is_long_term": False,
-            "notes": "安全生产许可证，证书编号：AQ-1056789，有效期至 2026-08-10。"
-        }
-    elif "开户" in filename or "account" in filename:
-        data = {
-            "name_select": "开户证明",
-            "certificate_no": "ZH20180512-001",
-            "credit_code": "",
-            "legal_person": "张建国",
-            "issue_date": "2018-05-12",
-            "is_long_term": True,
-            "notes": "中国工商银行郑州科技支行，基本存款账户编号：J4910012345601"
-        }
-    elif "开票" in filename or "invoice" in filename or "tax" in filename:
-        data = {
-            "name_select": "开票信息",
-            "certificate_no": "KP-MA3X6789X0",
-            "credit_code": "91410100MA3X6789X0",
-            "legal_person": "张建国",
-            "issue_date": "2018-05-15",
-            "is_long_term": True,
-            "notes": "开票信息：河南城建第一集团有限公司，税号：91410100MA3X6789X0"
-        }
-    elif "资质" in filename or "qualification" in filename:
-        data = {
-            "name_select": "建筑资质",
-            "certificate_no": "D141056789",
-            "credit_code": "",
-            "legal_person": "",
-            "issue_date": "2024-06-15",
-            "expiry_date": "2029-06-15",
-            "is_long_term": False,
-            "notes": "建筑工程施工总承包一级资质，证书编号：D141056789"
-        }
-    elif "八大员" in filename or "bdy" in filename:
-        data = {
-            "name_select": "八大员人员证书",
-            "certificate_no": "BDY-2025-088",
-            "credit_code": "",
-            "legal_person": "",
-            "issue_date": "2025-03-20",
-            "expiry_date": "2028-03-20",
-            "is_long_term": False,
-            "notes": "八大员人员证书汇总，包含建造师、施工员等注册资质"
-        }
-    else:
-        # Fallback standard document
-        data = {
-            "name_select": "营业执照",
-            "certificate_no": "91410100MA4B4567X1",
-            "credit_code": "91410100MA4B4567X1",
-            "legal_person": "李卓越",
-            "issue_date": "2020-03-15",
-            "is_long_term": True,
-            "notes": "智能 AI 自动提取完成。文件名: " + file.filename
-        }
+    if ocr_result.status != "已识别":
+        message = str(ocr_result.data.get("message") or "AI 识别失败，请人工录入")
+        return jsonify({"success": False, "error": message}), 422
+
+    result = ocr_result.data
+    data = {
+        "name_select": result.get("name_select") or "CUSTOM",
+        "certificate_no": result.get("certificate_no") or "",
+        "credit_code": result.get("credit_code") or "",
+        "legal_person": result.get("legal_person") or "",
+        "issue_date": result.get("issue_date") or "",
+        "expiry_date": result.get("expiry_date") or "",
+        "is_long_term": bool(result.get("is_long_term")),
+        "notes": result.get("notes") or "",
+        "company_name": result.get("company_name") or "",
+    }
     return jsonify({"success": True, "data": data})

@@ -33,13 +33,6 @@ class ArkOcrRecognizer:
         self.api_key = api_key
 
     def recognize_image(self, path: Path, item_type: str) -> BatchOcrResult:
-        if not self.api_key:
-            return BatchOcrResult(
-                status="待确认",
-                data={"message": "未配置火山引擎 API Key，请人工确认"},
-                confidence=None,
-            )
-
         # 尝试使用 PyMuPDF (fitz) 统一加载 PDF 和常见图片，并限制最大边长不超过 1200 像素
         # 以防大图或高清 PDF Base64 体积过大（导致接口报 HTTP 400 Bad Request）
         try:
@@ -75,6 +68,13 @@ class ArkOcrRecognizer:
                     data={"message": f"加载文件失败，请人工确认：{read_exc}"},
                     confidence=None,
                 )
+
+        if not self.api_key:
+            return BatchOcrResult(
+                status="待确认",
+                data={"message": "未配置火山引擎 API Key，请人工确认"},
+                confidence=None,
+            )
 
         payload = {
             "model": self.model,

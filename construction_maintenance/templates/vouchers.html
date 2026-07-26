@@ -42,11 +42,12 @@
             <th class="text-right">金额 (元)</th>
             <th>经办人</th>
             <th>备注信息</th>
+            <th class="text-right">操作</th>
           </tr>
         </thead>
         <tbody id="vouchers-table-tbody">
           {% for voucher in vouchers %}
-          <tr>
+          <tr{% if voucher.is_void %} style="opacity: 0.65;"{% endif %}>
             <td class="font-mono text-dark">{{ voucher.voucher_date }}</td>
             <td class="font-semibold">{{ voucher.project_name }}</td>
             <td>
@@ -64,11 +65,27 @@
             </td>
             <td class="text-right font-mono font-semibold text-primary">¥{{ voucher.amount|money }}</td>
             <td>{{ voucher.entry_user or '--' }}</td>
-            <td class="text-muted">{{ voucher.notes or '--' }}</td>
+            <td class="text-muted">
+              {{ voucher.notes or '--' }}
+              {% if voucher.is_void %}
+              <div style="margin-top: 4px;"><span class="badge badge-secondary" title="{{ voucher.void_reason }}">已作废</span> {{ voucher.void_reason }}</div>
+              {% endif %}
+            </td>
+            <td class="text-right">
+              {% if voucher.is_void %}
+              <span class="badge badge-secondary" title="{{ voucher.void_reason }}">已作废</span>
+              {% else %}
+              <form method="post" action="{{ url_for('web.void_voucher', voucher_id=voucher.id) }}" style="display:inline;" onsubmit="const value=prompt('请输入作废原因（作废后不可修改）：'); if(!value || !value.trim()) return false; this.elements.reason.value=value.trim();">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <input type="hidden" name="reason" value="">
+                <button type="submit" class="btn btn-secondary toolbar-btn" style="padding: 6px 12px; font-size: 13px;">作废</button>
+              </form>
+              {% endif %}
+            </td>
           </tr>
           {% else %}
           <tr class="empty-row">
-            <td colspan="6">
+            <td colspan="7">
               <div class="empty-state">
                 <span class="empty-icon">{{ icon('money') }}</span>
                 <span class="empty-text">暂无费用支出记录，请点击右上角“录入凭证”录入数据</span>
@@ -155,7 +172,7 @@
               <span class="dropzone-icon">{{ icon('upload') }}</span>
               <span class="dropzone-text">点击选择或拖拽凭证/发票文件至此区域进行上传</span>
               <span class="dropzone-subtext">支持多选，允许上传 .png, .jpg, .jpeg, .pdf 等格式</span>
-              <input class="dropzone-input" id="files" name="files" type="file" multiple required>
+              <input class="dropzone-input" id="files" name="files" type="file" accept=".png,.jpg,.jpeg,.webp,.bmp,.pdf" multiple required>
             </div>
           </div>
         </div>

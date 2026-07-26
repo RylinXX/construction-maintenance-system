@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 
 import pytest
 from werkzeug.security import generate_password_hash
@@ -70,7 +71,7 @@ def test_login_requires_csrf_and_valid_credentials(secure_client):
     assert "YLT DIGITAL".encode() in response.data
     assert "登录工作台".encode() in response.data
     assert "brand/ylt-mark.png".encode() in response.data
-    assert "v0.2.33".encode() in response.data
+    assert "v0.2.34".encode() in response.data
     showcase = secure_client.get(
         "/static/login-showcase.png", base_url="https://localhost"
     )
@@ -147,6 +148,54 @@ def test_logout_requires_csrf(secure_client):
     assert response.headers["Location"].endswith("/login")
     with secure_client.session_transaction() as session:
         assert "authenticated" not in session
+
+
+def test_login_is_temporarily_locked_after_repeated_failures(secure_client):
+    secure_client.get("/login", base_url="https://localhost")
+    token = _csrf_token(secure_client)
+    statuses = []
+    for _ in range(5):
+        response = secure_client.post(
+            "/login",
+            data={"username": "admin", "password": "wrong-password", "_csrf": token},
+            base_url="https://localhost",
+        )
+        statuses.append(response.status_code)
+    assert statuses[:4] == [401, 401, 401, 401]
+    assert statuses[4] == 429
+
+    response = secure_client.post(
+        "/login",
+        data={"username": "admin", "password": "correct-password", "_csrf": token},
+        base_url="https://localhost",
+    )
+    assert response.status_code == 429
+
+
+def test_batch_polling_does_not_extend_session(secure_client, secure_app):
+    secure_client.get("/login", base_url="https://localhost")
+    token = _csrf_token(secure_client)
+    secure_client.post(
+        "/login",
+        data={"username": "admin", "password": "correct-password", "_csrf": token},
+        base_url="https://localhost",
+    )
+    with secure_app.app_context():
+        from construction_maintenance import repositories as repo
+
+        item_id = repo.create_batch_item(
+            {"item_type": "voucher", "source_filename": "poll.pdf"}
+        )
+    original = int(time.time()) - 5
+    with secure_client.session_transaction() as session:
+        session["last_activity_at"] = original
+
+    response = secure_client.get(
+        f"/batch/item/{item_id}/render", base_url="https://localhost"
+    )
+    assert response.status_code == 200
+    with secure_client.session_transaction() as session:
+        assert session["last_activity_at"] == original
 
 
 @pytest.mark.parametrize(

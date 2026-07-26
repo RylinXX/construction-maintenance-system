@@ -33,6 +33,9 @@ def get_db() -> sqlite3.Connection:
         connection = sqlite3.connect(database)
         connection.row_factory = sqlite3.Row
         connection.execute("pragma foreign_keys = on")
+        connection.execute("pragma busy_timeout = 10000")
+        connection.execute("pragma journal_mode = wal")
+        connection.execute("pragma synchronous = normal")
         g.db = connection
     return g.db
 
@@ -83,6 +86,10 @@ def init_db() -> None:
             notes text not null default '',
             attachment_path text not null default '',
             entry_user text not null default '',
+            is_void integer not null default 0 check(is_void in (0, 1)),
+            void_reason text not null default '',
+            voided_at text,
+            voided_by_admin_id integer,
             created_at text not null default current_timestamp
         );
 
@@ -204,6 +211,32 @@ def init_db() -> None:
             value text not null default '',
             updated_at text not null default current_timestamp
         );
+
+        create table if not exists audit_events (
+            id integer primary key autoincrement,
+            actor_admin_id integer,
+            action text not null,
+            entity_type text not null,
+            entity_id integer,
+            details text not null default '',
+            created_at text not null default current_timestamp
+        );
+
+        create table if not exists login_attempts (
+            attempt_key text primary key,
+            failures integer not null default 0,
+            first_failure_at integer not null,
+            locked_until integer not null default 0
+        );
+
+        create index if not exists idx_vouchers_project_date
+            on vouchers(project_id, voucher_date);
+        create index if not exists idx_attendance_work_date
+            on attendance(work_date, person_id);
+        create index if not exists idx_batch_items_type_created
+            on batch_items(item_type, created_at);
+        create index if not exists idx_salary_payments_person_date
+            on salary_payments(person_id, payment_date);
         """
     )
     db.executemany(
@@ -284,6 +317,18 @@ def init_db() -> None:
     if "salary_rate" not in people_columns:
         db.execute("alter table people add column salary_rate real not null default 0.0")
 
+    voucher_columns = {
+        row["name"] for row in db.execute("pragma table_info(vouchers)").fetchall()
+    }
+    if "is_void" not in voucher_columns:
+        db.execute("alter table vouchers add column is_void integer not null default 0")
+    if "void_reason" not in voucher_columns:
+        db.execute("alter table vouchers add column void_reason text not null default ''")
+    if "voided_at" not in voucher_columns:
+        db.execute("alter table vouchers add column voided_at text")
+    if "voided_by_admin_id" not in voucher_columns:
+        db.execute("alter table vouchers add column voided_by_admin_id integer")
+
     db.execute(
         """
         insert into companies (name, is_main)
@@ -308,8 +353,8 @@ def init_db() -> None:
         """
     )
     
-    # 自动生成精美施工人员和考勤测试数据 (用于演示及易用性验证)
-    if not current_app.config.get("TESTING"):
+    # 演示数据只允许在显式开启时生成，生产环境默认保持业务库为空。
+    if current_app.config.get("SEED_DEMO_DATA", False):
         people_count = db.execute("select count(*) from people").fetchone()[0]
         if people_count == 0:
             test_people = [
@@ -525,4 +570,3 @@ def init_db() -> None:
     # 对历史考勤数据进行统一订正，将以往所有的“白班”和“夜班”全部更新为“上班”
     db.execute("update attendance set shift_type = '上班' where shift_type in ('白班', '夜班')")
     db.commit()
-

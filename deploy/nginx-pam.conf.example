@@ -1,0 +1,25 @@
+# 放在 nginx 的 http {} 作用域中。
+limit_req_zone $binary_remote_addr zone=pam_login:10m rate=10r/m;
+
+server {
+    listen 443 ssl http2;
+    server_name pam.example.com;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 20m;
+
+    location = /login {
+        limit_req zone=pam_login burst=5 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}

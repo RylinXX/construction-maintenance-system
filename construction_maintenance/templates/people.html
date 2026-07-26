@@ -51,10 +51,12 @@
     </div>
     
     <!-- Premium Interactive Live Search Bar -->
-    <div class="search-bar">
+    <form class="search-bar" method="get" action="{{ url_for('web.people') }}">
+      <input type="hidden" name="tab" value="people">
       <span class="search-icon">{{ icon('search') }}</span>
-      <input type="text" id="peopleSearch" class="search-input" oninput="filterPeople()" placeholder="输入人员姓名、身份证号或工种岗位进行快速智能检索...">
-    </div>
+      <input type="search" id="peopleSearch" name="q" value="{{ people_query }}" class="search-input" placeholder="输入人员姓名、身份证号、电话或工种后回车检索全部档案...">
+      <button type="submit" class="btn btn-secondary toolbar-btn">搜索</button>
+    </form>
 
     <!-- Tradational List View -->
     <div id="peopleListView" style="display: none;">
@@ -322,6 +324,17 @@
     </div>
     <div id="peopleGridPagination" class="pagination-container"></div>
     </div> <!-- 闭合 peopleGridArea -->
+    {% if people_total_pages > 1 %}
+    <nav class="pagination-container" aria-label="人员档案分页" style="margin-top: 18px;">
+      {% if people_page > 1 %}
+      <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.people', tab='people', q=people_query, page=people_page-1) }}">上一页</a>
+      {% endif %}
+      <span class="text-muted">第 {{ people_page }} / {{ people_total_pages }} 页，共 {{ people_total_count }} 人</span>
+      {% if people_page < people_total_pages %}
+      <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.people', tab='people', q=people_query, page=people_page+1) }}">下一页</a>
+      {% endif %}
+    </nav>
+    {% endif %}
   </div>
 </div>
 </div> <!-- 闭合 mainTabContentPeople -->
@@ -751,7 +764,7 @@
               <span class="dropzone-icon">{{ icon('upload') }}</span>
               <span class="dropzone-text">点击选择或拖拽花名册 Excel 或身份证件文件至此区域</span>
               <span class="dropzone-subtext">支持多选，允许上传 .xlsx, .xls, .png, .jpg 等格式</span>
-              <input class="dropzone-input" id="files" name="files" type="file" multiple required>
+              <input class="dropzone-input" id="files" name="files" type="file" accept=".png,.jpg,.jpeg,.webp,.bmp,.pdf" multiple required>
             </div>
           </div>
         </div>
@@ -1036,7 +1049,7 @@
           <label class="form-label" style="font-weight: 700; display: block; margin-bottom: 8px;">
             当前导入月份：<strong style="color: var(--primary-color);">{{ month }}</strong>
           </label>
-          <input type="file" id="importFile" accept=".xlsx, .xls" class="form-input" style="padding: 8px; cursor: pointer; min-height: auto; width: 100%; border: 1px dashed var(--border-color); border-radius: var(--radius-md); background: var(--surface-muted);" required>
+          <input type="file" id="importFile" accept=".xlsx" class="form-input" style="padding: 8px; cursor: pointer; min-height: auto; width: 100%; border: 1px dashed var(--border-color); border-radius: var(--radius-md); background: var(--surface-muted);" required>
         </div>
         
         <div class="form-actions" style="border-top: 1px solid var(--border-color); padding-top: 18px; display: flex; justify-content: flex-end; gap: 10px;">
@@ -1812,6 +1825,11 @@ window.addEventListener('click', function(event) {
 });
 
 function switchMainTab(tab) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('tab', tab);
+  window.location.assign(url.toString());
+  return;
+  /* The remaining code is retained for older cached pages. */
   const peopleTab = document.getElementById('mainTabContentPeople');
   const attTab = document.getElementById('mainTabContentAttendance');
   const btnPeople = document.getElementById('mainTabBtnPeople');

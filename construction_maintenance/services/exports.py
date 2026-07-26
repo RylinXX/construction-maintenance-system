@@ -8,6 +8,18 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
 from construction_maintenance import repositories as repo
 
+FORMULA_PREFIXES = ("=", "+", "-", "@")
+
+
+def safe_excel_value(value):
+    if isinstance(value, str) and value.lstrip().startswith(FORMULA_PREFIXES):
+        return "'" + value
+    return value
+
+
+def _safe_excel_row(values):
+    return [safe_excel_value(value) for value in values]
+
 PEOPLE_HEADERS = [
     "姓名",
     "身份证号",
@@ -31,7 +43,7 @@ def build_people_workbook(path: Path) -> Path:
     sheet.append(PEOPLE_HEADERS)
     for person in repo.list_people():
         sheet.append(
-            [
+            _safe_excel_row([
                 person["name"],
                 person["id_number"],
                 person["gender"],
@@ -44,7 +56,7 @@ def build_people_workbook(path: Path) -> Path:
                 person["bank_name"],
                 person["entry_date"],
                 person["notes"],
-            ]
+            ])
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(path)
@@ -61,7 +73,7 @@ def build_qualification_workbook(path: Path) -> Path:
     sheet.append(QUALIFICATION_HEADERS)
     for item in repo.list_qualifications():
         sheet.append(
-            [
+            _safe_excel_row([
                 item["company_name"],
                 item["name"],
                 item["certificate_no"],
@@ -70,7 +82,7 @@ def build_qualification_workbook(path: Path) -> Path:
                 "是" if item["is_long_term"] else "否",
                 item["attachment_path"],
                 item["notes"],
-            ]
+            ])
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(path)
@@ -182,7 +194,7 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
                 row_data.append("")
 
         row_data.extend([day_count, leave_count])
-        sheet.append(row_data)
+        sheet.append(_safe_excel_row(row_data))
 
         # 为数据单元格应用精致的居中、边框及部分特殊标识字体样式
         for c_idx in range(1, len(headers) + 1):
@@ -260,7 +272,7 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
                 item["balance"]
             ]
             for col_idx, val in enumerate(row_data, start=1):
-                cell = sal_sheet.cell(row=current_row, column=col_idx, value=val)
+                cell = sal_sheet.cell(row=current_row, column=col_idx, value=safe_excel_value(val))
                 cell.font = Font(name="微软雅黑", size=10)
                 cell.border = thin_border
                 if col_idx in [6, 7, 8, 9]:
@@ -313,7 +325,7 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
                 item["balance"]
             ]
             for col_idx, val in enumerate(row_data, start=1):
-                cell = sal_sheet.cell(row=current_row, column=col_idx, value=val)
+                cell = sal_sheet.cell(row=current_row, column=col_idx, value=safe_excel_value(val))
                 cell.font = Font(name="微软雅黑", size=10)
                 cell.border = thin_border
                 if col_idx in [6, 7, 8, 9]:
@@ -354,8 +366,8 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
         pay_row = 4
         for idx, pay in enumerate(payment_data, start=1):
             sal_sheet.cell(row=pay_row, column=12, value=f"PAY-{pay['id']:05d}").alignment = center_align
-            sal_sheet.cell(row=pay_row, column=13, value=pay["person_name"]).alignment = center_align
-            sal_sheet.cell(row=pay_row, column=14, value=pay["payment_type"]).alignment = center_align
+            sal_sheet.cell(row=pay_row, column=13, value=safe_excel_value(pay["person_name"])).alignment = center_align
+            sal_sheet.cell(row=pay_row, column=14, value=safe_excel_value(pay["payment_type"])).alignment = center_align
             
             amt_cell = sal_sheet.cell(row=pay_row, column=15, value=pay["amount"])
             amt_cell.alignment = Alignment(horizontal="right", vertical="center")
@@ -366,7 +378,7 @@ def build_attendance_workbook(month: str, is_template: bool = False) -> Workbook
                 amt_cell.font = Font(name="微软雅黑", size=10, color="10b981")
                 
             sal_sheet.cell(row=pay_row, column=16, value=pay["payment_date"]).alignment = center_align
-            sal_sheet.cell(row=pay_row, column=17, value=pay["notes"] or "--").alignment = Alignment(horizontal="left", vertical="center")
+            sal_sheet.cell(row=pay_row, column=17, value=safe_excel_value(pay["notes"] or "--")).alignment = Alignment(horizontal="left", vertical="center")
             
             for col_idx in range(12, 18):
                 c = sal_sheet.cell(row=pay_row, column=col_idx)
@@ -449,7 +461,7 @@ def build_contract_workbook(path: Path) -> Path:
         ]
         
         for col_idx, val in enumerate(row_data, start=1):
-            cell = sheet.cell(row=row_idx, column=col_idx, value=val)
+            cell = sheet.cell(row=row_idx, column=col_idx, value=safe_excel_value(val))
             cell.font = font_body
             cell.border = grid_border
             
@@ -479,5 +491,4 @@ def build_contract_workbook(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(path)
     return path
-
 

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import sqlite3
 import re
+import math
+from datetime import date
+import json
 from typing import Any
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -12,6 +15,162 @@ from .db import DEFAULT_SYSTEM_SETTINGS, get_db
 PASSWORD_MIN_LENGTH = 12
 ADMIN_ROLES = {"admin", "super_admin"}
 ADMIN_USERNAME_PATTERN = re.compile(r"^[\w.@-]+$", re.UNICODE)
+ID_NUMBER_PATTERN = re.compile(r"^\d{17}[\dXx]$")
+PHONE_PATTERN = re.compile(r"^1[3-9]\d{9}$")
+PROJECT_STATUSES = {"进行中", "已暂停", "已完工"}
+
+
+def _required_text(value: Any, label: str, *, max_length: int = 200) -> str:
+    text = str(value or "").strip()
+    if not text:
+        raise ValueError(f"{label}不能为空")
+    if len(text) > max_length:
+        raise ValueError(f"{label}不能超过 {max_length} 个字符")
+    return text
+
+
+def _validated_date(value: Any, label: str, *, required: bool = False) -> str:
+    text = str(value or "").strip()
+    if not text:
+        if required:
+            raise ValueError(f"{label}不能为空")
+        return ""
+    try:
+        date.fromisoformat(text)
+    except ValueError as exc:
+        raise ValueError(f"{label}格式无效") from exc
+    return text
+
+
+def _validated_month(value: Any, label: str = "月份") -> str:
+    text = str(value or "").strip()
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", text):
+        raise ValueError(f"{label}格式无效，请使用 YYYY-MM")
+    return text
+
+
+def _validated_id_number(value: Any) -> str:
+    number = _required_text(value, "身份证号", max_length=18).upper()
+    if not ID_NUMBER_PATTERN.fullmatch(number):
+        raise ValueError("身份证号必须为 18 位有效格式")
+    try:
+        date.fromisoformat(f"{number[6:10]}-{number[10:12]}-{number[12:14]}")
+    except ValueError as exc:
+        raise ValueError("身份证号中的出生日期无效") from exc
+    return number
+
+
+def _validated_phone(value: Any) -> str:
+    phone = str(value or "").strip()
+    if phone and not PHONE_PATTERN.fullmatch(phone):
+        raise ValueError("手机号必须为 11 位中国大陆手机号码")
+    return phone
+
+
+def _insert_audit(
+    db,
+    *,
+    actor_admin_id: int | None,
+    action: str,
+    entity_type: str,
+    entity_id: int | None,
+    details: dict[str, Any] | str | None = None,
+) -> None:
+    if isinstance(details, dict):
+        details_text = json.dumps(details, ensure_ascii=False, sort_keys=True)
+    else:
+        details_text = str(details or "")
+    db.execute(
+        """
+        insert into audit_events (
+            actor_admin_id, action, entity_type, entity_id, details
+        ) values (?, ?, ?, ?, ?)
+        """,
+        (actor_admin_id, action, entity_type, entity_id, details_text),
+    )
+
+
+def record_audit(
+    action: str,
+    entity_type: str,
+    entity_id: int | None,
+    *,
+    actor_admin_id: int | None = None,
+    details: dict[str, Any] | str | None = None,
+) -> None:
+    db = get_db()
+    _insert_audit(
+        db,
+        actor_admin_id=actor_admin_id,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        details=details,
+    )
+    db.commit()
+
+
+def list_audit_events(limit: int = 200):
+    return get_db().execute(
+        """
+        select audit_events.*, admin_users.display_name as actor_name
+        from audit_events
+        left join admin_users on admin_users.id = audit_events.actor_admin_id
+        order by audit_events.id desc
+        limit ?
+        """,
+        (max(1, min(int(limit), 1000)),),
+    ).fetchall()
+
+
+def login_attempt_is_locked(attempt_key: str, now: int) -> bool:
+    row = get_db().execute(
+        "select locked_until from login_attempts where attempt_key = ?",
+        (attempt_key,),
+    ).fetchone()
+    return bool(row and int(row["locked_until"]) > now)
+
+
+def record_login_failure(
+    attempt_key: str,
+    now: int,
+    *,
+    max_failures: int = 5,
+    window_seconds: int = 900,
+    lock_seconds: int = 900,
+) -> bool:
+    db = get_db()
+    row = db.execute(
+        "select * from login_attempts where attempt_key = ?",
+        (attempt_key,),
+    ).fetchone()
+    if row is None or now - int(row["first_failure_at"]) > window_seconds:
+        failures = 1
+        first_failure_at = now
+    else:
+        failures = int(row["failures"]) + 1
+        first_failure_at = int(row["first_failure_at"])
+    locked_until = now + lock_seconds if failures >= max_failures else 0
+    db.execute(
+        """
+        insert into login_attempts (
+            attempt_key, failures, first_failure_at, locked_until
+        ) values (?, ?, ?, ?)
+        on conflict(attempt_key) do update set
+            failures = excluded.failures,
+            first_failure_at = excluded.first_failure_at,
+            locked_until = excluded.locked_until
+        """,
+        (attempt_key, failures, first_failure_at, locked_until),
+    )
+    db.commit()
+    return locked_until > now
+
+
+def clear_login_failures(attempt_key: str) -> None:
+    db = get_db()
+    db.execute("delete from login_attempts where attempt_key = ?", (attempt_key,))
+    db.commit()
 
 
 def _normalized_admin_username(value: Any) -> str:
@@ -242,7 +401,7 @@ def normalize_amount(value: Any) -> float:
         amount = float(value)
     except (TypeError, ValueError) as exc:
         raise ValueError("金额必须是数字") from exc
-    if amount <= 0:
+    if not math.isfinite(amount) or amount <= 0:
         raise ValueError("金额必须大于 0")
     return amount
 
@@ -279,10 +438,11 @@ def list_expense_category_names(include_inactive: bool = False) -> list[str]:
 
 def list_voucher_type_names(project_id: int | None = None) -> list[str]:
     params: list[Any] = []
-    where = ""
+    conditions = ["is_void = 0"]
     if project_id:
-        where = "where project_id = ?"
+        conditions.append("project_id = ?")
         params.append(project_id)
+    where = "where " + " and ".join(conditions)
     rows = get_db().execute(
         f"""
         select distinct voucher_type
@@ -416,6 +576,14 @@ def list_projects():
 
 
 def create_project(data: dict[str, Any]) -> int:
+    name = _required_text(data.get("name"), "项目名称")
+    status = str(data.get("status") or "进行中")
+    if status not in PROJECT_STATUSES:
+        raise ValueError("项目状态无效")
+    start_date = _validated_date(data.get("start_date"), "开工日期")
+    end_date = _validated_date(data.get("end_date"), "完工日期")
+    if start_date and end_date and end_date < start_date:
+        raise ValueError("完工日期不能早于开工日期")
     cursor = get_db().execute(
         """
         insert into projects (company_id, name, status, owner, start_date, end_date, notes)
@@ -423,11 +591,11 @@ def create_project(data: dict[str, Any]) -> int:
         """,
         (
             data["company_id"],
-            data["name"],
-            data.get("status", "进行中"),
+            name,
+            status,
             data.get("owner", ""),
-            data.get("start_date", ""),
-            data.get("end_date", ""),
+            start_date,
+            end_date,
             data.get("notes", ""),
         ),
     )
@@ -435,12 +603,15 @@ def create_project(data: dict[str, Any]) -> int:
     return int(cursor.lastrowid)
 
 
-def list_vouchers(project_id: int | None = None):
+def list_vouchers(project_id: int | None = None, *, include_voided: bool = False):
     params: list[Any] = []
-    where = ""
+    conditions: list[str] = []
     if project_id:
-        where = "where vouchers.project_id = ?"
+        conditions.append("vouchers.project_id = ?")
         params.append(project_id)
+    if not include_voided:
+        conditions.append("vouchers.is_void = 0")
+    where = "where " + " and ".join(conditions) if conditions else ""
     return get_db().execute(
         f"""
         select vouchers.*, projects.name as project_name
@@ -453,9 +624,18 @@ def list_vouchers(project_id: int | None = None):
     ).fetchall()
 
 
+def get_voucher(voucher_id: int):
+    return get_db().execute(
+        "select * from vouchers where id = ?", (voucher_id,)
+    ).fetchone()
+
+
 def create_voucher(data: dict[str, Any]) -> int:
     amount = normalize_amount(data["amount"])
-    cursor = get_db().execute(
+    voucher_date = _validated_date(data.get("voucher_date"), "凭证日期", required=True)
+    voucher_type = _required_text(data.get("voucher_type"), "凭证类型")
+    db = get_db()
+    cursor = db.execute(
         """
         insert into vouchers
           (project_id, voucher_date, voucher_type, amount, notes, attachment_path, entry_user)
@@ -463,16 +643,25 @@ def create_voucher(data: dict[str, Any]) -> int:
         """,
         (
             data["project_id"],
-            data["voucher_date"],
-            data["voucher_type"],
+            voucher_date,
+            voucher_type,
             amount,
             data.get("notes", ""),
             data.get("attachment_path", ""),
             data.get("entry_user", ""),
         ),
     )
-    get_db().commit()
-    return int(cursor.lastrowid)
+    voucher_id = int(cursor.lastrowid)
+    _insert_audit(
+        db,
+        actor_admin_id=data.get("actor_admin_id"),
+        action="create",
+        entity_type="voucher",
+        entity_id=voucher_id,
+        details={"amount": amount, "voucher_date": voucher_date, "type": voucher_type},
+    )
+    db.commit()
+    return voucher_id
 
 
 def list_people():
@@ -481,6 +670,14 @@ def list_people():
 
 def create_person(data: dict[str, Any]) -> int:
     is_att = int(data.get("is_attendance", 1))
+    name = _required_text(data.get("name"), "姓名", max_length=80)
+    id_number = _validated_id_number(data.get("id_number"))
+    phone = _validated_phone(data.get("phone"))
+    birth_date = _validated_date(data.get("birth_date"), "出生日期")
+    entry_date = _validated_date(data.get("entry_date"), "入职日期")
+    salary_rate = float(data.get("salary_rate", 0.0))
+    if not math.isfinite(salary_rate) or salary_rate < 0:
+        raise ValueError("薪资标准必须为不小于 0 的数字")
     cursor = get_db().execute(
         """
         insert into people
@@ -490,23 +687,23 @@ def create_person(data: dict[str, Any]) -> int:
         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            data["name"],
-            data["id_number"],
+            name,
+            id_number,
             data.get("id_card_path", ""),
             data.get("gender", ""),
-            data.get("birth_date", ""),
+            birth_date,
             data.get("age"),
-            data.get("phone", ""),
+            phone,
             data.get("address", ""),
             data.get("job_type", ""),
             data.get("bank_card", ""),
             data.get("bank_name", ""),
-            data.get("entry_date", ""),
+            entry_date,
             data.get("notes", ""),
             data.get("review_status", "已确认"),
             is_att,
             data.get("salary_type", "日薪"),
-            float(data.get("salary_rate", 0.0)),
+            salary_rate,
         ),
     )
     get_db().commit()
@@ -615,6 +812,14 @@ def update_batch_item_recognition(
 
 
 def update_project(project_id: int, data: dict[str, Any]) -> None:
+    name = _required_text(data.get("name"), "项目名称")
+    status = str(data.get("status") or "进行中")
+    if status not in PROJECT_STATUSES:
+        raise ValueError("项目状态无效")
+    start_date = _validated_date(data.get("start_date"), "开工日期")
+    end_date = _validated_date(data.get("end_date"), "完工日期")
+    if start_date and end_date and end_date < start_date:
+        raise ValueError("完工日期不能早于开工日期")
     get_db().execute(
         """
         update projects
@@ -622,11 +827,11 @@ def update_project(project_id: int, data: dict[str, Any]) -> None:
         where id = ?
         """,
         (
-            data["name"],
-            data.get("status", "进行中"),
+            name,
+            status,
             data.get("owner", ""),
-            data.get("start_date", ""),
-            data.get("end_date", ""),
+            start_date,
+            end_date,
             data.get("notes", ""),
             project_id,
         ),
@@ -636,46 +841,98 @@ def update_project(project_id: int, data: dict[str, Any]) -> None:
 
 def update_voucher(voucher_id: int, data: dict[str, Any]) -> None:
     amount = normalize_amount(data["amount"])
-    get_db().execute(
+    voucher_date = _validated_date(data.get("voucher_date"), "凭证日期", required=True)
+    voucher_type = _required_text(data.get("voucher_type"), "凭证类型")
+    db = get_db()
+    existing = db.execute("select * from vouchers where id = ?", (voucher_id,)).fetchone()
+    if existing is None:
+        raise ValueError("凭证不存在")
+    if existing["is_void"]:
+        raise ValueError("已作废凭证不能修改")
+    db.execute(
         """
         update vouchers
         set voucher_date = ?, voucher_type = ?, amount = ?, notes = ?, entry_user = ?
         where id = ?
         """,
         (
-            data["voucher_date"],
-            data["voucher_type"],
+            voucher_date,
+            voucher_type,
             amount,
             data.get("notes", ""),
             data.get("entry_user", ""),
             voucher_id,
         ),
     )
-    get_db().commit()
+    _insert_audit(
+        db,
+        actor_admin_id=data.get("actor_admin_id"),
+        action="update",
+        entity_type="voucher",
+        entity_id=voucher_id,
+        details={"amount": amount, "voucher_date": voucher_date, "type": voucher_type},
+    )
+    db.commit()
+
+
+def void_voucher(voucher_id: int, reason: Any, *, actor_admin_id: int | None) -> None:
+    reason_text = _required_text(reason, "作废原因", max_length=500)
+    db = get_db()
+    voucher = db.execute("select * from vouchers where id = ?", (voucher_id,)).fetchone()
+    if voucher is None:
+        raise ValueError("凭证不存在")
+    if voucher["is_void"]:
+        raise ValueError("凭证已经作废")
+    db.execute(
+        """
+        update vouchers
+        set is_void = 1, void_reason = ?, voided_at = current_timestamp,
+            voided_by_admin_id = ?
+        where id = ?
+        """,
+        (reason_text, actor_admin_id, voucher_id),
+    )
+    _insert_audit(
+        db,
+        actor_admin_id=actor_admin_id,
+        action="void",
+        entity_type="voucher",
+        entity_id=voucher_id,
+        details={"reason": reason_text, "amount": voucher["amount"]},
+    )
+    db.commit()
 
 
 def update_person(person_id: int, data: dict[str, Any]) -> None:
+    name = _required_text(data.get("name"), "姓名", max_length=80)
+    id_number = _validated_id_number(data.get("id_number"))
+    phone = _validated_phone(data.get("phone"))
+    birth_date = _validated_date(data.get("birth_date"), "出生日期")
+    entry_date = _validated_date(data.get("entry_date"), "入职日期")
+    salary_rate = float(data.get("salary_rate", 0.0))
+    if not math.isfinite(salary_rate) or salary_rate < 0:
+        raise ValueError("薪资标准必须为不小于 0 的数字")
     set_clause = """
         name = ?, id_number = ?, gender = ?, birth_date = ?, age = ?, phone = ?,
         address = ?, job_type = ?, bank_card = ?, bank_name = ?, entry_date = ?, notes = ?,
         is_attendance = ?, salary_type = ?, salary_rate = ?
     """
     params: list[Any] = [
-        data["name"],
-        data["id_number"],
+        name,
+        id_number,
         data.get("gender", ""),
-        data.get("birth_date", ""),
+        birth_date,
         data.get("age"),
-        data.get("phone", ""),
+        phone,
         data.get("address", ""),
         data.get("job_type", ""),
         data.get("bank_card", ""),
         data.get("bank_name", ""),
-        data.get("entry_date", ""),
+        entry_date,
         data.get("notes", ""),
         int(data.get("is_attendance", 1)),
         data.get("salary_type", "日薪"),
-        float(data.get("salary_rate", 0.0)),
+        salary_rate,
     ]
 
     if data.get("id_card_path"):
@@ -724,15 +981,45 @@ def delete_qualification(qualification_id: int) -> None:
 
 
 def delete_person(person_id: int) -> None:
-    get_db().execute("delete from people where id = ?", (person_id,))
-    get_db().commit()
-
-
-def delete_project(project_id: int) -> None:
     db = get_db()
-    db.execute("delete from vouchers where project_id = ?", (project_id,))
-    db.execute("delete from contracts where project_id = ?", (project_id,))
+    related = db.execute(
+        """
+        select
+          (select count(*) from salary_payments where person_id = ?) as payments,
+          (select count(*) from salary_sheets where person_id = ?) as sheets
+        """,
+        (person_id, person_id),
+    ).fetchone()
+    if related["payments"] or related["sheets"]:
+        raise ValueError("人员存在工资流水或结算记录，不能删除历史档案")
+    db.execute("delete from people where id = ?", (person_id,))
+    db.commit()
+
+
+def delete_project(project_id: int, *, actor_admin_id: int | None = None) -> None:
+    db = get_db()
+    project = db.execute("select * from projects where id = ?", (project_id,)).fetchone()
+    if project is None:
+        raise ValueError("项目不存在")
+    related = db.execute(
+        """
+        select
+            (select count(*) from vouchers where project_id = ?) as voucher_count,
+            (select count(*) from contracts where project_id = ?) as contract_count
+        """,
+        (project_id, project_id),
+    ).fetchone()
+    if related["voucher_count"] or related["contract_count"]:
+        raise ValueError("项目仍有关联凭证或合同，不能删除；请保留项目作为历史台账")
     db.execute("delete from projects where id = ?", (project_id,))
+    _insert_audit(
+        db,
+        actor_admin_id=actor_admin_id,
+        action="delete",
+        entity_type="project",
+        entity_id=project_id,
+        details={"name": project["name"]},
+    )
     db.commit()
 
 
@@ -894,6 +1181,11 @@ def list_salary_payments(person_id: int | None = None, month: str | None = None)
 
 def create_salary_payment(data: dict[str, Any]) -> int:
     db = get_db()
+    payment_date = _validated_date(data.get("payment_date"), "付款日期", required=True)
+    payment_type = str(data.get("payment_type") or "")
+    if payment_type not in {"预支工资", "工资发放"}:
+        raise ValueError("收付款类别无效")
+    amount = normalize_amount(data.get("amount"))
     cursor = db.execute(
         """
         insert into salary_payments (person_id, payment_date, payment_type, amount, notes)
@@ -901,14 +1193,23 @@ def create_salary_payment(data: dict[str, Any]) -> int:
         """,
         (
             data["person_id"],
-            data["payment_date"],
-            data["payment_type"],
-            float(data["amount"]),
+            payment_date,
+            payment_type,
+            amount,
             data.get("notes", ""),
         ),
     )
+    payment_id = int(cursor.lastrowid)
+    _insert_audit(
+        db,
+        actor_admin_id=data.get("actor_admin_id"),
+        action="create",
+        entity_type="salary_payment",
+        entity_id=payment_id,
+        details={"person_id": data["person_id"], "amount": amount, "type": payment_type},
+    )
     db.commit()
-    return int(cursor.lastrowid)
+    return payment_id
 
 
 def delete_salary_payment(payment_id: int) -> None:
@@ -1046,6 +1347,16 @@ def list_salary_sheets_by_person(person_id: int) -> list[dict[str, Any]]:
 
 def create_salary_sheet_item(data: dict[str, Any]) -> int:
     db = get_db()
+    settle_month = _validated_month(data.get("settle_month"), "结算月份")
+    numeric_fields = {
+        "should_work_days": float(data.get("should_work_days", 30.0)),
+        "actual_work_days": float(data.get("actual_work_days", 30.0)),
+        "salary_rate": float(data.get("salary_rate", 0.0)),
+        "earnings": float(data.get("earnings", 0.0)),
+        "paid_amount": float(data.get("paid_amount", 0.0)),
+    }
+    if any(not math.isfinite(value) or value < 0 for value in numeric_fields.values()):
+        raise ValueError("工资天数和金额必须是不小于 0 的有限数字")
     cursor = db.execute(
         """
         insert into salary_sheets 
@@ -1054,23 +1365,29 @@ def create_salary_sheet_item(data: dict[str, Any]) -> int:
         """,
         (
             data["person_id"],
-            data["settle_month"],
-            float(data.get("should_work_days", 30.0)),
-            float(data.get("actual_work_days", 30.0)),
-            float(data.get("salary_rate", 0.0)),
-            float(data.get("earnings", 0.0)),
-            float(data.get("paid_amount", 0.0)),
+            settle_month,
+            numeric_fields["should_work_days"],
+            numeric_fields["actual_work_days"],
+            numeric_fields["salary_rate"],
+            numeric_fields["earnings"],
+            numeric_fields["paid_amount"],
             data.get("notes", ""),
         ),
     )
+    sheet_id = int(cursor.lastrowid)
+    _insert_audit(
+        db,
+        actor_admin_id=data.get("actor_admin_id"),
+        action="create",
+        entity_type="salary_sheet",
+        entity_id=sheet_id,
+        details={"person_id": data["person_id"], "month": settle_month},
+    )
     db.commit()
-    return int(cursor.lastrowid)
+    return sheet_id
 
 
 def delete_salary_sheet_item(item_id: int) -> None:
     db = get_db()
     db.execute("delete from salary_sheets where id = ?", (item_id,))
     db.commit()
-
-
-
