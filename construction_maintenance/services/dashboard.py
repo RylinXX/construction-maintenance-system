@@ -4,16 +4,41 @@ from collections import defaultdict
 from datetime import date
 
 from construction_maintenance import repositories as repo
+from construction_maintenance.db import get_db
 
 
 def build_dashboard() -> dict:
     current_month = date.today().strftime("%Y-%m")
     vouchers = repo.list_vouchers()
     batch_items = repo.list_batch_items()
-    total_spending = sum(float(row["amount"]) for row in vouchers)
-    month_spending = sum(
-        float(row["amount"]) for row in vouchers if str(row["voucher_date"]).startswith(current_month)
-    )
+    financial = get_db().execute(
+        """
+        select
+          coalesce(sum(case when transaction_type = '支出' then amount else 0 end), 0) as expense,
+          coalesce(sum(case when transaction_type = '冲减支出' then amount else 0 end), 0) as expense_reduction,
+          coalesce(sum(case when transaction_type = '收入' then amount else 0 end), 0) as income,
+          coalesce(sum(case when transaction_type = '资金往来' then amount else 0 end), 0) as fund_transfer
+        from vouchers
+        where is_void = 0
+        """
+    ).fetchone()
+    month_row = get_db().execute(
+        """
+        select coalesce(sum(case
+          when transaction_type = '支出' then amount
+          when transaction_type = '冲减支出' then -amount
+          else 0 end), 0) as net_expense
+        from vouchers
+        where is_void = 0 and voucher_date like ?
+        """,
+        (f"{current_month}%",),
+    ).fetchone()
+    expense = float(financial["expense"])
+    expense_reduction = float(financial["expense_reduction"])
+    net_expense = expense - expense_reduction
+    income = float(financial["income"])
+    fund_transfer = float(financial["fund_transfer"])
+    month_spending = float(month_row["net_expense"])
     by_project: dict[str, float] = defaultdict(float)
     by_type: dict[str, float] = defaultdict(float)
     # 计算每月总支出趋势与科目构成分布
@@ -22,16 +47,23 @@ def build_dashboard() -> dict:
     monthly_category_spend = defaultdict(lambda: defaultdict(float))
     
     for row in vouchers:
-        by_project[row["project_name"]] += float(row["amount"])
-        by_type[row["voucher_type"]] += float(row["amount"])
+        transaction_type = row["transaction_type"]
+        if transaction_type not in {"支出", "冲减支出"}:
+            continue
+        signed_amount = float(row["amount"])
+        if transaction_type == "冲减支出":
+            signed_amount = -signed_amount
+        category_name = row["secondary_category"] or row["voucher_type"]
+        by_project[row["project_name"]] += signed_amount
+        by_type[category_name] += signed_amount
         
         # 提取月份 YYYY-MM
         v_date = row["voucher_date"]
         if v_date and len(v_date) >= 7:
             m_key = v_date[:7]
             months_set.add(m_key)
-            categories_set.add(row["voucher_type"])
-            monthly_category_spend[m_key][row["voucher_type"]] += float(row["amount"])
+            categories_set.add(category_name)
+            monthly_category_spend[m_key][category_name] += signed_amount
             
     # 按时间升序排列月份
     sorted_months = sorted(list(months_set))
@@ -70,7 +102,12 @@ def build_dashboard() -> dict:
 
     return {
         "month_spending": month_spending,
-        "total_spending": total_spending,
+        "expense": expense,
+        "expense_reduction": expense_reduction,
+        "net_expense": net_expense,
+        "income": income,
+        "fund_transfer": fund_transfer,
+        "total_spending": net_expense,
         "voucher_count": len(vouchers),
         "pending_count": sum(1 for row in batch_items if row["status"] == "待确认"),
         "expiring_qualifications": expiring_count,

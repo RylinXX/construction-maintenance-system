@@ -4,6 +4,7 @@ from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
 
 
 from construction_maintenance import repositories as repo
@@ -89,7 +90,12 @@ def build_qualification_workbook(path: Path) -> Path:
     return path
 
 
-PROJECT_LEDGER_HEADERS = ["日期", "项目", "类型", "金额", "备注", "附件", "录入人"]
+PROJECT_LEDGER_HEADERS = [
+    "记录编号", "日期", "项目", "收支类型", "一级分类", "二级分类",
+    "事项摘要", "金额", "经办/垫付人", "付款状态", "付款日期",
+    "支付/报销说明", "复核状态", "分类置信度", "来源文件",
+    "来源工作表", "原始行号", "作废状态",
+]
 
 
 def build_project_ledger_workbook(path: Path) -> Path:
@@ -97,18 +103,42 @@ def build_project_ledger_workbook(path: Path) -> Path:
     sheet = workbook.active
     sheet.title = "项目台账"
     sheet.append(PROJECT_LEDGER_HEADERS)
-    for item in repo.list_vouchers():
+    for item in repo.list_vouchers(include_voided=True):
         sheet.append(
-            [
+            _safe_excel_row([
+                item["source_record_id"] or "",
                 item["voucher_date"],
                 item["project_name"],
-                item["voucher_type"],
-                item["amount"],
+                item["transaction_type"],
+                item["primary_category"] or "",
+                item["secondary_category"] or item["voucher_type"],
                 item["notes"],
-                item["attachment_path"],
-                item["entry_user"],
-            ]
+                item["amount"],
+                item["handler_name"],
+                item["payment_status"],
+                item["payment_date"],
+                item["payment_notes"],
+                item["review_status"],
+                item["classification_confidence"],
+                item["source_filename"],
+                item["source_sheet"],
+                item["source_row"],
+                "已作废" if item["is_void"] else "有效",
+            ])
         )
+    header_fill = PatternFill(start_color="dbeafe", end_color="dbeafe", fill_type="solid")
+    header_font = Font(name="微软雅黑", size=10, bold=True, color="0f172a")
+    for cell in sheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    for row in range(2, sheet.max_row + 1):
+        sheet.cell(row=row, column=8).number_format = '#,##0.00'
+    sheet.freeze_panes = "A2"
+    sheet.auto_filter.ref = f"A1:R{sheet.max_row}"
+    widths = [24, 12, 24, 12, 18, 22, 42, 14, 18, 20, 12, 36, 12, 12, 30, 20, 12, 12]
+    for index, width in enumerate(widths, start=1):
+        sheet.column_dimensions[get_column_letter(index)].width = width
     path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(path)
     return path
@@ -491,4 +521,3 @@ def build_contract_workbook(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(path)
     return path
-

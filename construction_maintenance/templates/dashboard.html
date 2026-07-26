@@ -3,7 +3,7 @@
 {% block title %}数据看板 - {{ system_settings.system_name }}{% endblock %}
 {% block breadcrumb %}看板{% endblock %}
 
-{% block page_subtitle %}项目支出、凭证、人员与资质的集中运营视图{% endblock %}
+{% block page_subtitle %}项目净支出、财务明细、人员与资质的集中运营视图{% endblock %}
 
 {% block content %}
 <section class="dashboard-hero animate-slide-up">
@@ -14,7 +14,7 @@
   </div>
   <div class="dashboard-hero-panel">
     <div>
-      <span>本月支出</span>
+      <span>本月净支出</span>
       <strong>¥{{ metrics.month_spending|money_short }}</strong>
     </div>
     <div>
@@ -32,18 +32,36 @@
   <article class="metric-card blue">
     <span class="metric-icon">{{ icon('money') }}</span>
     <div class="metric-info">
-      <span class="metric-title">本月项目支出</span>
+      <span class="metric-title">本月项目净支出</span>
       <strong class="metric-value">¥{{ metrics.month_spending|money_short }}</strong>
-      <span class="metric-baseline">按本月已录入凭证统计</span>
+      <span class="metric-baseline">支出扣除冲减支出</span>
     </div>
   </article>
 
   <article class="metric-card indigo">
     <span class="metric-icon">{{ icon('trend') }}</span>
     <div class="metric-info">
-      <span class="metric-title">累计项目支出</span>
-      <strong class="metric-value">¥{{ metrics.total_spending|money_short }}</strong>
+      <span class="metric-title">累计项目净支出</span>
+      <strong class="metric-value">¥{{ metrics.net_expense|money_short }}</strong>
       <span class="metric-baseline">覆盖全部项目台账</span>
+    </div>
+  </article>
+
+  <article class="metric-card emerald">
+    <span class="metric-icon">{{ icon('money') }}</span>
+    <div class="metric-info">
+      <span class="metric-title">累计收入</span>
+      <strong class="metric-value">¥{{ metrics.income|money_short }}</strong>
+      <span class="metric-baseline">不计入项目成本</span>
+    </div>
+  </article>
+
+  <article class="metric-card cyan">
+    <span class="metric-icon">{{ icon('bank-card') }}</span>
+    <div class="metric-info">
+      <span class="metric-title">资金往来</span>
+      <strong class="metric-value">¥{{ metrics.fund_transfer|money_short }}</strong>
+      <span class="metric-baseline">借款、备用金及押金</span>
     </div>
   </article>
 
@@ -81,8 +99,8 @@
   <div class="panel-card">
     <div class="panel-header">
       <div>
-        <h2 class="panel-title">{{ icon('trend') }} 公司每月总支出与科目构成趋势</h2>
-        <p class="panel-subtitle">按月份统计的公司总资金支出变化，以及各项费用的构成分布趋势。</p>
+        <h2 class="panel-title">{{ icon('trend') }} 每月项目净支出与科目构成</h2>
+        <p class="panel-subtitle">支出扣除冲减支出，收入和资金往来不计入项目成本。</p>
       </div>
     </div>
     <div class="chart-container" style="position: relative; height: 320px;">
@@ -101,8 +119,8 @@
   <div class="panel-card">
     <div class="panel-header">
       <div>
-        <h2 class="panel-title">{{ icon('dashboard') }} 项目累计支出排行</h2>
-        <p class="panel-subtitle">各项建筑工程的累计总资金支出排行（人民币）。</p>
+        <h2 class="panel-title">{{ icon('dashboard') }} 项目净支出排行</h2>
+        <p class="panel-subtitle">各项目支出扣除冲减支出后的累计金额。</p>
       </div>
     </div>
     <div class="chart-container" style="position: relative; height: 320px;">
@@ -224,7 +242,7 @@ document.addEventListener("DOMContentLoaded", function() {
               tooltipItems.forEach(function(tooltipItem) {
                 sum += tooltipItem.raw;
               });
-              return '\n 每月总支出: ¥' + sum.toLocaleString('zh-CN', {minimumFractionDigits: 2});
+              return '\n 每月净支出: ¥' + sum.toLocaleString('zh-CN', {minimumFractionDigits: 2});
             }
           }
         }
