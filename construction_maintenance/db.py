@@ -50,6 +50,58 @@ def init_app(app) -> None:
     app.teardown_appcontext(close_db)
 
 
+def _ensure_column(db: sqlite3.Connection, table: str, name: str, ddl: str) -> None:
+    columns = {row["name"] for row in db.execute(f"pragma table_info({table})")}
+    if name not in columns:
+        db.execute(f"alter table {table} add column {name} {ddl}")
+
+
+def _seed_ledger_categories(db: sqlite3.Connection) -> None:
+    from .finance import LEDGER_CATEGORY_TREE
+
+    for root_order, (root_name, (scope, leaves)) in enumerate(
+        LEDGER_CATEGORY_TREE.items(), start=1
+    ):
+        db.execute(
+            """
+            insert into expense_categories
+              (name, parent_id, transaction_scope, sort_order, is_active)
+            values (?, null, ?, ?, 1)
+            on conflict(name) do update set
+              parent_id = null,
+              transaction_scope = excluded.transaction_scope,
+              sort_order = excluded.sort_order,
+              is_active = 1
+            """,
+            (root_name, scope, root_order * 100),
+        )
+        root_id = db.execute(
+            "select id from expense_categories where name = ?", (root_name,)
+        ).fetchone()["id"]
+        for leaf_order, leaf_name in enumerate(leaves, start=1):
+            db.execute(
+                """
+                insert into expense_categories
+                  (name, parent_id, transaction_scope, sort_order, is_active)
+                values (?, ?, ?, ?, 1)
+                on conflict(name) do update set
+                  parent_id = excluded.parent_id,
+                  transaction_scope = excluded.transaction_scope,
+                  sort_order = excluded.sort_order,
+                  is_active = 1
+                """,
+                (leaf_name, root_id, scope, leaf_order * 10),
+            )
+
+    legacy_names = (
+        "员工报销", "转账凭证", "材料费用", "油费", "人工工资", "其它"
+    )
+    db.executemany(
+        "update expense_categories set is_active = 0 where name = ?",
+        ((name,) for name in legacy_names),
+    )
+
+
 def init_db() -> None:
     db = get_db()
     db.executescript(
@@ -90,15 +142,48 @@ def init_db() -> None:
             void_reason text not null default '',
             voided_at text,
             voided_by_admin_id integer,
+            source_record_id text,
+            transaction_type text not null default '支出',
+            category_id integer references expense_categories(id),
+            handler_name text not null default '',
+            payment_status text not null default '支付状态待确认',
+            payment_date text not null default '',
+            payment_notes text not null default '',
+            review_status text not null default '已确认',
+            classification_confidence text not null default '',
+            source_filename text not null default '',
+            source_sheet text not null default '',
+            source_row integer,
+            original_notes text not null default '',
             created_at text not null default current_timestamp
         );
 
         create table if not exists expense_categories (
             id integer primary key autoincrement,
             name text not null unique,
+            parent_id integer references expense_categories(id),
+            transaction_scope text not null default '支出',
             sort_order integer not null default 0,
             is_active integer not null default 1,
             created_at text not null default current_timestamp
+        );
+
+        create table if not exists ledger_pending_items (
+            id integer primary key autoincrement,
+            project_id integer not null references projects(id),
+            item_date text not null,
+            summary text not null,
+            suggested_category_id integer references expense_categories(id),
+            handler_name text not null default '',
+            payment_notes text not null default '',
+            source_filename text not null,
+            source_sheet text not null,
+            source_row integer not null,
+            issue_type text not null,
+            status text not null default '待补录',
+            voucher_id integer references vouchers(id),
+            created_at text not null default current_timestamp,
+            unique(project_id, source_filename, source_sheet, source_row)
         );
 
         create table if not exists people (
@@ -305,29 +390,50 @@ def init_db() -> None:
                     (bootstrap_username, bootstrap_password_hash),
                 )
 
-    people_columns = {
-        row["name"] for row in db.execute("pragma table_info(people)").fetchall()
-    }
-    if "id_card_path" not in people_columns:
-        db.execute("alter table people add column id_card_path text not null default ''")
-    if "is_attendance" not in people_columns:
-        db.execute("alter table people add column is_attendance integer not null default 1")
-    if "salary_type" not in people_columns:
-        db.execute("alter table people add column salary_type text not null default '日薪'")
-    if "salary_rate" not in people_columns:
-        db.execute("alter table people add column salary_rate real not null default 0.0")
+    _ensure_column(db, "people", "id_card_path", "text not null default ''")
+    _ensure_column(db, "people", "is_attendance", "integer not null default 1")
+    _ensure_column(db, "people", "salary_type", "text not null default '日薪'")
+    _ensure_column(db, "people", "salary_rate", "real not null default 0.0")
 
-    voucher_columns = {
-        row["name"] for row in db.execute("pragma table_info(vouchers)").fetchall()
-    }
-    if "is_void" not in voucher_columns:
-        db.execute("alter table vouchers add column is_void integer not null default 0")
-    if "void_reason" not in voucher_columns:
-        db.execute("alter table vouchers add column void_reason text not null default ''")
-    if "voided_at" not in voucher_columns:
-        db.execute("alter table vouchers add column voided_at text")
-    if "voided_by_admin_id" not in voucher_columns:
-        db.execute("alter table vouchers add column voided_by_admin_id integer")
+    _ensure_column(db, "expense_categories", "parent_id", "integer references expense_categories(id)")
+    _ensure_column(db, "expense_categories", "transaction_scope", "text not null default '支出'")
+    _ensure_column(db, "vouchers", "is_void", "integer not null default 0")
+    _ensure_column(db, "vouchers", "void_reason", "text not null default ''")
+    _ensure_column(db, "vouchers", "voided_at", "text")
+    _ensure_column(db, "vouchers", "voided_by_admin_id", "integer")
+    _ensure_column(db, "vouchers", "source_record_id", "text")
+    _ensure_column(db, "vouchers", "transaction_type", "text not null default '支出'")
+    _ensure_column(db, "vouchers", "category_id", "integer references expense_categories(id)")
+    _ensure_column(db, "vouchers", "handler_name", "text not null default ''")
+    _ensure_column(db, "vouchers", "payment_status", "text not null default '支付状态待确认'")
+    _ensure_column(db, "vouchers", "payment_date", "text not null default ''")
+    _ensure_column(db, "vouchers", "payment_notes", "text not null default ''")
+    _ensure_column(db, "vouchers", "review_status", "text not null default '已确认'")
+    _ensure_column(db, "vouchers", "classification_confidence", "text not null default ''")
+    _ensure_column(db, "vouchers", "source_filename", "text not null default ''")
+    _ensure_column(db, "vouchers", "source_sheet", "text not null default ''")
+    _ensure_column(db, "vouchers", "source_row", "integer")
+    _ensure_column(db, "vouchers", "original_notes", "text not null default ''")
+
+    _seed_ledger_categories(db)
+    db.execute(
+        """
+        create unique index if not exists idx_vouchers_source_record_id
+        on vouchers(source_record_id) where source_record_id is not null
+        """
+    )
+    db.execute(
+        """
+        create index if not exists idx_vouchers_financial_filters
+        on vouchers(project_id, transaction_type, category_id, payment_status, review_status)
+        """
+    )
+    db.execute(
+        """
+        create index if not exists idx_pending_project_status
+        on ledger_pending_items(project_id, status, item_date)
+        """
+    )
 
     db.execute(
         """
@@ -336,15 +442,6 @@ def init_db() -> None:
         where not exists (select 1 from companies where is_main = 1)
         """
     )
-    category_count = db.execute("select count(*) from expense_categories").fetchone()[0]
-    if category_count == 0:
-        db.executemany(
-            """
-            insert into expense_categories (name, sort_order, is_active)
-            values (?, ?, 1)
-            """,
-            [(name, index * 10) for index, name in enumerate(DEFAULT_EXPENSE_CATEGORIES, start=1)],
-        )
     db.execute(
         """
         update batch_items

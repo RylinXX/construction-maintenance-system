@@ -70,27 +70,42 @@ def test_legacy_system_names_are_upgraded(app):
             assert system_name == "营力特数字化系统"
 
 
-def test_default_expense_categories_are_seeded(app):
+def test_structured_expense_categories_replace_legacy_defaults(app):
     with app.app_context():
         init_db()
-        rows = get_db().execute(
+        roots = get_db().execute(
             """
-            select name, is_active
+            select name, transaction_scope
             from expense_categories
+            where parent_id is null and is_active = 1
             order by sort_order, id
             """
         ).fetchall()
+        active_legacy_count = get_db().execute(
+            """
+            select count(*)
+            from expense_categories
+            where name in ('员工报销', '转账凭证', '材料费用', '油费', '人工工资', '其它')
+              and is_active = 1
+            """
+        ).fetchone()[0]
 
-    assert [row["name"] for row in rows] == [
-        "员工报销",
-        "转账凭证",
-        "材料费用",
-        "油费",
-        "电费",
-        "人工工资",
-        "其它",
+    assert [row["name"] for row in roots] == [
+        "人工成本",
+        "商务及前期费",
+        "安全文明施工费",
+        "机械设备费",
+        "材料费",
+        "燃料动力费",
+        "财务及其他",
+        "车辆费用",
+        "运输及处置费",
+        "项目现场管理费",
+        "收入",
+        "资金往来",
     ]
-    assert all(row["is_active"] == 1 for row in rows)
+    assert {row["transaction_scope"] for row in roots} == {"支出", "收入", "资金往来"}
+    assert active_legacy_count == 0
 
 
 def test_people_table_has_id_card_attachment_column(app):
@@ -139,4 +154,3 @@ def test_contracts_table_initialization(app):
         fk_list = fk_cursor.fetchall()
         assert len(fk_list) > 0
         assert any(row["table"] == "projects" and row["from"] == "project_id" for row in fk_list)
-
