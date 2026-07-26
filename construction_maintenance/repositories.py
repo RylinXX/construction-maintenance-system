@@ -10,6 +10,13 @@ from typing import Any
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .db import DEFAULT_SYSTEM_SETTINGS, get_db
+from .finance import (
+    CLASSIFICATION_CONFIDENCES,
+    LEGACY_CATEGORY_MAP,
+    PAYMENT_STATUSES,
+    REVIEW_STATUSES,
+    TRANSACTION_TYPES,
+)
 
 
 PASSWORD_MIN_LENGTH = 12
@@ -420,14 +427,81 @@ def normalize_sort_order(value: Any) -> int:
         return 0
 
 
+def _validated_choice(value: Any, label: str, choices: tuple[str, ...]) -> str:
+    text = str(value or "").strip()
+    if text not in choices:
+        raise ValueError(f"{label}无效")
+    return text
+
+
+def _get_leaf_category(category_id: int):
+    row = get_db().execute(
+        """
+        select leaf.*, parent.name as primary_name
+        from expense_categories leaf
+        join expense_categories parent on parent.id = leaf.parent_id
+        where leaf.id = ? and leaf.is_active = 1 and parent.is_active = 1
+        """,
+        (int(category_id),),
+    ).fetchone()
+    if row is None:
+        raise ValueError("二级分类不存在或已停用")
+    return row
+
+
+def _insert_voucher(db: sqlite3.Connection, data: dict[str, Any]) -> int:
+    amount = normalize_amount(data["amount"])
+    voucher_date = _validated_date(data.get("voucher_date"), "凭证日期", required=True)
+    transaction_type = _validated_choice(
+        data.get("transaction_type", "支出"), "收支类型", TRANSACTION_TYPES
+    )
+    category = _get_leaf_category(int(data["category_id"]))
+    expected_scope = "支出" if transaction_type in {"支出", "冲减支出"} else transaction_type
+    if category["transaction_scope"] != expected_scope:
+        raise ValueError("分类与收支类型不匹配")
+    payment_status = _validated_choice(
+        data.get("payment_status", "支付状态待确认"), "付款状态", PAYMENT_STATUSES
+    )
+    review_status = _validated_choice(
+        data.get("review_status", "已确认"), "复核状态", REVIEW_STATUSES
+    )
+    confidence = str(data.get("classification_confidence") or "").strip()
+    if confidence and confidence not in CLASSIFICATION_CONFIDENCES:
+        raise ValueError("分类置信度无效")
+    cursor = db.execute(
+        """
+        insert into vouchers (
+          project_id, voucher_date, voucher_type, amount, notes, attachment_path,
+          entry_user, source_record_id, transaction_type, category_id, handler_name,
+          payment_status, payment_date, payment_notes, review_status,
+          classification_confidence, source_filename, source_sheet, source_row,
+          original_notes
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            int(data["project_id"]), voucher_date,
+            str(data.get("voucher_type") or category["name"]), amount,
+            str(data.get("notes") or ""), str(data.get("attachment_path") or ""),
+            str(data.get("entry_user") or ""), data.get("source_record_id"),
+            transaction_type, category["id"], str(data.get("handler_name") or ""),
+            payment_status, _validated_date(data.get("payment_date"), "付款日期"),
+            str(data.get("payment_notes") or ""), review_status, confidence,
+            str(data.get("source_filename") or ""), str(data.get("source_sheet") or ""),
+            data.get("source_row"), str(data.get("original_notes") or ""),
+        ),
+    )
+    return int(cursor.lastrowid)
+
+
 def list_expense_categories(include_inactive: bool = False):
-    where = "" if include_inactive else "where is_active = 1"
+    where = "" if include_inactive else "where categories.is_active = 1"
     return get_db().execute(
         f"""
-        select *
-        from expense_categories
+        select categories.*, parents.name as primary_name
+        from expense_categories categories
+        left join expense_categories parents on parents.id = categories.parent_id
         {where}
-        order by sort_order, id
+        order by categories.sort_order, categories.id
         """
     ).fetchall()
 
@@ -445,8 +519,9 @@ def list_voucher_type_names(project_id: int | None = None) -> list[str]:
     where = "where " + " and ".join(conditions)
     rows = get_db().execute(
         f"""
-        select distinct voucher_type
+        select distinct coalesce(secondary.name, vouchers.voucher_type) as voucher_type
         from vouchers
+        left join expense_categories secondary on secondary.id = vouchers.category_id
         {where}
         order by voucher_type
         """,
@@ -458,13 +533,23 @@ def list_voucher_type_names(project_id: int | None = None) -> list[str]:
 def create_expense_category(data: dict[str, Any]) -> int:
     name = normalize_expense_category_name(data["name"])
     sort_order = normalize_sort_order(data.get("sort_order"))
+    parent_id = data.get("parent_id")
+    if "parent_id" not in data:
+        fallback_parent = get_db().execute(
+            "select id from expense_categories where name = '财务及其他' and parent_id is null"
+        ).fetchone()
+        parent_id = fallback_parent["id"] if fallback_parent else None
+    transaction_scope = str(data.get("transaction_scope") or "支出")
+    if transaction_scope not in {"支出", "收入", "资金往来"}:
+        raise ValueError("收支范围无效")
     try:
         cursor = get_db().execute(
             """
-            insert into expense_categories (name, sort_order, is_active)
-            values (?, ?, 1)
+            insert into expense_categories
+              (name, parent_id, transaction_scope, sort_order, is_active)
+            values (?, ?, ?, ?, 1)
             """,
-            (name, sort_order),
+            (name, parent_id, transaction_scope, sort_order),
         )
     except sqlite3.IntegrityError as exc:
         raise ValueError("费用科目名称不能重复") from exc
@@ -481,15 +566,36 @@ def update_expense_category(category_id: int, data: dict[str, Any]) -> None:
     name = normalize_expense_category_name(data["name"])
     sort_order = normalize_sort_order(data.get("sort_order"))
     is_active = 1 if data.get("is_active") else 0
+    parent_id = data.get("parent_id", existing["parent_id"])
+    transaction_scope = str(
+        data.get("transaction_scope") or existing["transaction_scope"] or "支出"
+    )
+    if transaction_scope not in {"支出", "收入", "资金往来"}:
+        raise ValueError("收支范围无效")
+    if parent_id is not None and int(parent_id) == category_id:
+        raise ValueError("分类不能以自身为父分类")
+    if parent_id is not None:
+        parent = db.execute(
+            """
+            select * from expense_categories
+            where id = ? and parent_id is null and is_active = 1
+            """,
+            (int(parent_id),),
+        ).fetchone()
+        if parent is None:
+            raise ValueError("一级分类不存在或已停用")
+        if parent["transaction_scope"] != transaction_scope:
+            raise ValueError("分类与收支范围不匹配")
 
     try:
         db.execute(
             """
             update expense_categories
-            set name = ?, sort_order = ?, is_active = ?
+            set name = ?, parent_id = ?, transaction_scope = ?,
+                sort_order = ?, is_active = ?
             where id = ?
             """,
-            (name, sort_order, is_active, category_id),
+            (name, parent_id, transaction_scope, sort_order, is_active, category_id),
         )
     except sqlite3.IntegrityError as exc:
         raise ValueError("费用科目名称不能重复") from exc
@@ -499,9 +605,9 @@ def update_expense_category(category_id: int, data: dict[str, Any]) -> None:
             """
             update vouchers
             set voucher_type = ?
-            where voucher_type = ?
+            where category_id = ? or voucher_type = ?
             """,
-            (name, existing["name"]),
+            (name, category_id, existing["name"]),
         )
     db.commit()
 
@@ -603,22 +709,53 @@ def create_project(data: dict[str, Any]) -> int:
     return int(cursor.lastrowid)
 
 
-def list_vouchers(project_id: int | None = None, *, include_voided: bool = False):
+def list_vouchers(
+    project_id: int | None = None,
+    *,
+    include_voided: bool = False,
+    transaction_type: str | None = None,
+    primary_category_id: int | None = None,
+    category_id: int | None = None,
+    payment_status: str | None = None,
+    review_status: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+):
     params: list[Any] = []
     conditions: list[str] = []
-    if project_id:
-        conditions.append("vouchers.project_id = ?")
-        params.append(project_id)
+    filters = (
+        (project_id, "vouchers.project_id = ?"),
+        (transaction_type, "vouchers.transaction_type = ?"),
+        (primary_category_id, "parent.id = ?"),
+        (category_id, "leaf.id = ?"),
+        (payment_status, "vouchers.payment_status = ?"),
+        (review_status, "vouchers.review_status = ?"),
+    )
+    for value, condition in filters:
+        if value not in (None, ""):
+            conditions.append(condition)
+            params.append(value)
+    if date_from:
+        conditions.append("vouchers.voucher_date >= ?")
+        params.append(_validated_date(date_from, "开始日期", required=True))
+    if date_to:
+        conditions.append("vouchers.voucher_date <= ?")
+        params.append(_validated_date(date_to, "结束日期", required=True))
     if not include_voided:
         conditions.append("vouchers.is_void = 0")
     where = "where " + " and ".join(conditions) if conditions else ""
     return get_db().execute(
         f"""
-        select vouchers.*, projects.name as project_name
+        select vouchers.*, projects.name as project_name,
+               leaf.name as secondary_category,
+               parent.name as primary_category,
+               parent.id as primary_category_id
         from vouchers
         join projects on projects.id = vouchers.project_id
+        left join expense_categories leaf on leaf.id = vouchers.category_id
+        left join expense_categories parent on parent.id = leaf.parent_id
         {where}
-        order by vouchers.voucher_date desc, vouchers.created_at desc
+        order by vouchers.voucher_date desc, vouchers.id desc
         """,
         params,
     ).fetchall()
@@ -631,37 +768,288 @@ def get_voucher(voucher_id: int):
 
 
 def create_voucher(data: dict[str, Any]) -> int:
-    amount = normalize_amount(data["amount"])
-    voucher_date = _validated_date(data.get("voucher_date"), "凭证日期", required=True)
-    voucher_type = _required_text(data.get("voucher_type"), "凭证类型")
+    data = dict(data)
+    if not data.get("category_id"):
+        legacy_name = _required_text(data.get("voucher_type"), "凭证类型")
+        leaf_name = LEGACY_CATEGORY_MAP.get(legacy_name, legacy_name)
+        leaf = get_db().execute(
+            """
+            select id from expense_categories
+            where name = ? and parent_id is not null and is_active = 1
+            """,
+            (leaf_name,),
+        ).fetchone()
+        if leaf is None:
+            raise ValueError("凭证类型没有对应的启用二级分类")
+        data["category_id"] = int(leaf["id"])
     db = get_db()
-    cursor = db.execute(
-        """
-        insert into vouchers
-          (project_id, voucher_date, voucher_type, amount, notes, attachment_path, entry_user)
-        values (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            data["project_id"],
-            voucher_date,
-            voucher_type,
-            amount,
-            data.get("notes", ""),
-            data.get("attachment_path", ""),
-            data.get("entry_user", ""),
-        ),
-    )
-    voucher_id = int(cursor.lastrowid)
+    voucher_id = _insert_voucher(db, data)
     _insert_audit(
         db,
         actor_admin_id=data.get("actor_admin_id"),
         action="create",
         entity_type="voucher",
         entity_id=voucher_id,
-        details={"amount": amount, "voucher_date": voucher_date, "type": voucher_type},
+        details={
+            "amount": data["amount"],
+            "voucher_date": data.get("voucher_date"),
+            "type": data.get("transaction_type", "支出"),
+        },
     )
     db.commit()
     return voucher_id
+
+
+def get_project_financial_summary(project_id: int) -> dict[str, float | int]:
+    row = get_db().execute(
+        """
+        select
+          coalesce(sum(case when transaction_type = '支出' then amount else 0 end), 0) as expense,
+          coalesce(sum(case when transaction_type = '冲减支出' then amount else 0 end), 0) as expense_reduction,
+          coalesce(sum(case when transaction_type = '收入' then amount else 0 end), 0) as income,
+          coalesce(sum(case when transaction_type = '资金往来' then amount else 0 end), 0) as fund_transfer,
+          coalesce(sum(case
+            when payment_status != '已支付/已报销' and transaction_type = '支出' then amount
+            when payment_status != '已支付/已报销' and transaction_type = '冲减支出' then -amount
+            else 0 end), 0) as unsettled,
+          count(*) as entry_count,
+          sum(case when review_status = '待复核' then 1 else 0 end) as review_count
+        from vouchers
+        where project_id = ? and is_void = 0
+        """,
+        (project_id,),
+    ).fetchone()
+    pending_count = get_db().execute(
+        """
+        select count(*) from ledger_pending_items
+        where project_id = ? and status = '待补录'
+        """,
+        (project_id,),
+    ).fetchone()[0]
+    expense = float(row["expense"])
+    reduction = float(row["expense_reduction"])
+    return {
+        "expense": expense,
+        "expense_reduction": reduction,
+        "net_expense": expense - reduction,
+        "income": float(row["income"]),
+        "fund_transfer": float(row["fund_transfer"]),
+        "unsettled": float(row["unsettled"]),
+        "entry_count": int(row["entry_count"]),
+        "review_count": int(row["review_count"] or 0),
+        "pending_count": int(pending_count),
+    }
+
+
+def create_ledger_pending_item(data: dict[str, Any]) -> int:
+    category = _get_leaf_category(int(data["suggested_category_id"]))
+    db = get_db()
+    cursor = db.execute(
+        """
+        insert into ledger_pending_items (
+          project_id, item_date, summary, suggested_category_id, handler_name,
+          payment_notes, source_filename, source_sheet, source_row, issue_type
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            int(data["project_id"]),
+            _validated_date(data.get("item_date"), "发生日期", required=True),
+            _required_text(data.get("summary"), "事项摘要", max_length=500),
+            int(category["id"]),
+            str(data.get("handler_name") or ""),
+            str(data.get("payment_notes") or ""),
+            _required_text(data.get("source_filename"), "来源文件"),
+            _required_text(data.get("source_sheet"), "来源工作表"),
+            int(data["source_row"]),
+            _required_text(data.get("issue_type"), "待确认问题"),
+        ),
+    )
+    db.commit()
+    return int(cursor.lastrowid)
+
+
+def get_ledger_pending_item(item_id: int):
+    return get_db().execute(
+        "select * from ledger_pending_items where id = ?", (item_id,)
+    ).fetchone()
+
+
+def list_ledger_pending_items(
+    project_id: int | None = None, status: str | None = None
+):
+    conditions: list[str] = []
+    params: list[Any] = []
+    if project_id is not None:
+        conditions.append("items.project_id = ?")
+        params.append(project_id)
+    if status:
+        conditions.append("items.status = ?")
+        params.append(status)
+    where = "where " + " and ".join(conditions) if conditions else ""
+    return get_db().execute(
+        f"""
+        select items.*, projects.name as project_name,
+               categories.name as suggested_category_name,
+               parents.name as suggested_primary_name
+        from ledger_pending_items items
+        join projects on projects.id = items.project_id
+        left join expense_categories categories on categories.id = items.suggested_category_id
+        left join expense_categories parents on parents.id = categories.parent_id
+        {where}
+        order by items.item_date, items.id
+        """,
+        params,
+    ).fetchall()
+
+
+def convert_ledger_pending_item(
+    item_id: int,
+    *,
+    amount: Any,
+    category_id: int,
+    transaction_type: str,
+    payment_status: str,
+    actor_admin_id: int | None,
+) -> int:
+    db = get_db()
+    item = db.execute(
+        "select * from ledger_pending_items where id = ?", (item_id,)
+    ).fetchone()
+    if item is None:
+        raise ValueError("待补录事项不存在")
+    if item["status"] != "待补录":
+        raise ValueError("该待补录事项已经转换或忽略")
+    source_record_id = (
+        f"PENDING:{item['project_id']}:{item['source_filename']}:"
+        f"{item['source_sheet']}:{item['source_row']}"
+    )
+    try:
+        voucher_id = _insert_voucher(db, {
+            "project_id": item["project_id"],
+            "voucher_date": item["item_date"],
+            "transaction_type": transaction_type,
+            "category_id": category_id,
+            "amount": amount,
+            "notes": item["summary"],
+            "handler_name": item["handler_name"],
+            "payment_status": payment_status,
+            "payment_notes": item["payment_notes"],
+            "source_record_id": source_record_id,
+            "source_filename": item["source_filename"],
+            "source_sheet": item["source_sheet"],
+            "source_row": item["source_row"],
+            "original_notes": item["summary"],
+        })
+        cursor = db.execute(
+            """
+            update ledger_pending_items
+            set status = '已转正式明细', voucher_id = ?
+            where id = ? and status = '待补录'
+            """,
+            (voucher_id, item_id),
+        )
+        if cursor.rowcount != 1:
+            raise ValueError("该待补录事项已经转换或忽略")
+        _insert_audit(
+            db,
+            actor_admin_id=actor_admin_id,
+            action="convert",
+            entity_type="ledger_pending_item",
+            entity_id=item_id,
+            details={"voucher_id": voucher_id},
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return voucher_id
+
+
+def ignore_ledger_pending_item(
+    item_id: int, *, actor_admin_id: int | None
+) -> None:
+    db = get_db()
+    item = db.execute(
+        "select status from ledger_pending_items where id = ?", (item_id,)
+    ).fetchone()
+    if item is None:
+        raise ValueError("待补录事项不存在")
+    if item["status"] != "待补录":
+        raise ValueError("只有待补录事项可以忽略")
+    db.execute(
+        "update ledger_pending_items set status = '已忽略' where id = ?",
+        (item_id,),
+    )
+    _insert_audit(
+        db,
+        actor_admin_id=actor_admin_id,
+        action="ignore",
+        entity_type="ledger_pending_item",
+        entity_id=item_id,
+    )
+    db.commit()
+
+
+def delete_expense_category(category_id: int) -> None:
+    db = get_db()
+    category = db.execute(
+        "select * from expense_categories where id = ?", (category_id,)
+    ).fetchone()
+    if category is None:
+        raise ValueError("分类不存在")
+    children = db.execute(
+        "select count(*) from expense_categories where parent_id = ?", (category_id,)
+    ).fetchone()[0]
+    references = db.execute(
+        "select count(*) from vouchers where category_id = ?", (category_id,)
+    ).fetchone()[0]
+    pending_references = db.execute(
+        "select count(*) from ledger_pending_items where suggested_category_id = ?",
+        (category_id,),
+    ).fetchone()[0]
+    if children:
+        raise ValueError("一级分类仍有二级分类，不能删除")
+    if references:
+        raise ValueError("分类已被财务明细使用，不能删除")
+    if pending_references:
+        raise ValueError("分类已被待补录事项使用，不能删除")
+    db.execute("delete from expense_categories where id = ?", (category_id,))
+    db.commit()
+
+
+def migrate_expense_category(
+    source_id: int, target_id: int, *, actor_admin_id: int | None
+) -> None:
+    db = get_db()
+    source = _get_leaf_category(source_id)
+    target = _get_leaf_category(target_id)
+    if source_id == target_id:
+        raise ValueError("迁移目标不能与原分类相同")
+    if source["transaction_scope"] != target["transaction_scope"]:
+        raise ValueError("只能迁移到同一收支范围的分类")
+    db.execute(
+        "update vouchers set category_id = ?, voucher_type = ? where category_id = ?",
+        (target_id, target["name"], source_id),
+    )
+    db.execute(
+        """
+        update ledger_pending_items set suggested_category_id = ?
+        where suggested_category_id = ? and status = '待补录'
+        """,
+        (target_id, source_id),
+    )
+    db.execute(
+        "update expense_categories set is_active = 0 where id = ?", (source_id,)
+    )
+    _insert_audit(
+        db,
+        actor_admin_id=actor_admin_id,
+        action="migrate",
+        entity_type="expense_category",
+        entity_id=source_id,
+        details={"target_id": target_id},
+    )
+    db.commit()
 
 
 def list_people():
@@ -840,37 +1228,74 @@ def update_project(project_id: int, data: dict[str, Any]) -> None:
 
 
 def update_voucher(voucher_id: int, data: dict[str, Any]) -> None:
-    amount = normalize_amount(data["amount"])
-    voucher_date = _validated_date(data.get("voucher_date"), "凭证日期", required=True)
-    voucher_type = _required_text(data.get("voucher_type"), "凭证类型")
     db = get_db()
     existing = db.execute("select * from vouchers where id = ?", (voucher_id,)).fetchone()
     if existing is None:
         raise ValueError("凭证不存在")
     if existing["is_void"]:
         raise ValueError("已作废凭证不能修改")
-    db.execute(
-        """
-        update vouchers
-        set voucher_date = ?, voucher_type = ?, amount = ?, notes = ?, entry_user = ?
-        where id = ?
-        """,
-        (
-            voucher_date,
-            voucher_type,
-            amount,
-            data.get("notes", ""),
-            data.get("entry_user", ""),
-            voucher_id,
-        ),
-    )
+    if data.get("category_id"):
+        amount = normalize_amount(data["amount"])
+        voucher_date = _validated_date(data.get("voucher_date"), "凭证日期", required=True)
+        transaction_type = _validated_choice(
+            data.get("transaction_type", existing["transaction_type"]),
+            "收支类型",
+            TRANSACTION_TYPES,
+        )
+        category = _get_leaf_category(int(data["category_id"]))
+        expected_scope = "支出" if transaction_type in {"支出", "冲减支出"} else transaction_type
+        if category["transaction_scope"] != expected_scope:
+            raise ValueError("分类与收支类型不匹配")
+        payment_status = _validated_choice(
+            data.get("payment_status", existing["payment_status"]),
+            "付款状态",
+            PAYMENT_STATUSES,
+        )
+        review_status = _validated_choice(
+            data.get("review_status", existing["review_status"]),
+            "复核状态",
+            REVIEW_STATUSES,
+        )
+        db.execute(
+            """
+            update vouchers
+            set voucher_date = ?, voucher_type = ?, amount = ?, notes = ?, entry_user = ?,
+                transaction_type = ?, category_id = ?, handler_name = ?, payment_status = ?,
+                payment_date = ?, payment_notes = ?, review_status = ?,
+                classification_confidence = ?, original_notes = ?
+            where id = ?
+            """,
+            (
+                voucher_date, category["name"], amount, data.get("notes", ""),
+                data.get("entry_user", ""), transaction_type, category["id"],
+                data.get("handler_name", ""), payment_status,
+                _validated_date(data.get("payment_date"), "付款日期"),
+                data.get("payment_notes", ""), review_status,
+                data.get("classification_confidence", ""),
+                data.get("original_notes", ""), voucher_id,
+            ),
+        )
+        details = {"amount": amount, "voucher_date": voucher_date, "type": transaction_type}
+    else:
+        amount = normalize_amount(data["amount"])
+        voucher_date = _validated_date(data.get("voucher_date"), "凭证日期", required=True)
+        voucher_type = _required_text(data.get("voucher_type"), "凭证类型")
+        db.execute(
+            """
+            update vouchers
+            set voucher_date = ?, voucher_type = ?, amount = ?, notes = ?, entry_user = ?
+            where id = ?
+            """,
+            (voucher_date, voucher_type, amount, data.get("notes", ""), data.get("entry_user", ""), voucher_id),
+        )
+        details = {"amount": amount, "voucher_date": voucher_date, "type": voucher_type}
     _insert_audit(
         db,
         actor_admin_id=data.get("actor_admin_id"),
         action="update",
         entity_type="voucher",
         entity_id=voucher_id,
-        details={"amount": amount, "voucher_date": voucher_date, "type": voucher_type},
+        details=details,
     )
     db.commit()
 

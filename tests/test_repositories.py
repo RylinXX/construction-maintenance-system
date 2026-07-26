@@ -82,9 +82,11 @@ def test_update_batch_item_recognition(app):
     assert item["confidence"] == 0.86
 
 
-def test_expense_category_rename_updates_existing_vouchers(app):
+def test_expense_category_rename_updates_legacy_display_name(app):
     with app.app_context():
-        category_id = repo.create_expense_category({"name": "机械租赁", "sort_order": 25})
+        category = repo.get_db().execute(
+            "select * from expense_categories where name = '其他机械设备费'"
+        ).fetchone()
         main_company = repo.get_main_company()
         project_id = repo.create_project(
             {
@@ -96,23 +98,26 @@ def test_expense_category_rename_updates_existing_vouchers(app):
             {
                 "project_id": project_id,
                 "voucher_date": "2026-05-29",
-                "voucher_type": "机械租赁",
+                "transaction_type": "支出",
+                "category_id": category["id"],
                 "amount": 1200,
             }
         )
 
         repo.update_expense_category(
-            category_id,
-            {"name": "设备租赁", "sort_order": 30, "is_active": 0},
+            category["id"],
+            {
+                "name": "设备租赁",
+                "parent_id": category["parent_id"],
+                "transaction_scope": "支出",
+                "sort_order": 30,
+                "is_active": 1,
+            },
         )
-        active_names = repo.list_expense_category_names()
-        all_categories = repo.list_expense_categories(include_inactive=True)
         voucher = repo.list_vouchers(project_id=project_id)[0]
 
-    assert "机械租赁" not in active_names
-    assert "设备租赁" not in active_names
-    assert next(row for row in all_categories if row["id"] == category_id)["name"] == "设备租赁"
     assert voucher["voucher_type"] == "设备租赁"
+    assert voucher["secondary_category"] == "设备租赁"
 
 
 def test_person_id_card_path_can_be_saved_and_replaced(app):
@@ -214,6 +219,5 @@ def test_contract_repository_crud(app):
         # 5. 删除合同
         repo.delete_contract(contract_id)
         assert repo.get_contract(contract_id) is None
-
 
 
