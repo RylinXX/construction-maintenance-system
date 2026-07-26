@@ -5,6 +5,14 @@ import json
 from construction_maintenance.db import get_db
 
 
+def active_category_id(app, name: str) -> int:
+    with app.app_context():
+        return int(get_db().execute(
+            "select id from expense_categories where name = ? and is_active = 1",
+            (name,),
+        ).fetchone()["id"])
+
+
 def test_dashboard_route_renders(client):
     response = client.get("/")
 
@@ -13,7 +21,7 @@ def test_dashboard_route_renders(client):
     assert "项目支出".encode("utf-8") in response.data
 
 
-def test_project_and_voucher_flow(client):
+def test_project_and_voucher_flow(client, app):
     project_response = client.post(
         "/projects",
         data={
@@ -29,15 +37,18 @@ def test_project_and_voucher_flow(client):
     assert project_response.status_code == 200
     assert "土方工程".encode("utf-8") in project_response.data
 
+    category_id = active_category_id(app, "五金辅材及工具")
     voucher_response = client.post(
         "/vouchers",
         data={
             "project_id": "1",
             "voucher_date": "2026-05-29",
-            "voucher_type": "材料费用",
+            "transaction_type": "支出",
+            "category_id": str(category_id),
             "amount": "2300",
+            "payment_status": "已支付/已报销",
             "notes": "购买材料",
-            "entry_user": "财务",
+            "handler_name": "财务",
         },
         follow_redirects=True,
     )
@@ -182,7 +193,7 @@ def test_batch_upload_records_ocr_result(client, monkeypatch):
     assert "1200".encode("utf-8") in response.data
 
 
-def test_project_vouchers_detail_page(client):
+def test_project_vouchers_detail_page(client, app):
     # 先建立一个项目和一张凭证
     client.post(
         "/projects",
@@ -192,13 +203,16 @@ def test_project_vouchers_detail_page(client):
         },
         follow_redirects=True,
     )
+    category_id = active_category_id(app, "电费")
     client.post(
         "/vouchers",
         data={
             "project_id": "1",
             "voucher_date": "2026-05-29",
-            "voucher_type": "电费",
+            "transaction_type": "支出",
+            "category_id": str(category_id),
             "amount": "800",
+            "payment_status": "未支付",
             "notes": "临时用电",
         },
         follow_redirects=True,

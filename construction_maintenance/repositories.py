@@ -497,7 +497,10 @@ def list_expense_categories(include_inactive: bool = False):
     where = "" if include_inactive else "where categories.is_active = 1"
     return get_db().execute(
         f"""
-        select categories.*, parents.name as primary_name
+        select categories.*, parents.name as primary_name,
+               (select count(*) from expense_categories children where children.parent_id = categories.id) as child_count,
+               (select count(*) from vouchers where vouchers.category_id = categories.id) as voucher_count,
+               (select count(*) from ledger_pending_items pending where pending.suggested_category_id = categories.id and pending.status = '待补录') as pending_count
         from expense_categories categories
         left join expense_categories parents on parents.id = categories.parent_id
         {where}
@@ -800,9 +803,13 @@ def create_voucher(data: dict[str, Any]) -> int:
     return voucher_id
 
 
-def get_project_financial_summary(project_id: int) -> dict[str, float | int]:
+def get_project_financial_summary(
+    project_id: int | None = None,
+) -> dict[str, float | int]:
+    project_condition = " and project_id = ?" if project_id is not None else ""
+    params = (project_id,) if project_id is not None else ()
     row = get_db().execute(
-        """
+        f"""
         select
           coalesce(sum(case when transaction_type = '支出' then amount else 0 end), 0) as expense,
           coalesce(sum(case when transaction_type = '冲减支出' then amount else 0 end), 0) as expense_reduction,
@@ -815,16 +822,17 @@ def get_project_financial_summary(project_id: int) -> dict[str, float | int]:
           count(*) as entry_count,
           sum(case when review_status = '待复核' then 1 else 0 end) as review_count
         from vouchers
-        where project_id = ? and is_void = 0
+        where is_void = 0{project_condition}
         """,
-        (project_id,),
+        params,
     ).fetchone()
+    pending_condition = " and project_id = ?" if project_id is not None else ""
     pending_count = get_db().execute(
-        """
+        f"""
         select count(*) from ledger_pending_items
-        where project_id = ? and status = '待补录'
+        where status = '待补录'{pending_condition}
         """,
-        (project_id,),
+        params,
     ).fetchone()[0]
     expense = float(row["expense"])
     reduction = float(row["expense_reduction"])
@@ -890,6 +898,7 @@ def list_ledger_pending_items(
         f"""
         select items.*, projects.name as project_name,
                categories.name as suggested_category_name,
+               categories.transaction_scope as suggested_transaction_scope,
                parents.name as suggested_primary_name
         from ledger_pending_items items
         join projects on projects.id = items.project_id
@@ -1259,14 +1268,15 @@ def update_voucher(voucher_id: int, data: dict[str, Any]) -> None:
         db.execute(
             """
             update vouchers
-            set voucher_date = ?, voucher_type = ?, amount = ?, notes = ?, entry_user = ?,
+            set project_id = ?, voucher_date = ?, voucher_type = ?, amount = ?, notes = ?, entry_user = ?,
                 transaction_type = ?, category_id = ?, handler_name = ?, payment_status = ?,
                 payment_date = ?, payment_notes = ?, review_status = ?,
                 classification_confidence = ?, original_notes = ?
             where id = ?
             """,
             (
-                voucher_date, category["name"], amount, data.get("notes", ""),
+                int(data["project_id"]), voucher_date, category["name"], amount,
+                data.get("notes", ""),
                 data.get("entry_user", ""), transaction_type, category["id"],
                 data.get("handler_name", ""), payment_status,
                 _validated_date(data.get("payment_date"), "付款日期"),

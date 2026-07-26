@@ -16,6 +16,12 @@ from construction_maintenance.security import safe_redirect_target
 from construction_maintenance.security import get_current_admin
 
 from construction_maintenance import repositories as repo
+from construction_maintenance.finance import (
+    PAYMENT_STATUSES,
+    PENDING_STATUSES,
+    REVIEW_STATUSES,
+    TRANSACTION_TYPES,
+)
 from construction_maintenance.web.forms import required_text
 from construction_maintenance.web.forms import text_value
 from construction_maintenance.services.ocr import recognize_batch_upload
@@ -92,6 +98,18 @@ def _voucher_type_choices(project_id: int | None = None) -> list[str]:
 def _actor_id() -> int | None:
     user = get_current_admin()
     return int(user["id"]) if user is not None else None
+
+
+def _ledger_filters() -> dict:
+    return {
+        "transaction_type": request.args.get("transaction_type", "").strip(),
+        "primary_category_id": request.args.get("primary_category_id", type=int),
+        "category_id": request.args.get("category_id", type=int),
+        "payment_status": request.args.get("payment_status", "").strip(),
+        "review_status": request.args.get("review_status", "").strip(),
+        "date_from": request.args.get("date_from", "").strip(),
+        "date_to": request.args.get("date_to", "").strip(),
+    }
 
 
 def _delete_upload_file(filename: str | None) -> None:
@@ -351,44 +369,63 @@ def dashboard():
 def expense_categories():
     if request.method == "POST":
         try:
-            repo.create_expense_category(
-                {
-                    "name": required_text(request.form, "name", "费用科目名称"),
-                    "sort_order": text_value(request.form, "sort_order"),
-                }
-            )
+            category_data = {
+                "name": required_text(request.form, "name", "费用科目名称"),
+                "transaction_scope": text_value(request.form, "transaction_scope") or "支出",
+                "sort_order": text_value(request.form, "sort_order"),
+            }
+            if "parent_id" in request.form:
+                category_data["parent_id"] = request.form.get("parent_id", type=int)
+            repo.create_expense_category(category_data)
             flash("费用科目已成功添加。", "success")
-        except sqlite3.IntegrityError:
-            flash("添加失败：该科目名称已存在。", "danger")
+        except (sqlite3.IntegrityError, ValueError) as exc:
+            flash(str(exc) or "添加失败：该科目名称已存在。", "danger")
         redirect_url = request.form.get("redirect")
         return redirect(
             safe_redirect_target(redirect_url, url_for("web.expense_categories"))
         )
 
+    categories = repo.list_expense_categories(include_inactive=True)
     return render_template(
         "expense_categories.html",
-        categories=repo.list_expense_categories(include_inactive=True),
+        categories=categories,
+        roots=[row for row in categories if row["parent_id"] is None],
+        leaves=[row for row in categories if row["parent_id"] is not None],
     )
 
 
 @bp.route("/expense-categories/<int:category_id>/edit", methods=["POST"])
 def edit_expense_category(category_id: int):
     try:
-        repo.update_expense_category(
-            category_id,
-            {
-                "name": required_text(request.form, "name", "费用科目名称"),
-                "sort_order": text_value(request.form, "sort_order"),
-                "is_active": 1 if request.form.get("is_active") else 0,
-            },
-        )
+        category_data = {
+            "name": required_text(request.form, "name", "费用科目名称"),
+            "sort_order": text_value(request.form, "sort_order"),
+            "is_active": 1 if request.form.get("is_active") else 0,
+        }
+        if "parent_id" in request.form:
+            category_data["parent_id"] = request.form.get("parent_id", type=int)
+        if "transaction_scope" in request.form:
+            category_data["transaction_scope"] = text_value(
+                request.form, "transaction_scope"
+            )
+        repo.update_expense_category(category_id, category_data)
         flash("费用科目已成功修改。", "success")
-    except sqlite3.IntegrityError:
-        flash("修改失败：该科目名称已存在。", "danger")
+    except (sqlite3.IntegrityError, ValueError) as exc:
+        flash(str(exc) or "修改失败：该科目名称已存在。", "danger")
     redirect_url = request.form.get("redirect")
     return redirect(
         safe_redirect_target(redirect_url, url_for("web.expense_categories"))
     )
+
+
+@bp.post("/expense-categories/<int:category_id>/migrate")
+def migrate_expense_category(category_id: int):
+    target_id = int(required_text(request.form, "target_id", "目标分类"))
+    repo.migrate_expense_category(
+        category_id, target_id, actor_admin_id=_actor_id()
+    )
+    flash("分类引用已迁移，原分类已停用。", "success")
+    return redirect(url_for("web.expense_categories"))
 
 
 @bp.route("/projects", methods=["GET", "POST"])
@@ -439,38 +476,54 @@ def delete_project(project_id: int):
 @bp.route("/vouchers", methods=["GET", "POST"])
 def vouchers():
     if request.method == "POST":
-        repo.create_voucher(
-            {
-                "project_id": int(required_text(request.form, "project_id", "项目")),
-                "voucher_date": required_text(request.form, "voucher_date", "日期"),
-                "voucher_type": required_text(request.form, "voucher_type", "凭证类型"),
-                "amount": required_text(request.form, "amount", "金额"),
-                "notes": text_value(request.form, "notes"),
-                "attachment_path": "",
-                "entry_user": text_value(request.form, "entry_user"),
-                "actor_admin_id": _actor_id(),
-            }
-        )
+        payload = {
+            "project_id": int(required_text(request.form, "project_id", "项目")),
+            "voucher_date": required_text(request.form, "voucher_date", "日期"),
+            "transaction_type": required_text(
+                request.form, "transaction_type", "收支类型"
+            ),
+            "category_id": int(
+                required_text(request.form, "category_id", "二级分类")
+            ),
+            "amount": required_text(request.form, "amount", "金额"),
+            "notes": text_value(request.form, "notes"),
+            "handler_name": text_value(request.form, "handler_name"),
+            "payment_status": required_text(
+                request.form, "payment_status", "付款状态"
+            ),
+            "payment_date": text_value(request.form, "payment_date"),
+            "payment_notes": text_value(request.form, "payment_notes"),
+            "review_status": text_value(request.form, "review_status") or "已确认",
+            "actor_admin_id": _actor_id(),
+        }
+        repo.create_voucher(payload)
         return redirect(
             safe_redirect_target(request.referrer, url_for("web.vouchers"))
         )
-    
-    # 动态支持按项目进行过滤
+
     filter_project_id = request.args.get("project_id", type=int)
-    if filter_project_id:
-        vouchers_list = repo.list_vouchers(
-            project_id=filter_project_id, include_voided=True
-        )
-    else:
-        vouchers_list = repo.list_vouchers(include_voided=True)
+    filters = _ledger_filters()
+    vouchers_list = repo.list_vouchers(
+        project_id=filter_project_id,
+        include_voided=True,
+        **filters,
+    )
+    categories = repo.list_expense_categories(include_inactive=False)
 
     return render_template(
         "vouchers.html",
         projects=repo.list_projects(),
         vouchers=vouchers_list,
         filter_project_id=filter_project_id,
+        financial_summary=repo.get_project_financial_summary(filter_project_id),
+        ledger_filters=filters,
         voucher_types=repo.list_expense_category_names(),
         batch_items=repo.list_batch_items(item_type="voucher"),
+        categories=categories,
+        category_json=[dict(row) for row in categories],
+        transaction_types=TRANSACTION_TYPES,
+        payment_statuses=PAYMENT_STATUSES,
+        review_statuses=REVIEW_STATUSES,
     )
 
 
@@ -481,21 +534,73 @@ def project_vouchers(project_id: int):
     if not project:
         return "Project not found", 404
         
-    vouchers_list = repo.list_vouchers(project_id=project_id, include_voided=True)
-    active_vouchers = [row for row in vouchers_list if not row["is_void"]]
-    total_spending = sum(float(row["amount"]) for row in active_vouchers)
+    filters = _ledger_filters()
+    vouchers_list = repo.list_vouchers(
+        project_id=project_id, include_voided=True, **filters
+    )
+    summary = repo.get_project_financial_summary(project_id)
+    categories = repo.list_expense_categories(include_inactive=False)
     
     return render_template(
         "project_vouchers.html",
         project=project,
+        projects=repo.list_projects(),
         vouchers=vouchers_list,
-        total_spending=total_spending,
-        active_voucher_count=len(active_vouchers),
+        total_spending=summary["net_expense"],
+        active_voucher_count=summary["entry_count"],
+        financial_summary=summary,
+        ledger_filters=filters,
         voucher_types=repo.list_expense_category_names(),
         filter_voucher_types=_voucher_type_choices(project_id),
         batch_items=repo.list_batch_items(item_type="voucher"),
-        categories=repo.list_expense_categories(include_inactive=True),
+        categories=categories,
+        category_json=[dict(row) for row in categories],
+        transaction_types=TRANSACTION_TYPES,
+        payment_statuses=PAYMENT_STATUSES,
+        review_statuses=REVIEW_STATUSES,
     )
+
+
+@bp.get("/ledger-pending")
+def ledger_pending():
+    project_id = request.args.get("project_id", type=int)
+    status = request.args.get("status", "待补录").strip()
+    if status not in PENDING_STATUSES:
+        raise ValueError("待补录状态无效")
+    categories = repo.list_expense_categories(include_inactive=False)
+    return render_template(
+        "ledger_pending.html",
+        items=repo.list_ledger_pending_items(project_id=project_id, status=status),
+        projects=repo.list_projects(),
+        categories=categories,
+        category_json=[dict(row) for row in categories],
+        filter_project_id=project_id,
+        filter_status=status,
+        pending_statuses=PENDING_STATUSES,
+        transaction_types=TRANSACTION_TYPES,
+        payment_statuses=PAYMENT_STATUSES,
+    )
+
+
+@bp.post("/ledger-pending/<int:item_id>/complete")
+def complete_ledger_pending(item_id: int):
+    repo.convert_ledger_pending_item(
+        item_id,
+        amount=required_text(request.form, "amount", "金额"),
+        category_id=int(required_text(request.form, "category_id", "二级分类")),
+        transaction_type=required_text(request.form, "transaction_type", "收支类型"),
+        payment_status=required_text(request.form, "payment_status", "付款状态"),
+        actor_admin_id=_actor_id(),
+    )
+    flash("待补录事项已转正式明细。", "success")
+    return redirect(url_for("web.ledger_pending", status="已转正式明细"))
+
+
+@bp.post("/ledger-pending/<int:item_id>/ignore")
+def ignore_ledger_pending(item_id: int):
+    repo.ignore_ledger_pending_item(item_id, actor_admin_id=_actor_id())
+    flash("待补录事项已忽略。", "success")
+    return redirect(url_for("web.ledger_pending", status="待补录"))
 
 
 def _render_people_and_attendance(active_tab):
@@ -1442,17 +1547,27 @@ def download_attachment(filename):
 
 @bp.route("/vouchers/<int:voucher_id>/edit", methods=["POST"])
 def edit_voucher(voucher_id: int):
-    repo.update_voucher(
-        voucher_id,
-        {
-            "voucher_date": required_text(request.form, "voucher_date", "日期"),
-            "voucher_type": required_text(request.form, "voucher_type", "凭证类型"),
-            "amount": required_text(request.form, "amount", "金额"),
-            "notes": text_value(request.form, "notes"),
-            "entry_user": text_value(request.form, "entry_user"),
-            "actor_admin_id": _actor_id(),
-        }
-    )
+    payload = {
+        "project_id": int(required_text(request.form, "project_id", "项目")),
+        "voucher_date": required_text(request.form, "voucher_date", "日期"),
+        "transaction_type": required_text(
+            request.form, "transaction_type", "收支类型"
+        ),
+        "category_id": int(
+            required_text(request.form, "category_id", "二级分类")
+        ),
+        "amount": required_text(request.form, "amount", "金额"),
+        "notes": text_value(request.form, "notes"),
+        "handler_name": text_value(request.form, "handler_name"),
+        "payment_status": required_text(
+            request.form, "payment_status", "付款状态"
+        ),
+        "payment_date": text_value(request.form, "payment_date"),
+        "payment_notes": text_value(request.form, "payment_notes"),
+        "review_status": text_value(request.form, "review_status") or "已确认",
+        "actor_admin_id": _actor_id(),
+    }
+    repo.update_voucher(voucher_id, payload)
     return redirect(
         safe_redirect_target(request.referrer, url_for("web.vouchers"))
     )

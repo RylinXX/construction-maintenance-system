@@ -45,3 +45,34 @@ def test_document_previews_support_legacy_pdf_upload_names():
     assert "endsWith('_pdf')" in qualifications_html
     assert "isPdfIdCard" in people_html
     assert "endsWith('_pdf')" in people_html
+
+
+def test_pending_queue_uses_container_width_for_responsive_actions():
+    css = read_text("construction_maintenance/static/app.css")
+
+    assert "container-name: pending-list;" in css
+    assert "@container pending-list (max-width: 1180px)" in css
+
+
+def test_ledger_filters_use_two_desktop_rows_and_tablet_columns():
+    css = read_text("construction_maintenance/static/app.css")
+
+    assert ".ledger-global-filter" in css
+    assert "grid-template-columns: repeat(5, minmax(0, 1fr));" in css
+    assert "@media (max-width: 980px)" in css
+
+
+def test_category_navigation_omits_deleted_endpoint():
+    base_html = read_text("construction_maintenance/templates/base.html")
+
+    assert "delete_expense_category" not in base_html
+
+
+def test_structured_ledger_forms_do_not_expose_ignored_entry_user():
+    global_ledger = read_text("construction_maintenance/templates/vouchers.html")
+    project_ledger = read_text(
+        "construction_maintenance/templates/project_vouchers.html"
+    )
+
+    assert 'name="entry_user"' not in global_ledger
+    assert 'name="entry_user"' not in project_ledger

@@ -1,148 +1,75 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}费用科目管理 - {{ system_settings.system_name }}{% endblock %}
-{% block breadcrumb %}费用科目管理{% endblock %}
-{% block page_subtitle %}维护凭证录入时可选择的费用科目{% endblock %}
+{% block breadcrumb %}项目台账 / 费用科目管理{% endblock %}
+{% block page_subtitle %}维护一级分类、二级分类与收支范围{% endblock %}
 
 {% block content %}
-<div class="panel-section">
-  <div class="panel-card animate-slide-up">
-    <div class="panel-header">
-      <div>
-        <h2 class="panel-title">费用科目管理</h2>
-        <p class="panel-subtitle">启用中的科目会出现在凭证录入下拉框；停用后历史凭证仍会保留。</p>
-      </div>
-      <div class="toolbar-actions">
-        <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addCategoryModal')">新增科目</button>
-      </div>
-    </div>
+<section class="page-heading-row animate-slide-up">
+  <div><h1 class="section-page-title">费用科目管理</h1><p class="panel-subtitle">{{ roots|length }} 个一级分类 / {{ leaves|length }} 个二级分类</p></div>
+  <div class="toolbar-actions">
+    <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.vouchers') }}">{{ icon('receipt') }} 财务明细</a>
+    <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addCategoryModal')">{{ icon('add') }} 新增分类</button>
+  </div>
+</section>
 
-    <div class="table-container">
-      <table class="premium-table category-table">
-        <thead>
-          <tr>
-            <th>科目名称</th>
-            <th>排序</th>
-            <th>状态</th>
-            <th class="text-right">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for category in categories %}
-          <tr>
-            <td>
-<form id="edit-category-{{ category.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=category.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"></form>
-              <input form="edit-category-{{ category.id }}" class="form-input category-name-input" name="name" type="text" value="{{ category.name }}" required>
-            </td>
-            <td>
-              <input form="edit-category-{{ category.id }}" class="form-input sort-order-input" name="sort_order" type="number" step="1" value="{{ category.sort_order }}">
-            </td>
-            <td>
-              <label class="status-toggle">
-                <input form="edit-category-{{ category.id }}" type="checkbox" name="is_active" value="1" {% if category.is_active %}checked{% endif %}>
-                {% if category.is_active %}
-                <span class="badge badge-success">启用中</span>
-                {% else %}
-                <span class="badge badge-secondary">已停用</span>
-                {% endif %}
-              </label>
-            </td>
-            <td class="text-right">
-              <button form="edit-category-{{ category.id }}" type="submit" class="btn btn-secondary toolbar-btn">保存</button>
-            </td>
-          </tr>
-          {% else %}
-          <tr class="empty-row">
-            <td colspan="4">
-              <div class="empty-state">
-                <span class="empty-text">暂无费用科目，请新增后再录入凭证。</span>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<section class="category-tree animate-slide-up">
+  {% for root in roots %}
+  <div class="category-root-band{% if not root.is_active %} is-inactive{% endif %}">
+    <form id="edit-category-{{ root.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=root.id) }}" class="category-root-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="parent_id" value="">
+      <label>一级分类<input class="form-input" name="name" value="{{ root.name }}" required></label>
+      <label>收支范围<select class="form-select" name="transaction_scope">{% for value in ['支出', '收入', '资金往来'] %}<option value="{{ value }}" {% if root.transaction_scope == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+      <label>排序<input class="form-input" name="sort_order" type="number" value="{{ root.sort_order }}"></label>
+      <label class="category-active-toggle"><input type="checkbox" name="is_active" value="1" {% if root.is_active %}checked{% endif %}>{{ '启用中' if root.is_active else '已停用' }}</label>
+      <button type="submit" class="icon-button" title="保存一级分类" aria-label="保存一级分类">{{ icon('save') }}</button>
+    </form>
+    <div class="category-leaf-list">
+      {% for leaf in leaves if leaf.parent_id == root.id %}
+      <div class="category-leaf-row{% if not leaf.is_active %} is-inactive{% endif %}">
+        <form id="edit-category-{{ leaf.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=leaf.id) }}" class="category-leaf-form">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <input type="hidden" name="transaction_scope" value="{{ leaf.transaction_scope }}">
+          <label>二级分类<input class="form-input" name="name" value="{{ leaf.name }}" required></label>
+          <label>所属一级<select class="form-select" name="parent_id">{% for candidate in roots if candidate.transaction_scope == leaf.transaction_scope %}<option value="{{ candidate.id }}" {% if leaf.parent_id == candidate.id %}selected{% endif %}>{{ candidate.name }}</option>{% endfor %}</select></label>
+          <label>排序<input class="form-input" name="sort_order" type="number" value="{{ leaf.sort_order }}"></label>
+          <label class="category-active-toggle"><input type="checkbox" name="is_active" value="1" {% if leaf.is_active %}checked{% endif %}>{{ '启用中' if leaf.is_active else '已停用' }}</label>
+          <button type="submit" class="icon-button" title="保存二级分类" aria-label="保存二级分类">{{ icon('save') }}</button>
+        </form>
+        <div class="category-reference-count">{{ leaf.voucher_count }} 条明细{% if leaf.pending_count %} / {{ leaf.pending_count }} 条待补录{% endif %}</div>
+        {% if leaf.voucher_count or leaf.pending_count %}
+        <form method="post" action="{{ url_for('web.migrate_expense_category', category_id=leaf.id) }}" class="category-migrate-form">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <select class="form-select" name="target_id" required><option value="">迁移目标</option>{% for target in leaves if target.id != leaf.id and target.transaction_scope == leaf.transaction_scope and target.is_active %}<option value="{{ target.id }}">{{ target.primary_name }} / {{ target.name }}</option>{% endfor %}</select>
+          <button type="submit" class="btn btn-secondary toolbar-btn" onclick="return confirm('确认迁移全部引用并停用原分类？');">迁移并停用</button>
+        </form>
+        {% endif %}
+      </div>
+      {% else %}<div class="category-empty-children">暂无二级分类</div>{% endfor %}
     </div>
   </div>
-</div>
+  {% endfor %}
+</section>
 
-<div id="addCategoryModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 class="modal-title">新增费用科目</h3>
-      <button type="button" class="modal-close" onclick="closeModal('addCategoryModal')">&times;</button>
+<div id="addCategoryModal" class="modal"><div class="modal-content">
+  <div class="modal-header"><h3 class="modal-title">{{ icon('add') }} 新增分类</h3><button type="button" class="modal-close" onclick="closeModal('addCategoryModal')">&times;</button></div>
+  <div class="modal-body"><form method="post" class="premium-form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label" for="categoryName">分类名称</label><input id="categoryName" class="form-input" name="name" required></div>
+      <div class="form-group"><label class="form-label" for="categoryParent">所属一级</label><select id="categoryParent" class="form-select" name="parent_id"><option value="">创建一级分类</option>{% for root in roots %}<option value="{{ root.id }}" data-scope="{{ root.transaction_scope }}">{{ root.name }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label" for="categoryScope">收支范围</label><select id="categoryScope" class="form-select" name="transaction_scope">{% for value in ['支出', '收入', '资金往来'] %}<option value="{{ value }}">{{ value }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label class="form-label" for="categoryOrder">排序</label><input id="categoryOrder" class="form-input" name="sort_order" type="number" value="100"></div>
     </div>
-    <div class="modal-body">
-<form method="post" class="premium-form">
-  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label" for="name">科目名称 <span class="required">*</span></label>
-            <input class="form-input" id="name" name="name" type="text" placeholder="例如：机械租赁" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="sort_order">排序</label>
-            <input class="form-input" id="sort_order" name="sort_order" type="number" step="1" value="80">
-          </div>
-        </div>
-        <div class="form-actions" style="margin-top: 24px;">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('addCategoryModal')">取消</button>
-          <button type="submit" class="btn btn-primary">保存科目</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<style>
-.category-table {
-  min-width: 720px;
-}
-
-.category-name-input {
-  max-width: 360px;
-}
-
-.sort-order-input {
-  max-width: 120px;
-}
-
-.status-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.status-toggle input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--secondary-color);
-}
-
-@media (max-width: 760px) {
-  .category-name-input,
-  .sort-order-input {
-    max-width: none;
-  }
-}
-</style>
+    <div class="form-actions"><button type="button" class="btn btn-secondary" onclick="closeModal('addCategoryModal')">取消</button><button type="submit" class="btn btn-primary">{{ icon('save') }} 保存</button></div>
+  </form></div>
+</div></div>
 
 <script>
-function openModal(id) {
-  document.getElementById(id).classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-window.addEventListener('click', function(event) {
-  document.querySelectorAll('.modal').forEach(modal => {
-    if (event.target === modal) {
-      closeModal(modal.id);
-    }
-  });
+function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
+document.addEventListener('DOMContentLoaded', function() {
+  const parent = document.getElementById('categoryParent'); const scope = document.getElementById('categoryScope');
+  parent.addEventListener('change', function() { const option = this.options[this.selectedIndex]; if (option.dataset.scope) scope.value = option.dataset.scope; });
 });
 </script>
 {% endblock %}
