@@ -86,6 +86,8 @@ def _async_ocr_worker(app, item_id: int, stored_path_str: str, item_type: str):
 
 bp = Blueprint("web", __name__)
 
+LEDGER_PER_PAGE_OPTIONS = (15, 25, 50, 100)
+
 
 def _voucher_type_choices(project_id: int | None = None) -> list[str]:
     choices = repo.list_expense_category_names()
@@ -110,6 +112,64 @@ def _ledger_filters() -> dict:
         "date_from": request.args.get("date_from", "").strip(),
         "date_to": request.args.get("date_to", "").strip(),
     }
+
+
+def _ledger_pagination_params() -> tuple[int, int]:
+    page_text = request.args.get("page", "1").strip()
+    per_page_text = request.args.get("per_page", "25").strip()
+    try:
+        page = int(page_text)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("页码必须是正整数") from exc
+    if page < 1:
+        raise ValueError("页码必须是正整数")
+    try:
+        per_page = int(per_page_text)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("每页条数无效") from exc
+    if per_page not in LEDGER_PER_PAGE_OPTIONS:
+        raise ValueError("每页条数必须是 15、25、50 或 100")
+    return page, per_page
+
+
+def _ledger_pagination_context(
+    total_count: int, page: int, per_page: int
+) -> dict:
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    base_args = request.args.to_dict(flat=True)
+    base_args.pop("page", None)
+    base_args["per_page"] = per_page
+    view_args = dict(request.view_args or {})
+    for key in view_args:
+        base_args.pop(key, None)
+
+    def page_url(target_page: int) -> str:
+        values = dict(view_args)
+        values.update(base_args)
+        values["page"] = target_page
+        return url_for(request.endpoint, **values)
+
+    return {
+        "page": page,
+        "per_page": per_page,
+        "total_count": total_count,
+        "total_pages": total_pages,
+        "previous_url": page_url(page - 1) if page > 1 else None,
+        "next_url": page_url(page + 1) if page < total_pages else None,
+        "per_page_options": LEDGER_PER_PAGE_OPTIONS,
+    }
+
+
+def _ledger_export_url(project_id: int | None, filters: dict) -> str:
+    values = {
+        key: value
+        for key, value in filters.items()
+        if value not in (None, "")
+    }
+    if project_id is not None:
+        values["project_id"] = project_id
+    return url_for("web.download_export", export_type="project-ledger", **values)
 
 
 def _delete_upload_file(filename: str | None) -> None:
@@ -503,9 +563,20 @@ def vouchers():
 
     filter_project_id = request.args.get("project_id", type=int)
     filters = _ledger_filters()
+    requested_page, per_page = _ledger_pagination_params()
+    total_count = repo.count_vouchers(
+        project_id=filter_project_id,
+        include_voided=True,
+        **filters,
+    )
+    pagination = _ledger_pagination_context(
+        total_count, requested_page, per_page
+    )
     vouchers_list = repo.list_vouchers(
         project_id=filter_project_id,
         include_voided=True,
+        limit=per_page,
+        offset=(pagination["page"] - 1) * per_page,
         **filters,
     )
     categories = repo.list_expense_categories(include_inactive=False)
@@ -514,8 +585,13 @@ def vouchers():
         "vouchers.html",
         projects=repo.list_projects(),
         vouchers=vouchers_list,
+        voucher_total_count=total_count,
+        pagination=pagination,
         filter_project_id=filter_project_id,
-        financial_summary=repo.get_project_financial_summary(filter_project_id),
+        financial_summary=repo.get_project_financial_summary(
+            filter_project_id, **filters
+        ),
+        ledger_export_url=_ledger_export_url(filter_project_id, filters),
         ledger_filters=filters,
         voucher_types=repo.list_expense_category_names(),
         batch_items=repo.list_batch_items(item_type="voucher"),
@@ -535,10 +611,23 @@ def project_vouchers(project_id: int):
         return "Project not found", 404
         
     filters = _ledger_filters()
-    vouchers_list = repo.list_vouchers(
-        project_id=project_id, include_voided=True, **filters
+    requested_page, per_page = _ledger_pagination_params()
+    total_count = repo.count_vouchers(
+        project_id=project_id,
+        include_voided=True,
+        **filters,
     )
-    summary = repo.get_project_financial_summary(project_id)
+    pagination = _ledger_pagination_context(
+        total_count, requested_page, per_page
+    )
+    vouchers_list = repo.list_vouchers(
+        project_id=project_id,
+        include_voided=True,
+        limit=per_page,
+        offset=(pagination["page"] - 1) * per_page,
+        **filters,
+    )
+    summary = repo.get_project_financial_summary(project_id, **filters)
     categories = repo.list_expense_categories(include_inactive=False)
     
     return render_template(
@@ -546,9 +635,12 @@ def project_vouchers(project_id: int):
         project=project,
         projects=repo.list_projects(),
         vouchers=vouchers_list,
+        voucher_total_count=total_count,
+        pagination=pagination,
         total_spending=summary["net_expense"],
         active_voucher_count=summary["entry_count"],
         financial_summary=summary,
+        ledger_export_url=_ledger_export_url(project_id, filters),
         ledger_filters=filters,
         voucher_types=repo.list_expense_category_names(),
         filter_voucher_types=_voucher_type_choices(project_id),
@@ -1420,7 +1512,14 @@ def download_export(export_type: str):
     if export_type not in builders:
         return "Unknown export type", 404
     filename, builder = builders[export_type]
-    path = builder(export_dir / filename)
+    if export_type == "project-ledger":
+        path = builder(
+            export_dir / filename,
+            project_id=request.args.get("project_id", type=int),
+            **_ledger_filters(),
+        )
+    else:
+        path = builder(export_dir / filename)
     return send_file(path, as_attachment=True, download_name=filename)
 
 

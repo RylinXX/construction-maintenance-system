@@ -62,6 +62,110 @@ def test_used_leaf_category_cannot_be_deleted(app):
             repo.delete_expense_category(category_id)
 
 
+def test_root_scope_change_is_rejected_when_children_exist(app):
+    with app.app_context():
+        root = get_db().execute(
+            "select * from expense_categories where name = '材料费'"
+        ).fetchone()
+
+        with pytest.raises(ValueError, match="一级分类仍有二级分类，不能修改收支范围"):
+            repo.update_expense_category(
+                int(root["id"]),
+                {
+                    "name": root["name"],
+                    "parent_id": None,
+                    "transaction_scope": "收入",
+                    "sort_order": root["sort_order"],
+                    "is_active": 1,
+                },
+            )
+
+        scopes = {
+            row["transaction_scope"]
+            for row in get_db().execute(
+                "select transaction_scope from expense_categories where id = ? or parent_id = ?",
+                (root["id"], root["id"]),
+            )
+        }
+
+    assert scopes == {"支出"}
+
+
+@pytest.mark.parametrize(
+    ("parent_name", "deactivate_parent", "transaction_scope", "message"),
+    [
+        ("五金辅材及工具", False, "支出", "所属分类必须是启用的一级分类"),
+        ("材料费", True, "支出", "所属分类必须是启用的一级分类"),
+        ("材料费", False, "收入", "分类与收支范围不匹配"),
+    ],
+)
+def test_create_leaf_requires_active_root_with_matching_scope(
+    app, parent_name, deactivate_parent, transaction_scope, message
+):
+    with app.app_context():
+        parent = get_db().execute(
+            "select * from expense_categories where name = ?", (parent_name,)
+        ).fetchone()
+        if deactivate_parent:
+            get_db().execute(
+                "update expense_categories set is_active = 0 where id = ?",
+                (parent["id"],),
+            )
+            get_db().commit()
+
+        with pytest.raises(ValueError, match=message):
+            repo.create_expense_category(
+                {
+                    "name": f"伪造分类-{parent_name}",
+                    "parent_id": int(parent["id"]),
+                    "transaction_scope": transaction_scope,
+                    "sort_order": 999,
+                }
+            )
+
+        created = get_db().execute(
+            "select count(*) from expense_categories where name = ?",
+            (f"伪造分类-{parent_name}",),
+        ).fetchone()[0]
+
+    assert created == 0
+
+
+def test_voucher_listing_supports_stable_slices_and_matching_counts(app):
+    with app.app_context():
+        company = repo.get_main_company()
+        project_id = repo.create_project(
+            {"company_id": company["id"], "name": "分页仓储测试"}
+        )
+        category_id = _leaf_id("五金辅材及工具")
+        created_ids = []
+        for index in range(7):
+            created_ids.append(repo.create_voucher({
+                "project_id": project_id,
+                "voucher_date": "2026-07-10",
+                "transaction_type": "支出",
+                "category_id": category_id,
+                "amount": index + 1,
+                "notes": f"分页记录-{index}",
+                "payment_status": "未支付",
+                "review_status": "待复核" if index < 6 else "已确认",
+            }))
+
+        page = repo.list_vouchers(
+            project_id=project_id,
+            review_status="待复核",
+            limit=3,
+            offset=2,
+        )
+        total = repo.count_vouchers(
+            project_id=project_id,
+            review_status="待复核",
+        )
+
+    assert [row["id"] for row in page] == list(reversed(created_ids[:6]))[2:5]
+    assert total == 6
+
+
 def test_pending_item_converts_once_to_structured_entry(app):
     with app.app_context():
         company = repo.get_main_company()

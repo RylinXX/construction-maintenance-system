@@ -534,19 +534,35 @@ def list_voucher_type_names(project_id: int | None = None) -> list[str]:
 
 
 def create_expense_category(data: dict[str, Any]) -> int:
+    db = get_db()
     name = normalize_expense_category_name(data["name"])
     sort_order = normalize_sort_order(data.get("sort_order"))
     parent_id = data.get("parent_id")
     if "parent_id" not in data:
-        fallback_parent = get_db().execute(
+        fallback_parent = db.execute(
             "select id from expense_categories where name = '财务及其他' and parent_id is null"
         ).fetchone()
         parent_id = fallback_parent["id"] if fallback_parent else None
-    transaction_scope = str(data.get("transaction_scope") or "支出")
+    submitted_scope = str(data.get("transaction_scope") or "").strip()
+    if parent_id is not None:
+        parent = db.execute(
+            """
+            select * from expense_categories
+            where id = ? and parent_id is null and is_active = 1
+            """,
+            (int(parent_id),),
+        ).fetchone()
+        if parent is None:
+            raise ValueError("所属分类必须是启用的一级分类")
+        if submitted_scope and submitted_scope != parent["transaction_scope"]:
+            raise ValueError("分类与收支范围不匹配")
+        transaction_scope = str(parent["transaction_scope"])
+    else:
+        transaction_scope = submitted_scope or "支出"
     if transaction_scope not in {"支出", "收入", "资金往来"}:
         raise ValueError("收支范围无效")
     try:
-        cursor = get_db().execute(
+        cursor = db.execute(
             """
             insert into expense_categories
               (name, parent_id, transaction_scope, sort_order, is_active)
@@ -556,7 +572,7 @@ def create_expense_category(data: dict[str, Any]) -> int:
         )
     except sqlite3.IntegrityError as exc:
         raise ValueError("费用科目名称不能重复") from exc
-    get_db().commit()
+    db.commit()
     return int(cursor.lastrowid)
 
 
@@ -575,6 +591,16 @@ def update_expense_category(category_id: int, data: dict[str, Any]) -> None:
     )
     if transaction_scope not in {"支出", "收入", "资金往来"}:
         raise ValueError("收支范围无效")
+    if (
+        existing["parent_id"] is None
+        and transaction_scope != existing["transaction_scope"]
+    ):
+        child_count = db.execute(
+            "select count(*) from expense_categories where parent_id = ?",
+            (category_id,),
+        ).fetchone()[0]
+        if child_count:
+            raise ValueError("一级分类仍有二级分类，不能修改收支范围")
     if parent_id is not None and int(parent_id) == category_id:
         raise ValueError("分类不能以自身为父分类")
     if parent_id is not None:
@@ -712,7 +738,7 @@ def create_project(data: dict[str, Any]) -> int:
     return int(cursor.lastrowid)
 
 
-def list_vouchers(
+def _voucher_filter_clause(
     project_id: int | None = None,
     *,
     include_voided: bool = False,
@@ -723,7 +749,7 @@ def list_vouchers(
     review_status: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
-):
+) -> tuple[str, list[Any]]:
     params: list[Any] = []
     conditions: list[str] = []
     filters = (
@@ -747,6 +773,55 @@ def list_vouchers(
     if not include_voided:
         conditions.append("vouchers.is_void = 0")
     where = "where " + " and ".join(conditions) if conditions else ""
+    return where, params
+
+
+def list_vouchers(
+    project_id: int | None = None,
+    *,
+    include_voided: bool = False,
+    transaction_type: str | None = None,
+    primary_category_id: int | None = None,
+    category_id: int | None = None,
+    payment_status: str | None = None,
+    review_status: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+):
+    where, params = _voucher_filter_clause(
+        project_id,
+        include_voided=include_voided,
+        transaction_type=transaction_type,
+        primary_category_id=primary_category_id,
+        category_id=category_id,
+        payment_status=payment_status,
+        review_status=review_status,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    pagination_sql = ""
+    if limit is not None:
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("分页条数无效") from exc
+        if limit <= 0:
+            raise ValueError("分页条数必须大于 0")
+        pagination_sql = " limit ?"
+        params.append(limit)
+    try:
+        offset = int(offset)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("分页偏移无效") from exc
+    if offset < 0:
+        raise ValueError("分页偏移不能小于 0")
+    if offset:
+        if limit is None:
+            pagination_sql = " limit -1"
+        pagination_sql += " offset ?"
+        params.append(offset)
     return get_db().execute(
         f"""
         select vouchers.*, projects.name as project_name,
@@ -759,9 +834,45 @@ def list_vouchers(
         left join expense_categories parent on parent.id = leaf.parent_id
         {where}
         order by vouchers.voucher_date desc, vouchers.id desc
+        {pagination_sql}
         """,
         params,
     ).fetchall()
+
+
+def count_vouchers(
+    project_id: int | None = None,
+    *,
+    include_voided: bool = False,
+    transaction_type: str | None = None,
+    primary_category_id: int | None = None,
+    category_id: int | None = None,
+    payment_status: str | None = None,
+    review_status: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> int:
+    where, params = _voucher_filter_clause(
+        project_id,
+        include_voided=include_voided,
+        transaction_type=transaction_type,
+        primary_category_id=primary_category_id,
+        category_id=category_id,
+        payment_status=payment_status,
+        review_status=review_status,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    return int(get_db().execute(
+        f"""
+        select count(*)
+        from vouchers
+        left join expense_categories leaf on leaf.id = vouchers.category_id
+        left join expense_categories parent on parent.id = leaf.parent_id
+        {where}
+        """,
+        params,
+    ).fetchone()[0])
 
 
 def get_voucher(voucher_id: int):
@@ -805,9 +916,25 @@ def create_voucher(data: dict[str, Any]) -> int:
 
 def get_project_financial_summary(
     project_id: int | None = None,
+    *,
+    transaction_type: str | None = None,
+    primary_category_id: int | None = None,
+    category_id: int | None = None,
+    payment_status: str | None = None,
+    review_status: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
 ) -> dict[str, float | int]:
-    project_condition = " and project_id = ?" if project_id is not None else ""
-    params = (project_id,) if project_id is not None else ()
+    where, params = _voucher_filter_clause(
+        project_id,
+        transaction_type=transaction_type,
+        primary_category_id=primary_category_id,
+        category_id=category_id,
+        payment_status=payment_status,
+        review_status=review_status,
+        date_from=date_from,
+        date_to=date_to,
+    )
     row = get_db().execute(
         f"""
         select
@@ -822,17 +949,20 @@ def get_project_financial_summary(
           count(*) as entry_count,
           sum(case when review_status = '待复核' then 1 else 0 end) as review_count
         from vouchers
-        where is_void = 0{project_condition}
+        left join expense_categories leaf on leaf.id = vouchers.category_id
+        left join expense_categories parent on parent.id = leaf.parent_id
+        {where}
         """,
         params,
     ).fetchone()
     pending_condition = " and project_id = ?" if project_id is not None else ""
+    pending_params = (project_id,) if project_id is not None else ()
     pending_count = get_db().execute(
         f"""
         select count(*) from ledger_pending_items
         where status = '待补录'{pending_condition}
         """,
-        params,
+        pending_params,
     ).fetchone()[0]
     expense = float(row["expense"])
     reduction = float(row["expense_reduction"])
@@ -1268,21 +1398,18 @@ def update_voucher(voucher_id: int, data: dict[str, Any]) -> None:
         db.execute(
             """
             update vouchers
-            set project_id = ?, voucher_date = ?, voucher_type = ?, amount = ?, notes = ?, entry_user = ?,
+            set project_id = ?, voucher_date = ?, voucher_type = ?, amount = ?, notes = ?,
                 transaction_type = ?, category_id = ?, handler_name = ?, payment_status = ?,
-                payment_date = ?, payment_notes = ?, review_status = ?,
-                classification_confidence = ?, original_notes = ?
+                payment_date = ?, payment_notes = ?, review_status = ?
             where id = ?
             """,
             (
                 int(data["project_id"]), voucher_date, category["name"], amount,
                 data.get("notes", ""),
-                data.get("entry_user", ""), transaction_type, category["id"],
+                transaction_type, category["id"],
                 data.get("handler_name", ""), payment_status,
                 _validated_date(data.get("payment_date"), "付款日期"),
-                data.get("payment_notes", ""), review_status,
-                data.get("classification_confidence", ""),
-                data.get("original_notes", ""), voucher_id,
+                data.get("payment_notes", ""), review_status, voucher_id,
             ),
         )
         details = {"amount": amount, "voucher_date": voucher_date, "type": transaction_type}

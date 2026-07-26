@@ -1,0 +1,17 @@
+{% macro ledger_pagination(pagination) %}
+<nav class="pagination-container" aria-label="财务明细分页">
+  <span class="pagination-info">第 {{ pagination.page }} / {{ pagination.total_pages }} 页，共 {{ pagination.total_count }} 条</span>
+  <div class="pagination-buttons">
+    {% if pagination.previous_url %}
+    <a class="pagination-btn" href="{{ pagination.previous_url }}" rel="prev">上一页</a>
+    {% else %}
+    <button class="pagination-btn" type="button" disabled>上一页</button>
+    {% endif %}
+    {% if pagination.next_url %}
+    <a class="pagination-btn" href="{{ pagination.next_url }}" rel="next">下一页</a>
+    {% else %}
+    <button class="pagination-btn" type="button" disabled>下一页</button>
+    {% endif %}
+  </div>
+</nav>
+{% endmacro %}

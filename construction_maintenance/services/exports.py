@@ -98,12 +98,20 @@ PROJECT_LEDGER_HEADERS = [
 ]
 
 
-def build_project_ledger_workbook(path: Path) -> Path:
+def build_project_ledger_workbook(
+    path: Path,
+    project_id: int | None = None,
+    **filters,
+) -> Path:
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "项目台账"
     sheet.append(PROJECT_LEDGER_HEADERS)
-    for item in repo.list_vouchers(include_voided=True):
+    for item in repo.list_vouchers(
+        project_id=project_id,
+        include_voided=True,
+        **filters,
+    ):
         sheet.append(
             _safe_excel_row([
                 item["source_record_id"] or "",

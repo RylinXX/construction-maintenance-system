@@ -1,15 +1,16 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_ledger_pagination.html" import ledger_pagination %}
 {% block title %}财务明细 - {{ system_settings.system_name }}{% endblock %}
 {% block breadcrumb %}项目台账 / 财务明细{% endblock %}
 {% block page_subtitle %}跨项目查询收支、付款、复核与来源记录{% endblock %}
 
 {% block content %}
 <section class="page-heading-row animate-slide-up">
-  <div><h1 class="section-page-title">财务明细</h1><p class="panel-subtitle">{{ vouchers|length }} 条筛选结果</p></div>
+  <div><h1 class="section-page-title">财务明细</h1><p class="panel-subtitle">{{ voucher_total_count }} 条筛选结果</p></div>
   <div class="toolbar-actions">
     <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.ledger_pending') }}">{{ icon('inbox') }} 待补录</a>
-    <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.download_export', export_type='project-ledger') }}">{{ icon('export') }} 导出</a>
+    <a class="btn btn-secondary toolbar-btn" href="{{ ledger_export_url }}">{{ icon('export') }} 导出</a>
     <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addVoucherModal')">{{ icon('add') }} 录入明细</button>
   </div>
 </section>
@@ -34,6 +35,7 @@
     <label>复核状态<select name="review_status" class="form-select"><option value="">全部</option>{% for value in review_statuses %}<option value="{{ value }}" {% if ledger_filters.review_status == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
     <label>开始日期<input type="date" name="date_from" class="form-input" value="{{ ledger_filters.date_from }}"></label>
     <label>结束日期<input type="date" name="date_to" class="form-input" value="{{ ledger_filters.date_to }}"></label>
+    <label>每页<select name="per_page" class="form-select">{% for value in pagination.per_page_options %}<option value="{{ value }}" {% if pagination.per_page == value %}selected{% endif %}>{{ value }} 条</option>{% endfor %}</select></label>
     <div class="ledger-filter-actions"><a class="icon-button" href="{{ url_for('web.vouchers') }}" title="清除筛选" aria-label="清除筛选">{{ icon('rotate') }}</a><button type="submit" class="btn btn-primary">{{ icon('search') }} 查询</button></div>
   </form>
 
@@ -69,7 +71,7 @@
       </tbody>
     </table>
   </div>
-  <div id="globalLedgerPagination" class="pagination-container"></div>
+  {{ ledger_pagination(pagination) }}
 </section>
 
 {% macro ledger_fields(prefix) %}
@@ -115,7 +117,6 @@ document.addEventListener('DOMContentLoaded', function() {
   syncLedgerCategories('add'); syncLedgerCategories('edit');
   ['add', 'edit'].forEach((prefix) => { document.getElementById(prefix + 'Type').addEventListener('change', () => syncLedgerCategories(prefix)); document.getElementById(prefix + 'Primary').addEventListener('change', () => syncSecondaryCategories(document.getElementById(prefix + 'Primary'), document.getElementById(prefix + 'Secondary'), ledgerCategories)); });
   const filterPrimary = document.getElementById('globalFilterPrimary'); filterPrimary.addEventListener('change', function() { const secondary = document.getElementById('globalFilterSecondary'); const parentId = Number(this.value); Array.from(secondary.options).forEach((option) => { option.hidden = Boolean(parentId) && Number(option.dataset.parent) !== parentId; }); secondary.value = ''; });
-  if (document.querySelector('#global-ledger-body .ledger-row')) window.paginators['global-ledger-body'] = new ClientPaginator({containerId: 'global-ledger-body', itemSelector: '.ledger-row', paginationId: 'globalLedgerPagination', pageSize: 15});
 });
 </script>
 {% endblock %}

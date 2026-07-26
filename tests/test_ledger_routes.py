@@ -1,5 +1,9 @@
 import json
 import re
+from html import unescape
+from urllib.parse import parse_qs, urlsplit
+
+import pytest
 
 from construction_maintenance import repositories as repo
 from construction_maintenance.db import get_db
@@ -240,6 +244,112 @@ def test_global_ledger_renders_approved_kpis(client, app):
     assert b'data-kpi="entry-count">4<' in response.data
 
 
+def test_ledgers_paginate_on_server_and_summarize_all_filtered_entries(client, app):
+    project_id = create_project(app, "服务端分页测试")
+    target = category(app, "五金辅材及工具")
+    for index in range(31):
+        create_entry(
+            app,
+            project_id,
+            amount=10,
+            notes=f"SERVER_PAGE_{index:02d}",
+        )
+    create_entry(
+        app,
+        project_id,
+        transaction_type="收入",
+        category_id=int(category(app, "废料处置收入")["id"]),
+        amount=999,
+        notes="SERVER_PAGE_NONMATCH",
+        payment_status="已支付/已报销",
+        review_status="已确认",
+    )
+
+    for path, paginator_key in (
+        ("/vouchers", "global-ledger-body"),
+        (f"/projects/{project_id}/vouchers", "project-ledger-body"),
+    ):
+        query = (
+            f"transaction_type=支出&primary_category_id={target['parent_id']}"
+            f"&category_id={target['id']}&payment_status=未支付"
+            "&review_status=待复核&date_from=2026-07-01"
+            "&date_to=2026-07-31&per_page=15"
+        )
+        if path == "/vouchers":
+            query += f"&project_id={project_id}"
+        response = client.get(
+            f"{path}?{query}"
+        )
+        text = response.get_data(as_text=True)
+
+        assert response.status_code == 200
+        assert text.count('class="ledger-row') == 15
+        assert "31 条筛选结果" in text
+        assert 'data-kpi="entry-count">31<' in text
+        assert "¥310.00" in text
+        assert "SERVER_PAGE_NONMATCH" not in text
+        assert f"window.paginators['{paginator_key}']" not in text
+
+        next_links = []
+        export_links = []
+        for href in re.findall(r'href="([^"]+)"', text):
+            decoded = unescape(href)
+            parsed = urlsplit(decoded)
+            link_query = parse_qs(parsed.query)
+            if link_query.get("page") == ["2"]:
+                next_links.append(link_query)
+            if parsed.path == "/exports/project-ledger":
+                export_links.append(link_query)
+        assert next_links
+        expected_filters = {
+            "transaction_type": ["支出"],
+            "primary_category_id": [str(target["parent_id"])],
+            "category_id": [str(target["id"])],
+            "payment_status": ["未支付"],
+            "review_status": ["待复核"],
+            "date_from": ["2026-07-01"],
+            "date_to": ["2026-07-31"],
+        }
+        if path == "/vouchers":
+            expected_filters["project_id"] = [str(project_id)]
+        assert any(
+            all(link.get(key) == value for key, value in expected_filters.items())
+            and link.get("per_page") == ["15"]
+            for link in next_links
+        )
+        assert any(
+            all(link.get(key) == value for key, value in expected_filters.items())
+            for link in export_links
+        )
+
+
+@pytest.mark.parametrize(
+    "query",
+    ["page=0", "page=bad", "per_page=0", "per_page=24", "per_page=101"],
+)
+def test_ledger_rejects_invalid_pagination_parameters(client, query):
+    response = client.get(f"/vouchers?{query}")
+
+    assert response.status_code == 400
+    assert "页".encode() in response.data
+
+
+def test_ledger_clamps_page_above_filtered_result_range(client, app):
+    project_id = create_project(app, "分页上限测试")
+    for index in range(17):
+        create_entry(app, project_id, notes=f"CLAMP_PAGE_{index:02d}")
+
+    response = client.get(
+        f"/projects/{project_id}/vouchers?page=999&per_page=15"
+    )
+    text = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert text.count('class="ledger-row') == 2
+    assert "第 2 / 2 页" in text
+    assert "CLAMP_PAGE_00" in text
+
+
 def test_voucher_route_requires_structured_category(client, app):
     project_id = create_project(app, "结构化写入测试")
     response = client.post(
@@ -283,6 +393,48 @@ def test_edit_voucher_can_move_entry_to_another_project(client, app):
         assert voucher["project_id"] == target_project_id
 
 
+def test_edit_voucher_preserves_import_provenance(client, app):
+    project_id = create_project(app, "导入来源保留测试")
+    voucher_id = create_entry(
+        app,
+        project_id,
+        entry_user="导入操作员",
+        source_record_id="SOURCE-ROW-001",
+        source_filename="ledger-source.xlsx",
+        source_sheet="费用明细",
+        source_row=27,
+        classification_confidence="高",
+        original_notes="导入前原始事项",
+    )
+    category_id = int(category(app, "五金辅材及工具")["id"])
+
+    response = client.post(
+        f"/vouchers/{voucher_id}/edit",
+        data={
+            "project_id": project_id,
+            "voucher_date": "2026-07-11",
+            "transaction_type": "支出",
+            "category_id": category_id,
+            "amount": "125",
+            "notes": "人工修正事项",
+            "handler_name": "经办人",
+            "payment_status": "未支付",
+            "review_status": "已确认",
+        },
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        voucher = repo.get_voucher(voucher_id)
+        assert voucher["entry_user"] == "导入操作员"
+        assert voucher["source_record_id"] == "SOURCE-ROW-001"
+        assert voucher["source_filename"] == "ledger-source.xlsx"
+        assert voucher["source_sheet"] == "费用明细"
+        assert voucher["source_row"] == 27
+        assert voucher["classification_confidence"] == "高"
+        assert voucher["original_notes"] == "导入前原始事项"
+
+
 def test_global_ledger_edit_form_exposes_project_selector(client, app):
     project_id = create_project(app, "可调整项目")
     create_entry(app, project_id)
@@ -308,6 +460,38 @@ def test_pending_form_sources_categories_for_every_transaction_scope(client, app
     assert b"syncPendingCategories" in response.data
 
 
+def test_pending_item_ignore_persists_once_without_creating_voucher(client, app):
+    _project_id, item_id, _category_id = seed_pending_item(app)
+
+    response = client.post(f"/ledger-pending/{item_id}/ignore")
+
+    assert response.status_code == 302
+    with app.app_context():
+        item = repo.get_ledger_pending_item(item_id)
+        voucher_count = get_db().execute("select count(*) from vouchers").fetchone()[0]
+        matching_audits = [
+            row for row in repo.list_audit_events()
+            if row["action"] == "ignore"
+            and row["entity_type"] == "ledger_pending_item"
+            and row["entity_id"] == item_id
+        ]
+    assert item["status"] == "已忽略"
+    assert voucher_count == 0
+    assert len(matching_audits) == 1
+
+    repeated = client.post(f"/ledger-pending/{item_id}/ignore")
+    assert repeated.status_code == 400
+    assert "只有待补录事项可以忽略".encode() in repeated.data
+    with app.app_context():
+        matching_audits = [
+            row for row in repo.list_audit_events()
+            if row["action"] == "ignore"
+            and row["entity_type"] == "ledger_pending_item"
+            and row["entity_id"] == item_id
+        ]
+    assert len(matching_audits) == 1
+
+
 def test_category_management_does_not_offer_destructive_deletion(client, app):
     response = client.get("/expense-categories")
     assert response.status_code == 200
@@ -316,6 +500,82 @@ def test_category_management_does_not_offer_destructive_deletion(client, app):
     category_id = int(category(app, "五金辅材及工具")["id"])
     delete_response = client.post(f"/expense-categories/{category_id}/delete")
     assert delete_response.status_code == 404
+
+
+def test_category_route_rejects_root_scope_change_with_children(client, app):
+    with app.app_context():
+        root = get_db().execute(
+            "select * from expense_categories where name = '材料费'"
+        ).fetchone()
+
+    response = client.post(
+        f"/expense-categories/{root['id']}/edit",
+        data={
+            "name": root["name"],
+            "parent_id": "",
+            "transaction_scope": "收入",
+            "sort_order": root["sort_order"],
+            "is_active": "1",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "一级分类仍有二级分类，不能修改收支范围".encode() in response.data
+    with app.app_context():
+        unchanged = get_db().execute(
+            "select transaction_scope from expense_categories where id = ?",
+            (root["id"],),
+        ).fetchone()
+        assert unchanged["transaction_scope"] == "支出"
+
+
+@pytest.mark.parametrize(
+    ("parent_name", "deactivate_parent", "transaction_scope", "message"),
+    [
+        ("五金辅材及工具", False, "支出", "所属分类必须是启用的一级分类"),
+        ("材料费", True, "支出", "所属分类必须是启用的一级分类"),
+        ("材料费", False, "收入", "分类与收支范围不匹配"),
+    ],
+)
+def test_category_route_rejects_forged_parent_and_scope(
+    client,
+    app,
+    parent_name,
+    deactivate_parent,
+    transaction_scope,
+    message,
+):
+    with app.app_context():
+        parent = get_db().execute(
+            "select * from expense_categories where name = ?", (parent_name,)
+        ).fetchone()
+        if deactivate_parent:
+            get_db().execute(
+                "update expense_categories set is_active = 0 where id = ?",
+                (parent["id"],),
+            )
+            get_db().commit()
+
+    response = client.post(
+        "/expense-categories",
+        data={
+            "name": f"路由伪造分类-{parent_name}",
+            "parent_id": str(parent["id"]),
+            "transaction_scope": transaction_scope,
+            "sort_order": "999",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert message.encode() in response.data
+    with app.app_context():
+        created = get_db().execute(
+            "select count(*) from expense_categories where name = ?",
+            (f"路由伪造分类-{parent_name}",),
+        ).fetchone()[0]
+        assert created == 0
 
 
 def test_route_rejects_category_scope_mismatch(client, app):

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_ledger_pagination.html" import ledger_pagination %}
 {% block title %}{{ project.name }} - 项目账套 - {{ system_settings.system_name }}{% endblock %}
 {% block breadcrumb %}项目台账 / {{ project.name }}{% endblock %}
 {% block page_subtitle %}结构化项目收支、付款与复核记录{% endblock %}
@@ -30,18 +31,18 @@
   <div><span>收入</span><strong>¥{{ financial_summary.income|money_short }}</strong></div>
   <div><span>资金往来</span><strong>¥{{ financial_summary.fund_transfer|money_short }}</strong></div>
   <div><span>未结金额</span><strong>¥{{ financial_summary.unsettled|money_short }}</strong></div>
-  <div><span>记录状态</span><strong>{{ financial_summary.entry_count }}</strong><small>复核 {{ financial_summary.review_count }} / 待补 {{ financial_summary.pending_count }}</small></div>
+  <div><span>记录状态</span><strong data-kpi="entry-count">{{ financial_summary.entry_count }}</strong><small>复核 {{ financial_summary.review_count }} / 待补 {{ financial_summary.pending_count }}</small></div>
 </section>
 
 <section class="panel-card ledger-tool animate-slide-up">
   <div class="panel-header">
     <div>
       <h2 class="panel-title">{{ icon('checklist') }} 项目财务明细</h2>
-      <p class="panel-subtitle">{{ vouchers|length }} 条筛选结果</p>
+      <p class="panel-subtitle">{{ voucher_total_count }} 条筛选结果</p>
     </div>
     <div class="toolbar-actions">
       <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.expense_categories') }}">{{ icon('checklist') }} 分类管理</a>
-      <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.download_export', export_type='project-ledger') }}">{{ icon('export') }} 导出</a>
+      <a class="btn btn-secondary toolbar-btn" href="{{ ledger_export_url }}">{{ icon('export') }} 导出</a>
     </div>
   </div>
 
@@ -82,6 +83,7 @@
     </label>
     <label>开始日期<input type="date" name="date_from" class="form-input" value="{{ ledger_filters.date_from }}"></label>
     <label>结束日期<input type="date" name="date_to" class="form-input" value="{{ ledger_filters.date_to }}"></label>
+    <label>每页<select name="per_page" class="form-select">{% for value in pagination.per_page_options %}<option value="{{ value }}" {% if pagination.per_page == value %}selected{% endif %}>{{ value }} 条</option>{% endfor %}</select></label>
     <div class="ledger-filter-actions">
       <a class="icon-button" href="{{ url_for('web.project_vouchers', project_id=project.id) }}" title="清除筛选" aria-label="清除筛选">{{ icon('rotate') }}</a>
       <button type="submit" class="btn btn-primary">{{ icon('search') }} 查询</button>
@@ -126,7 +128,7 @@
       </tbody>
     </table>
   </div>
-  <div id="projectLedgerPagination" class="pagination-container"></div>
+  {{ ledger_pagination(pagination) }}
 </section>
 
 {% macro ledger_fields(prefix, values=None) %}
@@ -219,9 +221,6 @@ document.addEventListener('DOMContentLoaded', function() {
     Array.from(secondary.options).forEach((option) => { option.hidden = Boolean(parentId) && Number(option.dataset.parent) !== parentId; });
     secondary.value = '';
   });
-  if (document.querySelector('#project-ledger-body .ledger-row')) {
-    window.paginators['project-ledger-body'] = new ClientPaginator({containerId: 'project-ledger-body', itemSelector: '.ledger-row', paginationId: 'projectLedgerPagination', pageSize: 15});
-  }
 });
 </script>
 {% endblock %}

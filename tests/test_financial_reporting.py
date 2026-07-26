@@ -1,3 +1,5 @@
+from io import BytesIO
+
 from openpyxl import load_workbook
 
 from construction_maintenance import repositories as repo
@@ -76,3 +78,45 @@ def test_project_ledger_export_contains_structured_fields_and_escapes_formulas(
     ]
     assert sheet.freeze_panes == "A2"
     assert sheet.auto_filter.ref == f"A1:R{sheet.max_row}"
+
+
+def test_filtered_ledger_export_includes_all_matches_across_pages(client, app):
+    with app.app_context():
+        company = repo.get_main_company()
+        project_id = repo.create_project({
+            "company_id": company["id"],
+            "name": "筛选导出测试",
+        })
+        category_id = _leaf_id("五金辅材及工具")
+        income_category_id = _leaf_id("废料处置收入")
+        for index in range(30):
+            repo.create_voucher({
+                "project_id": project_id,
+                "voucher_date": "2026-07-01",
+                "transaction_type": "支出",
+                "category_id": category_id,
+                "amount": index + 1,
+                "notes": f"EXPORT_MATCH_{index:02d}",
+                "payment_status": "未支付",
+            })
+        repo.create_voucher({
+            "project_id": project_id,
+            "voucher_date": "2026-07-01",
+            "transaction_type": "收入",
+            "category_id": income_category_id,
+            "amount": 500,
+            "notes": "EXPORT_NONMATCH",
+            "payment_status": "已支付/已报销",
+        })
+
+    response = client.get(
+        f"/exports/project-ledger?project_id={project_id}&transaction_type=支出"
+    )
+
+    assert response.status_code == 200
+    sheet = load_workbook(BytesIO(response.data)).active
+    notes = [sheet.cell(row=row, column=7).value for row in range(2, sheet.max_row + 1)]
+    assert len(notes) == 30
+    assert "EXPORT_MATCH_00" in notes
+    assert "EXPORT_MATCH_29" in notes
+    assert "EXPORT_NONMATCH" not in notes
