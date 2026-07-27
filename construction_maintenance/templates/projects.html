@@ -42,20 +42,20 @@
       <table class="premium-table">
         <thead>
           <tr>
-            <th style="min-width: 200px; white-space: nowrap;">项目名称</th>
-            <th style="min-width: 100px; white-space: nowrap;">负责人</th>
-            <th style="min-width: 110px; white-space: nowrap;">开工日期</th>
-            <th style="min-width: 90px; white-space: nowrap;">状态</th>
-            <th style="min-width: 180px; white-space: nowrap;">备注信息</th>
-            <th class="text-right sticky-col-right" style="min-width: 220px; width: 220px; white-space: nowrap;">管理操作</th>
+            <th style="max-width: 220px;">项目名称</th>
+            <th style="width: 100px;">负责人</th>
+            <th style="width: 110px;">开工日期</th>
+            <th style="width: 90px;">状态</th>
+            <th style="max-width: 220px;">备注信息</th>
+            <th class="text-right sticky-col-right" style="width: 200px;">管理操作</th>
           </tr>
         </thead>
         <tbody id="projects-table-tbody">
           {% for project in projects %}
           <tr>
-            <td class="font-semibold text-dark" style="vertical-align: middle; white-space: nowrap;">
-              <span style="display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;">
-                <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="project-link" title="点击查看项目专属费用台账">
+            <td class="font-semibold text-dark" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ project.name }}">
+              <span style="display: inline-flex; align-items: center; gap: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="project-link" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="点击查看项目专属费用台账">
                   {{ icon('folder') }} {{ project.name }}
                 </a>
               </span>
@@ -71,8 +71,8 @@
               <span class="badge badge-warning" style="display: inline-flex; white-space: nowrap;">{{ project.status }}</span>
               {% endif %}
             </td>
-            <td class="text-muted" style="vertical-align: middle; white-space: nowrap;">{{ project.notes or '--' }}</td>
-            <td class="text-right sticky-col-right" style="white-space: nowrap; width: 220px; min-width: 220px; vertical-align: middle;" onclick="event.stopPropagation();">
+            <td class="text-muted" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ project.notes or '--' }}">{{ project.notes or '--' }}</td>
+            <td class="text-right sticky-col-right" style="white-space: nowrap; width: 200px; vertical-align: middle;" onclick="event.stopPropagation();">
               <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
                 <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="btn-action-preview" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="进入该项目专属费用台账">
                   {{ icon('folder') }} 台账

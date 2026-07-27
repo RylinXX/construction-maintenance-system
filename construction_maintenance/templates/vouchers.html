@@ -86,19 +86,19 @@
 
   <div class="table-container ledger-table-wrap">
     <table class="premium-table ledger-table">
-      <thead><tr><th style="min-width: 140px;">日期 / 项目</th><th style="min-width: 80px;">收支</th><th style="min-width: 130px;">分类</th><th style="min-width: 160px;">事项摘要</th><th class="text-right" style="min-width: 110px;">金额</th><th style="min-width: 120px;">经办 / 付款</th><th style="min-width: 90px;">复核</th><th style="min-width: 130px;">来源</th><th class="text-right sticky-col-right" style="min-width: 110px; width: 110px;">操作</th></tr></thead>
+      <thead><tr><th>日期 / 项目</th><th>收支</th><th>分类</th><th style="max-width: 150px;">事项摘要</th><th class="text-right" style="width: 100px;">金额</th><th>经办 / 付款</th><th>复核</th><th style="max-width: 110px;">来源</th><th class="text-right sticky-col-right" style="width: 90px;">操作</th></tr></thead>
       <tbody id="global-ledger-body">
         {% for voucher in vouchers %}
         <tr class="ledger-row{% if voucher.is_void %} is-void{% endif %}">
-          <td><span class="font-mono">{{ voucher.voucher_date }}</span><small>{{ voucher.project_name }}</small></td>
+          <td style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ voucher.voucher_date }} {{ voucher.project_name }}"><span class="font-mono">{{ voucher.voucher_date }}</span><small style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">{{ voucher.project_name }}</small></td>
           <td><span class="badge badge-secondary">{{ voucher.transaction_type }}</span></td>
-          <td><strong>{{ voucher.primary_category or '--' }}</strong><small>{{ voucher.secondary_category or voucher.voucher_type }}</small></td>
-          <td>{{ voucher.notes or '--' }}</td>
-          <td class="text-right font-mono font-semibold">¥{{ voucher.amount|money }}</td>
-          <td>{{ voucher.handler_name or voucher.entry_user or '--' }}<small>{{ voucher.payment_status }}</small></td>
+          <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ voucher.primary_category or '' }} / {{ voucher.secondary_category or voucher.voucher_type }}"><strong>{{ voucher.primary_category or '--' }}</strong><small style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">{{ voucher.secondary_category or voucher.voucher_type }}</small></td>
+          <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ voucher.notes or '--' }}">{{ voucher.notes or '--' }}</td>
+          <td class="text-right font-mono font-semibold" style="white-space: nowrap;">¥{{ voucher.amount|money }}</td>
+          <td style="max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ voucher.handler_name or voucher.entry_user or '--' }}">{{ voucher.handler_name or voucher.entry_user or '--' }}<small>{{ voucher.payment_status }}</small></td>
           <td>{% if voucher.review_status == '待复核' %}<span class="badge badge-warning">待复核</span>{% else %}<span class="badge badge-success">已确认</span>{% endif %}</td>
-          <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ voucher.source_filename or '系统录入' }}">{{ voucher.source_filename or '系统录入' }}<small>{% if voucher.source_sheet %}{{ voucher.source_sheet }} / {{ voucher.source_row }}{% endif %}</small></td>
-          <td class="text-right ledger-row-actions sticky-col-right" style="min-width: 110px; width: 110px;">
+          <td style="max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ voucher.source_filename or '系统录入' }}">{{ voucher.source_filename or '系统录入' }}<small style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">{% if voucher.source_sheet %}{{ voucher.source_sheet }} / {{ voucher.source_row }}{% endif %}</small></td>
+          <td class="text-right ledger-row-actions sticky-col-right" style="width: 90px;">
             {% if voucher.is_void %}<span class="badge badge-secondary" title="{{ voucher.void_reason }}">已作废</span>{% else %}
             <a class="icon-button" href="{{ url_for('web.project_vouchers', project_id=voucher.project_id) }}" title="打开项目账套" aria-label="打开项目账套">{{ icon('preview') }}</a>
             <button type="button" class="icon-button" title="编辑明细" aria-label="编辑明细"

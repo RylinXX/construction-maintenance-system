@@ -1718,7 +1718,6 @@ textarea.form-input:focus {
   right: 0;
   z-index: 4;
   background: var(--surface-color);
-  box-shadow: -6px 0 14px rgba(0, 0, 0, 0.06);
 }
 
 .premium-table th.sticky-col-right {
@@ -1727,12 +1726,10 @@ textarea.form-input:focus {
 
 .dark-theme .premium-table th.sticky-col-right {
   background: var(--surface-muted);
-  box-shadow: -6px 0 14px rgba(0, 0, 0, 0.35);
 }
 
 .dark-theme .premium-table td.sticky-col-right {
   background: var(--surface-color);
-  box-shadow: -6px 0 14px rgba(0, 0, 0, 0.35);
 }
 
 .premium-table tbody tr:hover td.sticky-col-right {
