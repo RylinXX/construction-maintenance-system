@@ -1101,7 +1101,7 @@ textarea.form-input:focus {
 }
 
 .premium-table th {
-  padding: 11px 10px;
+  padding: 8px 6px;
   border-bottom: 1px solid var(--border-color);
   background: var(--surface-muted);
   color: var(--text-secondary);
@@ -1112,7 +1112,7 @@ textarea.form-input:focus {
 }
 
 .premium-table td {
-  padding: 11px 10px;
+  padding: 8px 6px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
   font-weight: 500;

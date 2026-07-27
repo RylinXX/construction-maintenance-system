@@ -89,10 +89,14 @@
 </section>
 
 <div class="panel-card animate-slide-up">
-  <div class="panel-header">
-    <div>
-      <h2 class="panel-title">{{ icon('checklist') }} 全盘财务明细列表</h2>
-      <p class="panel-subtitle">{{ voucher_total_count }} 条筛选结果</p>
+  <div class="panel-header" style="margin-bottom: 14px;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <h2 class="panel-title" style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
+        {{ icon('checklist') }} 全盘财务明细列表
+      </h2>
+      <span class="panel-subtitle" style="font-size: 13px; color: var(--text-tertiary);">
+        ({{ voucher_total_count }} 条筛选结果)
+      </span>
     </div>
     <div class="toolbar-actions">
       <a class="btn btn-secondary toolbar-btn" href="{{ ledger_export_url }}">{{ icon('export') }} 导出 Excel</a>
@@ -100,7 +104,7 @@
     </div>
   </div>
 
-  <form method="get" class="ledger-filter-band ledger-global-filter" style="margin-bottom: 16px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+  <form method="get" class="ledger-filter-band ledger-global-filter" style="background: var(--surface-muted); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px;">
     <label>项目<select name="project_id" class="form-select"><option value="">全部项目</option>{% for project in projects %}<option value="{{ project.id }}" {% if filter_project_id == project.id %}selected{% endif %}>{{ project.name }}</option>{% endfor %}</select></label>
     <label>收支类型<select name="transaction_type" class="form-select"><option value="">全部</option>{% for value in transaction_types %}<option value="{{ value }}" {% if ledger_filters.transaction_type == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
     <label>一级分类<select id="globalFilterPrimary" name="primary_category_id" class="form-select"><option value="">全部</option>{% for category in categories if category.parent_id is none %}<option value="{{ category.id }}" {% if ledger_filters.primary_category_id == category.id %}selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></label>
@@ -115,7 +119,7 @@
 
   <div class="table-container ledger-table-wrap">
     <table class="premium-table ledger-table">
-      <thead><tr><th style="width: 200px;">日期 / 项目 / 来源</th><th style="width: 65px;">收支</th><th style="width: 120px;">分类</th><th style="width: 120px; max-width: 120px;">事项摘要</th><th class="text-right" style="width: 100px;">金额</th><th style="width: 120px;">经办 / 付款</th><th style="width: 75px;">复核</th><th class="text-right sticky-col-right" style="width: 95px;">操作</th></tr></thead>
+      <thead><tr><th style="width: 170px;">日期 / 项目 / 来源</th><th style="width: 60px;">收支</th><th style="width: 110px;">分类</th><th style="width: 130px; max-width: 130px;">事项摘要</th><th class="text-right" style="width: 90px;">金额</th><th style="width: 110px;">经办 / 付款</th><th style="width: 70px;">复核</th><th class="text-right sticky-col-right" style="width: 90px; min-width: 90px;">操作</th></tr></thead>
       <tbody id="global-ledger-body">
         {% for voucher in vouchers %}
         <tr class="ledger-row{% if voucher.is_void %} is-void{% endif %}">
