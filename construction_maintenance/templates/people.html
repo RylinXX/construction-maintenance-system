@@ -119,7 +119,7 @@
                 <span class="text-muted">--</span>
                 {% endif %}
               </td>
-              <td class="font-mono" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;" title="{{ person.bank_card or '--' }} {% if person.bank_name %}({{ person.bank_name }}){% endif %}">
+              <td class="font-mono tooltip-cell" data-tooltip="银行卡: {{ person.bank_card or '--' }} {% if person.bank_name %}({{ person.bank_name }}){% endif %}" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">
                 {{ person.bank_card or '--' }} 
                 <span class="text-muted" style="font-size: 13px;">({{ person.bank_name or '未指定开户行' }})</span>
               </td>

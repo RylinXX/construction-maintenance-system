@@ -53,9 +53,9 @@
         <tbody id="projects-table-tbody">
           {% for project in projects %}
           <tr>
-            <td class="font-semibold text-dark" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ project.name }}">
+            <td class="font-semibold text-dark tooltip-cell" data-tooltip="项目名称: {{ project.name }}" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               <span style="display: inline-flex; align-items: center; gap: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="project-link" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="点击查看项目专属费用台账">
+                <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="project-link" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                   {{ icon('folder') }} {{ project.name }}
                 </a>
               </span>
@@ -71,7 +71,7 @@
               <span class="badge badge-warning" style="display: inline-flex; white-space: nowrap;">{{ project.status }}</span>
               {% endif %}
             </td>
-            <td class="text-muted" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ project.notes or '--' }}">{{ project.notes or '--' }}</td>
+            <td class="text-muted tooltip-cell" data-tooltip="备注信息: {{ project.notes or '--' }}" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ project.notes or '--' }}</td>
             <td class="text-right sticky-col-right" style="white-space: nowrap; width: 200px; vertical-align: middle;" onclick="event.stopPropagation();">
               <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
                 <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="btn-action-preview" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="进入该项目专属费用台账">

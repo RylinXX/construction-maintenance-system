@@ -1736,6 +1736,63 @@ textarea.form-input:focus {
   background: var(--hover-bg, var(--surface-muted));
 }
 
+/* Instant Modern Hover Tooltip for Truncated Text */
+.tooltip-cell {
+  position: relative;
+}
+
+.tooltip-cell[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-6px);
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: 6px;
+  white-space: normal;
+  word-break: break-word;
+  max-width: 320px;
+  min-width: 120px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  z-index: 999;
+  pointer-events: none;
+  animation: tooltipFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tooltip-cell[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  border-width: 5px 5px 0 5px;
+  border-style: solid;
+  border-color: #0f172a transparent transparent transparent;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.dark-theme .tooltip-cell[data-tooltip]:hover::after {
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark-theme .tooltip-cell[data-tooltip]:hover::before {
+  border-color: #1e293b transparent transparent transparent;
+}
+
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(0); }
+  to { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+}
+
 .dark-theme .badge-purple {
   background: rgba(167, 139, 250, 0.15);
   color: #C4B5FD;
