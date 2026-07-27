@@ -11,6 +11,8 @@ def build_dashboard() -> dict:
     current_month = date.today().strftime("%Y-%m")
     vouchers = repo.list_vouchers()
     batch_items = repo.list_batch_items()
+    projects = repo.list_projects()
+    
     financial = get_db().execute(
         """
         select
@@ -22,6 +24,7 @@ def build_dashboard() -> dict:
         where is_void = 0
         """
     ).fetchone()
+    
     month_row = get_db().execute(
         """
         select coalesce(sum(case
@@ -33,15 +36,21 @@ def build_dashboard() -> dict:
         """,
         (f"{current_month}%",),
     ).fetchone()
+    
     expense = float(financial["expense"])
     expense_reduction = float(financial["expense_reduction"])
     net_expense = expense - expense_reduction
     income = float(financial["income"])
     fund_transfer = float(financial["fund_transfer"])
     month_spending = float(month_row["net_expense"])
+    
     by_project: dict[str, float] = defaultdict(float)
     by_type: dict[str, float] = defaultdict(float)
-    # 计算每月总支出趋势与科目构成分布
+    by_primary_type: dict[str, float] = defaultdict(float)
+    
+    # Structure: by_project_categories[project_name][category_name] = amount
+    by_project_categories: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    
     months_set = set()
     categories_set = set()
     monthly_category_spend = defaultdict(lambda: defaultdict(float))
@@ -53,40 +62,50 @@ def build_dashboard() -> dict:
         signed_amount = float(row["amount"])
         if transaction_type == "冲减支出":
             signed_amount = -signed_amount
-        category_name = row["secondary_category"] or row["voucher_type"]
-        by_project[row["project_name"]] += signed_amount
-        by_type[category_name] += signed_amount
+            
+        p_name = row["project_name"]
+        cat_name = row["secondary_category"] or row["voucher_type"] or "其他"
+        primary_cat = row["primary_category"] or "其他支出"
         
-        # 提取月份 YYYY-MM
+        by_project[p_name] += signed_amount
+        by_type[cat_name] += signed_amount
+        by_primary_type[primary_cat] += signed_amount
+        
+        # Per project category grouping
+        by_project_categories[p_name][primary_cat] += signed_amount
+        by_project_categories["ALL"][primary_cat] += signed_amount
+        
+        # Extract YYYY-MM
         v_date = row["voucher_date"]
         if v_date and len(v_date) >= 7:
             m_key = v_date[:7]
             months_set.add(m_key)
-            categories_set.add(category_name)
-            monthly_category_spend[m_key][category_name] += signed_amount
+            categories_set.add(primary_cat)
+            monthly_category_spend[m_key][primary_cat] += signed_amount
             
-    # 按时间升序排列月份
     sorted_months = sorted(list(months_set))
     
-    # 使用后台维护的科目顺序，保证图表配色与图例一致。
+    # Years for filtering
+    years_set = sorted(list({m[:4] for m in sorted_months}), reverse=True)
+    recent_12_months = sorted_months[-12:] if len(sorted_months) > 12 else sorted_months
+    
     standard_categories = repo.list_expense_category_names(include_inactive=True)
     active_categories = [c for c in standard_categories if c in categories_set]
     for c in categories_set:
         if c not in active_categories:
             active_categories.append(c)
             
-    # 构造前端 Chart.js 堆叠图的数据集
     monthly_datasets = []
     for cat in active_categories:
         cat_data = []
         for m in sorted_months:
-            cat_data.append(monthly_category_spend[m][cat])
+            cat_data.append(round(monthly_category_spend[m][cat], 2))
         monthly_datasets.append({
             "category": cat,
             "data": cat_data
         })
 
-    # 动态计算 30 天内临期的企业资质证书数量
+    # Qualifications expiring in 30 days
     qualifications = repo.list_qualifications()
     expiring_count = 0
     today = date.today()
@@ -100,6 +119,20 @@ def build_dashboard() -> dict:
             except (ValueError, TypeError):
                 pass
 
+    # Pending items count (both OCR batch queue and ledger pending queue)
+    pending_batch = sum(1 for row in batch_items if row["status"] == "待确认")
+    pending_ledger = len(repo.list_ledger_pending_items(status="待补录"))
+    pending_count = pending_batch + pending_ledger
+
+    # Convert by_project_categories to regular dict for json serialization in template
+    project_cat_dict = {}
+    for p_key, cat_map in by_project_categories.items():
+        project_cat_dict[p_key] = [
+            {"name": k, "value": round(v, 2)}
+            for k, v in sorted(cat_map.items(), key=lambda x: x[1], reverse=True)
+            if v > 0
+        ]
+
     return {
         "month_spending": month_spending,
         "expense": expense,
@@ -109,12 +142,17 @@ def build_dashboard() -> dict:
         "fund_transfer": fund_transfer,
         "total_spending": net_expense,
         "voucher_count": len(vouchers),
-        "pending_count": sum(1 for row in batch_items if row["status"] == "待确认"),
+        "pending_count": pending_count,
         "expiring_qualifications": expiring_count,
         "by_project": sorted(by_project.items(), key=lambda item: item[1], reverse=True),
         "by_type": sorted(by_type.items(), key=lambda item: item[1], reverse=True),
+        "by_primary_type": sorted(by_primary_type.items(), key=lambda item: item[1], reverse=True),
+        "by_project_categories": project_cat_dict,
+        "projects_list": [p["name"] for p in projects],
         "monthly_trend": {
             "months": sorted_months,
+            "recent_12_months": recent_12_months,
+            "years": years_set,
             "datasets": monthly_datasets
         }
     }

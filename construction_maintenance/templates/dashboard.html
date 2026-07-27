@@ -3,14 +3,14 @@
 {% block title %}数据看板 - {{ system_settings.system_name }}{% endblock %}
 {% block breadcrumb %}看板{% endblock %}
 
-{% block page_subtitle %}项目净支出、财务明细、人员与资质的集中运营视图{% endblock %}
+{% block page_subtitle %}集中跟踪项目支出、凭证录入、人员与资质状态{% endblock %}
 
 {% block content %}
 <section class="dashboard-hero animate-slide-up">
   <div class="dashboard-hero-copy">
     <span class="eyebrow">YLT Digital Operations</span>
     <h1>营力特数字化系统</h1>
-    <p>集中跟踪项目支出、凭证录入、人员花名册与企业资质状态，让日常工程运营保持清晰可查。</p>
+    <p>工程项目独立账套管理、费用分类占比分析与运营风险预警中心。</p>
   </div>
   <div class="dashboard-hero-panel">
     <div>
@@ -18,12 +18,12 @@
       <strong>¥{{ metrics.month_spending|money_short }}</strong>
     </div>
     <div>
-      <span>待确认资料</span>
-      <strong>{{ metrics.pending_count }}</strong>
+      <span>待确认/待补录</span>
+      <strong class="{% if metrics.pending_count > 0 %}text-warning{% endif %}">{{ metrics.pending_count }}</strong>
     </div>
     <div>
       <span>临期资质</span>
-      <strong>{{ metrics.expiring_qualifications }}</strong>
+      <strong class="{% if metrics.expiring_qualifications > 0 %}text-danger{% endif %}">{{ metrics.expiring_qualifications }}</strong>
     </div>
   </div>
 </section>
@@ -43,7 +43,7 @@
     <div class="metric-info">
       <span class="metric-title">累计项目净支出</span>
       <strong class="metric-value">¥{{ metrics.net_expense|money_short }}</strong>
-      <span class="metric-baseline">覆盖全部项目台账</span>
+      <span class="metric-baseline">覆盖 6 大项目台账</span>
     </div>
   </article>
 
@@ -52,7 +52,7 @@
     <div class="metric-info">
       <span class="metric-title">累计收入</span>
       <strong class="metric-value">¥{{ metrics.income|money_short }}</strong>
-      <span class="metric-baseline">不计入项目成本</span>
+      <span class="metric-baseline">废料处置及退款等</span>
     </div>
   </article>
 
@@ -65,42 +65,40 @@
     </div>
   </article>
 
-  <article class="metric-card amber">
-    <span class="metric-icon">{{ icon('document') }}</span>
-    <div class="metric-info">
-      <span class="metric-title">本月凭证数</span>
-      <strong class="metric-value">{{ metrics.voucher_count }}</strong>
-      <span class="metric-baseline">本月新增费用记录</span>
-    </div>
-  </article>
-
-  <article class="metric-card sky">
+  <a href="{{ url_for('web.ledger_pending') }}" class="metric-card sky clickable-metric">
     <span class="metric-icon">{{ icon('import') }}</span>
     <div class="metric-info">
-      <span class="metric-title">待确认资料</span>
-      <strong class="metric-value">{{ metrics.pending_count }}</strong>
-      <span class="metric-baseline">批量导入待复核队列</span>
+      <span class="metric-title">待确认/待补录</span>
+      <strong class="metric-value">{{ metrics.pending_count }} <small style="font-size: 13px;">条待处理</small></strong>
+      <span class="metric-baseline">点击前往待补录队列 &rarr;</span>
     </div>
-  </article>
+  </a>
 
-  <article class="metric-card rose">
+  <a href="{{ url_for('web.qualifications') }}" class="metric-card rose clickable-metric">
     <span class="metric-icon">{{ icon('qualification') }}</span>
     <div class="metric-info">
       <span class="metric-title">临期资质</span>
-      <strong class="metric-value">{{ metrics.expiring_qualifications }}</strong>
-      <span class="metric-baseline">需关注的证照有效期</span>
+      <strong class="metric-value">{{ metrics.expiring_qualifications }} <small style="font-size: 13px;">项预警</small></strong>
+      <span class="metric-baseline">点击查看临期证书 &rarr;</span>
     </div>
-  </article>
+  </a>
 </section>
 
-<!-- Advanced Analytics Charts (Premium Business Feel) -->
-<div class="analysis-section animate-slide-up" style="animation-delay: 0.15s; margin-top: 28px;">
-  <!-- Left Panel: Monthly Total Spend & Category Distribution Trend (Wider, 3fr) -->
+<!-- Analytics Grid Row 1: Trend & Pie Chart -->
+<div class="analysis-section-row animate-slide-up" style="animation-delay: 0.1s; margin-top: 24px;">
+  <!-- Left Chart: Monthly Spending Trend with Year Segment Filter -->
   <div class="panel-card">
-    <div class="panel-header">
+    <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
       <div>
-        <h2 class="panel-title">{{ icon('trend') }} 每月项目净支出与科目构成</h2>
-        <p class="panel-subtitle">支出扣除冲减支出，收入和资金往来不计入项目成本。</p>
+        <h2 class="panel-title">{{ icon('trend') }} 月度支出趋势</h2>
+        <p class="panel-subtitle">按时间阶段切分显示项目净支出与科目分布</p>
+      </div>
+      <div class="year-filter-tabs" style="display: flex; gap: 6px;">
+        <button type="button" class="btn btn-primary btn-sm year-tab-btn" data-year="recent_12" onclick="switchYearFilter('recent_12', this)">近12个月</button>
+        {% for yr in metrics.monthly_trend.years %}
+        <button type="button" class="btn btn-secondary btn-sm year-tab-btn" data-year="{{ yr }}" onclick="switchYearFilter('{{ yr }}', this)">{{ yr }}年</button>
+        {% endfor %}
+        <button type="button" class="btn btn-secondary btn-sm year-tab-btn" data-year="all" onclick="switchYearFilter('all', this)">全部历史</button>
       </div>
     </div>
     <div class="chart-container" style="position: relative; height: 320px;">
@@ -115,97 +113,130 @@
     </div>
   </div>
 
-  <!-- Right Panel: Project Cumulative Spending Ranking (Narrower, 2fr) -->
+  <!-- Right Chart: Expenditure Categories Donut Pie Chart -->
   <div class="panel-card">
-    <div class="panel-header">
+    <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
       <div>
-        <h2 class="panel-title">{{ icon('dashboard') }} 项目净支出排行</h2>
-        <p class="panel-subtitle">各项目支出扣除冲减支出后的累计金额。</p>
+        <h2 class="panel-title">{{ icon('checklist') }} 支出分类占比 (饼图)</h2>
+        <p class="panel-subtitle">可选择单项目或全盘对比各类支出比例</p>
+      </div>
+      <div>
+        <select id="pieProjectSelect" class="form-select" style="min-width: 160px; padding: 4px 8px; font-size: 13px;" onchange="updatePieChart(this.value)">
+          <option value="ALL">全部项目汇总</option>
+          {% for p_name in metrics.projects_list %}
+          <option value="{{ p_name }}">{{ p_name }}</option>
+          {% endfor %}
+        </select>
       </div>
     </div>
-    <div class="chart-container" style="position: relative; height: 320px;">
-      {% if metrics.by_project %}
-      <canvas id="projectSpendingChart"></canvas>
-      {% else %}
-      <div class="empty-state" style="padding: 90px 0;">
-        <span class="empty-icon">{{ icon('dashboard') }}</span>
-        <span class="empty-text">暂无项目支出数据，请先录入凭证</span>
-      </div>
-      {% endif %}
+    <div class="chart-container" style="position: relative; height: 320px; display: flex; align-items: center; justify-content: center;">
+      <canvas id="categoryPieChart"></canvas>
     </div>
   </div>
 </div>
 
+<!-- Analytics Grid Row 2: Project Spending Ranking -->
+<div class="panel-card animate-slide-up" style="animation-delay: 0.15s; margin-top: 24px;">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">{{ icon('dashboard') }} 各项目净支出排行对比</h2>
+      <p class="panel-subtitle">各独立项目账套支出扣除冲减支出后的累计净金额。</p>
+    </div>
+  </div>
+  <div class="chart-container" style="position: relative; height: 280px;">
+    {% if metrics.by_project %}
+    <canvas id="projectSpendingChart"></canvas>
+    {% else %}
+    <div class="empty-state" style="padding: 90px 0;">
+      <span class="empty-icon">{{ icon('dashboard') }}</span>
+      <span class="empty-text">暂无项目支出数据，请先录入凭证</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
 <style>
-.analysis-section {
+.analysis-section-row {
   display: grid;
   grid-template-columns: 3fr 2fr;
-  gap: 24px;
+  gap: 20px;
 }
-
-@media (max-width: 1024px) {
-  .analysis-section {
+.clickable-metric {
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.clickable-metric:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+@media (max-width: 1080px) {
+  .analysis-section-row {
     grid-template-columns: 1fr;
   }
 }
 </style>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-  // 动态主题颜色解析辅助函数
-  function getThemeColors() {
-    const isDark = document.documentElement.classList.contains('dark-theme');
-    return {
-      text: isDark ? '#f8fafc' : '#0f172a',
-      muted: isDark ? '#94a3b8' : '#64748b',
-      lineLight: isDark ? '#1e293b' : '#e2e8f0'
-    };
-  }
+const allMonths = {{ metrics.monthly_trend.months | tojson }};
+const recent12Months = {{ metrics.monthly_trend.recent_12_months | tojson }};
+const rawDatasets = {{ metrics.monthly_trend.datasets | tojson }};
+const projectCategoriesData = {{ metrics.by_project_categories | tojson }};
 
-  let chartMonthly = null;
-  let chartProject = null;
+let chartMonthly = null;
+let chartProject = null;
+let chartPie = null;
+let currentYearFilter = 'recent_12';
+
+function getThemeColors() {
+  const isDark = document.documentElement.classList.contains('dark-theme');
+  return {
+    text: isDark ? '#f8fafc' : '#0f172a',
+    muted: isDark ? '#94a3b8' : '#64748b',
+    lineLight: isDark ? '#1e293b' : '#e2e8f0'
+  };
+}
+
+const colorPalette = [
+  "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899",
+  "#0ea5e9", "#f43f5e", "#14b8a6", "#a855f7", "#84cc16", "#06b6d4"
+];
+
+function initMonthlyTrendChart() {
+  const ctx = document.getElementById('monthlySpendingTrendChart')?.getContext('2d');
+  if (!ctx || !allMonths.length) return;
 
   const themeColors = getThemeColors();
-
-  // 1. 公司每月总支出与科目构成趋势 (Stacked Bar Chart)
-  {% if metrics.monthly_trend and metrics.monthly_trend.months %}
-  const months = [{% for m in metrics.monthly_trend.months %}"{{ m }}",{% endfor %}];
   
-  // 颜色映射字典
-  const categoryColorMap = {
-    "材料费用": "#3b82f6", // Blue 500
-    "人工工资": "#10b981", // Emerald 500
-    "油费": "#f59e0b",     // Amber 500
-    "电费": "#0ea5e9",     // Sky 500
-    "员工报销": "#8b5cf6", // Purple 500
-    "转账凭证": "#ec4899", // Pink 500
-    "其它": "#64748b"      // Slate 500
-  };
+  // Filter months based on currentYearFilter
+  let targetMonths = [];
+  if (currentYearFilter === 'recent_12') {
+    targetMonths = recent12Months;
+  } else if (currentYearFilter === 'all') {
+    targetMonths = allMonths;
+  } else {
+    targetMonths = allMonths.filter(m => m.startsWith(currentYearFilter));
+  }
+
+  // Filter dataset arrays accordingly
+  const monthIndices = targetMonths.map(m => allMonths.indexOf(m));
   
-  // 备用颜色池，供自定义分类使用
-  const fallbackColors = ["#f43f5e", "#14b8a6", "#a855f7", "#84cc16", "#06b6d4"];
-  let colorIdx = 0;
+  const filteredDatasets = rawDatasets.map((ds, idx) => ({
+    label: ds.category,
+    data: monthIndices.map(i => ds.data[i] || 0),
+    backgroundColor: colorPalette[idx % colorPalette.length],
+    borderRadius: 3,
+    maxBarThickness: 45
+  })).filter(ds => ds.data.some(v => v > 0));
 
-  const datasets = [
-    {% for ds in metrics.monthly_trend.datasets %}
-    {
-      label: "{{ ds.category }}",
-      data: {{ ds.data | tojson }},
-      backgroundColor: categoryColorMap["{{ ds.category }}"] || fallbackColors[colorIdx++ % fallbackColors.length],
-      borderRadius: 4,
-      borderWidth: 0,
-      barPercentage: 0.6,
-      maxBarThickness: 60
-    },
-    {% endfor %}
-  ];
+  if (chartMonthly) {
+    chartMonthly.destroy();
+  }
 
-  const ctxMonthly = document.getElementById('monthlySpendingTrendChart').getContext('2d');
-  chartMonthly = new Chart(ctxMonthly, {
+  chartMonthly = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: months,
-      datasets: datasets
+      labels: targetMonths,
+      datasets: filteredDatasets
     },
     options: {
       responsive: true,
@@ -216,160 +247,172 @@ document.addEventListener("DOMContentLoaded", function() {
           align: 'end',
           labels: {
             color: themeColors.text,
-            font: { family: "'Inter', sans-serif", size: 12, weight: '600' },
-            boxWidth: 12,
-            usePointStyle: true,
-            pointStyle: 'circle'
+            font: { family: "'Inter', sans-serif", size: 11, weight: '600' },
+            boxWidth: 10,
+            usePointStyle: true
           }
         },
         tooltip: {
           mode: 'index',
           intersect: false,
-          backgroundColor: '#0f172a',
-          titleFont: { size: 14, family: "'Inter', sans-serif", weight: 'bold' },
-          bodyFont: { size: 13, family: "'Inter', sans-serif" },
-          footerFont: { size: 13, family: "'Inter', sans-serif", weight: 'bold' },
-          padding: 12,
-          cornerRadius: 8,
           callbacks: {
-            label: function(context) {
-              const label = context.dataset.label || '';
-              const value = context.raw || 0;
-              return ' ' + label + ': ¥' + value.toLocaleString('zh-CN', {minimumFractionDigits: 2});
-            },
-            footer: function(tooltipItems) {
-              let sum = 0;
-              tooltipItems.forEach(function(tooltipItem) {
-                sum += tooltipItem.raw;
-              });
-              return '\n 每月净支出: ¥' + sum.toLocaleString('zh-CN', {minimumFractionDigits: 2});
-            }
+            label: (ctx) => ` ${ctx.dataset.label}: ¥${(ctx.raw || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2})}`,
+            footer: (items) => `\n 合计: ¥${items.reduce((a, b) => a + (b.raw || 0), 0).toLocaleString('zh-CN', {minimumFractionDigits: 2})}`
           }
         }
       },
       scales: {
         x: {
           stacked: true,
-          grid: {
-            display: false
-          },
-          ticks: {
-            color: themeColors.muted,
-            font: { family: "'Inter', sans-serif", size: 11 }
-          }
+          grid: { display: false },
+          ticks: { color: themeColors.muted, font: { size: 10 } }
         },
         y: {
           stacked: true,
-          grid: {
-            color: themeColors.lineLight
-          },
+          grid: { color: themeColors.lineLight },
           ticks: {
             color: themeColors.muted,
-            font: { family: "'Inter', sans-serif", size: 11 },
-            callback: function(value) {
-              if (value >= 10000) return (value / 10000) + ' 万';
-              return value;
-            }
+            font: { size: 10 },
+            callback: (v) => v >= 10000 ? (v / 10000) + '万' : v
           }
         }
       }
     }
   });
-  {% endif %}
+}
 
-  // 2. 项目支出柱状图 (Horizontal Bar Chart)
-  {% if metrics.by_project %}
-  const projectNames = [{% for name, amt in metrics.by_project %}"{{ name }}",{% endfor %}];
-  const projectAmounts = [{% for name, amt in metrics.by_project %}{{ amt }},{% endfor %}];
+function switchYearFilter(year, btn) {
+  currentYearFilter = year;
+  document.querySelectorAll('.year-tab-btn').forEach(b => {
+    b.classList.remove('btn-primary');
+    b.classList.add('btn-secondary');
+  });
+  btn.classList.remove('btn-secondary');
+  btn.classList.add('btn-primary');
+  initMonthlyTrendChart();
+}
+
+function initCategoryPieChart(projectKey) {
+  const ctx = document.getElementById('categoryPieChart')?.getContext('2d');
+  if (!ctx) return;
+
+  const themeColors = getThemeColors();
+  const catItems = projectCategoriesData[projectKey] || projectCategoriesData['ALL'] || [];
   
-  const ctxProject = document.getElementById('projectSpendingChart').getContext('2d');
-  
-  // 创建漂亮渐变色
-  const gradientBlue = ctxProject.createLinearGradient(0, 0, 400, 0);
-  gradientBlue.addColorStop(0, '#3b82f6'); // Blue 500
-  gradientBlue.addColorStop(1, '#6366f1'); // Indigo 500
-  
-  chartProject = new Chart(ctxProject, {
-    type: 'bar',
+  const labels = catItems.map(i => i.name);
+  const values = catItems.map(i => i.value);
+
+  if (chartPie) {
+    chartPie.destroy();
+  }
+
+  chartPie = new Chart(ctx, {
+    type: 'doughnut',
     data: {
-      labels: projectNames,
+      labels: labels,
       datasets: [{
-        label: '累计支出 (元)',
-        data: projectAmounts,
-        backgroundColor: gradientBlue,
-        hoverBackgroundColor: '#4f46e5',
-        borderRadius: 4,
-        barThickness: 16
+        data: values,
+        backgroundColor: colorPalette,
+        borderWidth: 2,
+        borderColor: themeColors.lineLight
       }]
     },
     options: {
-      indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: false
+          position: 'right',
+          labels: {
+            color: themeColors.text,
+            font: { family: "'Inter', sans-serif", size: 11, weight: '600' },
+            boxWidth: 12,
+            padding: 12
+          }
         },
         tooltip: {
-          backgroundColor: '#0f172a',
-          titleFont: { size: 14, family: "'Inter', sans-serif", weight: 'bold' },
-          bodyFont: { size: 13, family: "'Inter', sans-serif" },
-          padding: 12,
-          cornerRadius: 8,
           callbacks: {
-            label: function(context) {
-              return ' 支出金额: ¥' + context.raw.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            label: function(ctx) {
+              const val = ctx.raw || 0;
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct = total ? ((val / total) * 100).toFixed(1) : 0;
+              return ` ${ctx.label}: ¥${val.toLocaleString('zh-CN', {minimumFractionDigits: 2})} (${pct}%)`;
             }
           }
         }
       },
-      scales: {
-        x: {
-          grid: {
-            color: themeColors.lineLight,
-            drawBorder: false
-          },
-          ticks: {
-            color: themeColors.muted,
-            font: { family: "'Inter', sans-serif", size: 11 },
-            callback: function(value) {
-              if (value >= 10000) return (value / 10000) + ' 万';
-              return value;
+      cutout: '62%'
+    }
+  });
+}
+
+function updatePieChart(projectKey) {
+  initCategoryPieChart(projectKey);
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  initMonthlyTrendChart();
+  initCategoryPieChart('ALL');
+
+  // Horizontal Bar Chart for Project Cumulative Spending
+  {% if metrics.by_project %}
+  const projectNames = [{% for name, amt in metrics.by_project %}"{{ name }}",{% endfor %}];
+  const projectAmounts = [{% for name, amt in metrics.by_project %}{{ amt }},{% endfor %}];
+  const ctxProject = document.getElementById('projectSpendingChart')?.getContext('2d');
+  
+  if (ctxProject) {
+    const themeColors = getThemeColors();
+    const gradientBlue = ctxProject.createLinearGradient(0, 0, 400, 0);
+    gradientBlue.addColorStop(0, '#3b82f6');
+    gradientBlue.addColorStop(1, '#6366f1');
+    
+    chartProject = new Chart(ctxProject, {
+      type: 'bar',
+      data: {
+        labels: projectNames,
+        datasets: [{
+          label: '累计支出 (元)',
+          data: projectAmounts,
+          backgroundColor: gradientBlue,
+          borderRadius: 4,
+          barThickness: 18
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` 支出金额: ¥${ctx.raw.toLocaleString('zh-CN', {minimumFractionDigits: 2})}`
             }
           }
         },
-        y: {
-          grid: {
-            display: false
+        scales: {
+          x: {
+            grid: { color: themeColors.lineLight },
+            ticks: {
+              color: themeColors.muted,
+              font: { size: 11 },
+              callback: (v) => v >= 10000 ? (v / 10000) + '万' : v
+            }
           },
-          ticks: {
-            color: themeColors.text,
-            font: { family: "'Inter', sans-serif", size: 12, weight: '600' }
+          y: {
+            grid: { display: false },
+            ticks: { color: themeColors.text, font: { size: 12, weight: '600' } }
           }
         }
       }
-    }
-  });
+    });
+  }
   {% endif %}
 
-  // 监听全局主题切换事件，实时刷新图表颜色
   window.addEventListener('themechanged', function() {
-    const updatedColors = getThemeColors();
-    
-    if (chartMonthly) {
-      chartMonthly.options.plugins.legend.labels.color = updatedColors.text;
-      chartMonthly.options.scales.x.ticks.color = updatedColors.muted;
-      chartMonthly.options.scales.y.ticks.color = updatedColors.muted;
-      chartMonthly.options.scales.y.grid.color = updatedColors.lineLight;
-      chartMonthly.update();
-    }
-    
-    if (chartProject) {
-      chartProject.options.scales.x.grid.color = updatedColors.lineLight;
-      chartProject.options.scales.x.ticks.color = updatedColors.muted;
-      chartProject.options.scales.y.ticks.color = updatedColors.text;
-      chartProject.update();
-    }
+    initMonthlyTrendChart();
+    const projectKey = document.getElementById('pieProjectSelect')?.value || 'ALL';
+    initCategoryPieChart(projectKey);
   });
 });
 </script>

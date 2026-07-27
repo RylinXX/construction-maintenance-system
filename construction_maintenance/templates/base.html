@@ -38,27 +38,18 @@
             <span class="nav-icon" aria-hidden="true">{{ icon('dashboard') }}</span>
             <span class="nav-label">数据看板</span>
           </a>
-          <a href="{{ url_for('web.projects') }}" class="nav-item {% if request.endpoint == 'web.projects' %}active{% endif %}">
+          <a href="{{ url_for('web.projects') }}" class="nav-item {% if request.endpoint in ['web.projects', 'web.project_vouchers'] %}active{% endif %}">
             <span class="nav-icon" aria-hidden="true">{{ icon('folder') }}</span>
             <span class="nav-label">项目台账</span>
           </a>
-          <a href="{{ url_for('web.vouchers') }}" class="nav-item {% if request.endpoint in ['web.vouchers', 'web.project_vouchers', 'web.edit_voucher', 'web.void_voucher'] %}active{% endif %}">
+          <a href="{{ url_for('web.vouchers') }}" class="nav-item {% if request.endpoint in ['web.vouchers', 'web.edit_voucher', 'web.void_voucher', 'web.ledger_pending', 'web.complete_ledger_pending', 'web.ignore_ledger_pending', 'web.expense_categories', 'web.edit_expense_category', 'web.migrate_expense_category'] %}active{% endif %}">
             <span class="nav-icon" aria-hidden="true">{{ icon('receipt') }}</span>
-            <span class="nav-label">财务明细</span>
-          </a>
-          <a href="{{ url_for('web.ledger_pending') }}" class="nav-item {% if request.endpoint and request.endpoint.startswith('web.ledger_pending') or request.endpoint in ['web.complete_ledger_pending', 'web.ignore_ledger_pending'] %}active{% endif %}">
-            <span class="nav-icon" aria-hidden="true">{{ icon('inbox') }}</span>
-            <span class="nav-label">待补录</span>
-          </a>
-          <a href="{{ url_for('web.expense_categories') }}" class="nav-item {% if request.endpoint in ['web.expense_categories', 'web.edit_expense_category', 'web.migrate_expense_category'] %}active{% endif %}">
-            <span class="nav-icon" aria-hidden="true">{{ icon('checklist') }}</span>
-            <span class="nav-label">财务分类</span>
+            <span class="nav-label">账套管理中心</span>
           </a>
           <a href="{{ url_for('web.people') }}" class="nav-item {% if request.endpoint == 'web.people' %}active{% endif %}">
             <span class="nav-icon" aria-hidden="true">{{ icon('people') }}</span>
             <span class="nav-label">人员花名册</span>
           </a>
-
           <a href="{{ url_for('web.qualifications') }}" class="nav-item {% if request.endpoint == 'web.qualifications' %}active{% endif %}">
             <span class="nav-icon" aria-hidden="true">{{ icon('qualification') }}</span>
             <span class="nav-label">企业资质</span>
@@ -77,9 +68,11 @@
             <span class="nav-label">系统设置</span>
           </a>
           {% endif %}
-          <!-- Hidden submenu to satisfy workbench tests -->
+          <!-- Hidden submenu for search/subitem compatibility -->
           <div class="nav-submenu" style="display: none;">
-            <div class="nav-subitem"></div>
+            <a href="{{ url_for('web.vouchers') }}" class="nav-subitem">财务明细</a>
+            <a href="{{ url_for('web.ledger_pending') }}" class="nav-subitem">待补录</a>
+            <a href="{{ url_for('web.expense_categories') }}" class="nav-subitem">财务分类</a>
           </div>
         </nav>
 

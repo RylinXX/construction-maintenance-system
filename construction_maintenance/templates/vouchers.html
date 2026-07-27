@@ -6,6 +6,12 @@
 {% block page_subtitle %}跨项目查询收支、付款、复核与来源记录{% endblock %}
 
 {% block content %}
+<div class="ledger-center-nav animate-slide-up" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+  <a href="{{ url_for('web.vouchers') }}" class="btn btn-primary toolbar-btn" style="min-height: 36px;">{{ icon('receipt') }} 全盘财务明细</a>
+  <a href="{{ url_for('web.ledger_pending') }}" class="btn btn-secondary toolbar-btn" style="min-height: 36px;">{{ icon('inbox') }} 待补录队列</a>
+  <a href="{{ url_for('web.expense_categories') }}" class="btn btn-secondary toolbar-btn" style="min-height: 36px;">{{ icon('checklist') }} 费用科目定义</a>
+</div>
+
 <section class="page-heading-row animate-slide-up">
   <div><h1 class="section-page-title">财务明细</h1><p class="panel-subtitle">{{ voucher_total_count }} 条筛选结果</p></div>
   <div class="toolbar-actions">
