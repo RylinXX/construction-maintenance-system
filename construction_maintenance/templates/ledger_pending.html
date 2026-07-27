@@ -3,7 +3,7 @@
 {% from "_ledger_pagination.html" import ledger_pagination %}
 {% block title %}待补录队列 - {{ system_settings.system_name }}{% endblock %}
 {% block breadcrumb %}项目台账 / 待补录队列{% endblock %}
-{% block page_subtitle %}缺少金额的业务事项不计入财务汇总{% endblock %}
+{% block page_subtitle %}缺少金额或重要信息的业务事项独立队列{% endblock %}
 
 {% block content %}
 <section class="module-hero animate-slide-up">
@@ -39,72 +39,76 @@
   </div>
 </section>
 
-<section class="page-heading-row animate-slide-up" style="margin-bottom: 12px;">
-  <div>
-    <h2 class="section-page-title" style="font-size: 18px; margin: 0;">待补录事项队列</h2>
-    <p class="panel-subtitle">{{ pending_total_count }} 条当前结果</p>
-  </div>
-</section>
-
-<form method="get" class="ledger-filter-band ledger-pending-filter animate-slide-up">
-  <label>项目
-    <select name="project_id" class="form-select">
-      <option value="">全部项目</option>
-      {% for project in projects %}<option value="{{ project.id }}" {% if filter_project_id == project.id %}selected{% endif %}>{{ project.name }}</option>{% endfor %}
-    </select>
-  </label>
-  <label>状态
-    <select name="status" class="form-select">
-      {% for value in pending_statuses %}<option value="{{ value }}" {% if filter_status == value %}selected{% endif %}>{{ value }}</option>{% endfor %}
-    </select>
-  </label>
-  <label>每页
-    <select name="per_page" class="form-select">
-      {% for value in pagination.per_page_options %}<option value="{{ value }}" {% if pagination.per_page == value %}selected{% endif %}>{{ value }} 条</option>{% endfor %}
-    </select>
-  </label>
-  <div class="ledger-filter-actions"><button type="submit" class="btn btn-primary">{{ icon('search') }} 查询</button></div>
-</form>
-
-<section class="pending-list animate-slide-up">
-  {% for item in items %}
-  <article class="pending-item">
-    <div class="pending-item-summary">
-      <div class="pending-item-title-row">
-        <strong>{{ item.summary }}</strong>
-        {% if item.status == '待补录' %}<span class="badge badge-warning">{{ item.status }}</span>{% elif item.status == '已转正式明细' %}<span class="badge badge-success">{{ item.status }}</span>{% else %}<span class="badge badge-secondary">{{ item.status }}</span>{% endif %}
-      </div>
-      <dl class="pending-item-meta">
-        <div><dt>项目</dt><dd>{{ item.project_name }}</dd></div>
-        <div><dt>日期</dt><dd>{{ item.item_date }}</dd></div>
-        <div><dt>建议分类</dt><dd>{{ item.suggested_primary_name }} / {{ item.suggested_category_name }}</dd></div>
-        <div><dt>经办人</dt><dd>{{ item.handler_name or '--' }}</dd></div>
-        <div><dt>待确认问题</dt><dd>{{ item.issue_type }}</dd></div>
-        <div><dt>来源</dt><dd>{{ item.source_filename }} / {{ item.source_sheet }} / {{ item.source_row }}</dd></div>
-      </dl>
+<!-- Single Master Panel Card Container -->
+<section class="panel-card animate-slide-up">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">{{ icon('inbox') }} 待补录事项队列</h2>
+      <p class="panel-subtitle">{{ pending_total_count }} 条当前结果</p>
     </div>
-    {% if item.status == '待补录' %}
-    <form method="post" action="{{ url_for('web.complete_ledger_pending', item_id=item.id) }}" class="pending-completion-form">
-      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <label>金额<input class="form-input" name="amount" type="number" min="0.01" step="0.01" required></label>
-      <label>收支类型<select class="form-select" name="transaction_type" data-pending-transaction required>{% for value in transaction_types %}<option value="{{ value }}" {% if value == (item.suggested_transaction_scope or '支出') %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
-      <label>二级分类
-        <select class="form-select" name="category_id" data-pending-category data-selected-category="{{ item.suggested_category_id }}" required></select>
-      </label>
-      <label>付款状态<select class="form-select" name="payment_status" required>{% for value in payment_statuses %}<option value="{{ value }}" {% if value == '支付状态待确认' %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
-      <button type="submit" class="btn btn-primary">{{ icon('save') }} 转为正式明细</button>
-    </form>
-    <form method="post" action="{{ url_for('web.ignore_ledger_pending', item_id=item.id) }}" class="pending-ignore-form" onsubmit="return confirm('确认忽略该待补录事项？');">
-      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-      <button type="submit" class="icon-button" title="忽略事项" aria-label="忽略事项">{{ icon('delete') }}</button>
-    </form>
-    {% endif %}
-  </article>
-  {% else %}
-  <div class="empty-state"><span class="empty-icon">{{ icon('empty-inbox') }}</span><span class="empty-text">当前筛选下没有待补录事项</span></div>
-  {% endfor %}
+  </div>
+
+  <form method="get" class="ledger-filter-band ledger-pending-filter" style="border-top: 1px solid var(--border-color); padding-top: 14px; margin-bottom: 16px;">
+    <label>项目
+      <select name="project_id" class="form-select">
+        <option value="">全部项目</option>
+        {% for project in projects %}<option value="{{ project.id }}" {% if filter_project_id == project.id %}selected{% endif %}>{{ project.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>状态
+      <select name="status" class="form-select">
+        {% for value in pending_statuses %}<option value="{{ value }}" {% if filter_status == value %}selected{% endif %}>{{ value }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>每页
+      <select name="per_page" class="form-select">
+        {% for value in pagination.per_page_options %}<option value="{{ value }}" {% if pagination.per_page == value %}selected{% endif %}>{{ value }} 条</option>{% endfor %}
+      </select>
+    </label>
+    <div class="ledger-filter-actions"><button type="submit" class="btn btn-primary">{{ icon('search') }} 查询</button></div>
+  </form>
+
+  <div class="pending-list">
+    {% for item in items %}
+    <article class="pending-item">
+      <div class="pending-item-summary">
+        <div class="pending-item-title-row">
+          <strong>{{ item.summary }}</strong>
+          {% if item.status == '待补录' %}<span class="badge badge-warning">{{ item.status }}</span>{% elif item.status == '已转正式明细' %}<span class="badge badge-success">{{ item.status }}</span>{% else %}<span class="badge badge-secondary">{{ item.status }}</span>{% endif %}
+        </div>
+        <dl class="pending-item-meta">
+          <div><dt>项目</dt><dd>{{ item.project_name }}</dd></div>
+          <div><dt>日期</dt><dd>{{ item.item_date }}</dd></div>
+          <div><dt>建议分类</dt><dd>{{ item.suggested_primary_name }} / {{ item.suggested_category_name }}</dd></div>
+          <div><dt>经办人</dt><dd>{{ item.handler_name or '--' }}</dd></div>
+          <div><dt>待确认问题</dt><dd>{{ item.issue_type }}</dd></div>
+          <div><dt>来源</dt><dd>{{ item.source_filename }} / {{ item.source_sheet }} / {{ item.source_row }}</dd></div>
+        </dl>
+      </div>
+      {% if item.status == '待补录' %}
+      <form method="post" action="{{ url_for('web.complete_ledger_pending', item_id=item.id) }}" class="pending-completion-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label>金额<input class="form-input" name="amount" type="number" min="0.01" step="0.01" required></label>
+        <label>收支类型<select class="form-select" name="transaction_type" data-pending-transaction required>{% for value in transaction_types %}<option value="{{ value }}" {% if value == (item.suggested_transaction_scope or '支出') %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+        <label>二级分类
+          <select class="form-select" name="category_id" data-pending-category data-selected-category="{{ item.suggested_category_id }}" required></select>
+        </label>
+        <label>付款状态<select class="form-select" name="payment_status" required>{% for value in payment_statuses %}<option value="{{ value }}" {% if value == '支付状态待确认' %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+        <button type="submit" class="btn btn-primary">{{ icon('save') }} 转为正式明细</button>
+      </form>
+      <form method="post" action="{{ url_for('web.ignore_ledger_pending', item_id=item.id) }}" class="pending-ignore-form" onsubmit="return confirm('确认忽略该待补录事项？');">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button type="submit" class="icon-button" title="忽略事项" aria-label="忽略事项">{{ icon('delete') }}</button>
+      </form>
+      {% endif %}
+    </article>
+    {% else %}
+    <div class="empty-state" style="padding: 40px 0;"><span class="empty-icon">{{ icon('empty-inbox') }}</span><span class="empty-text">当前筛选下没有待补录事项</span></div>
+    {% endfor %}
+  </div>
+
+  {{ ledger_pagination(pagination, '待补录分页') }}
 </section>
-{{ ledger_pagination(pagination, '待补录分页') }}
 
 <script>
 const pendingCategories = {{ category_json|tojson }};
