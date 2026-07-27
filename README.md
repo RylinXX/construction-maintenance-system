@@ -1,5 +1,5 @@
 # 营力特数字化系统 (YLT Digital)
-
+![Version](https://img.shields.io/badge/version-v0.2.33-blue?style=flat-square)
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=flat-square&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
@@ -7,7 +7,7 @@
 [![UI Theme](https://img.shields.io/badge/UI-Premium_Emerald-0f766e?style=flat-square)](https://github.com)
 
 营力特数字化系统是面向建筑工程公司的轻量级运营平台，集中管理项目台账、费用凭证、人员档案、合同与企业资质。系统基于 **Python Flask + SQLite + Jinja2 + openpyxl** 构建。
-
+![Dashboard Mockup](file:///Users/rylinx/.gemini/antigravity/brain/9ed160a7-f213-499f-baef-6719cabe23f2/ui_dashboard_mockup_1785143245744.jpg)
 ---
 
 ## 🎨 视觉与交互美学 (UI Design Aesthetics)
@@ -17,6 +17,9 @@
 * **状态标记 (Badges)**：使用明晰、柔和的 HSL 颜色标识项目与资料状态（如“进行中”、“已完工”、“已暂停”、“待确认”），视觉边界清晰。
 * **微光过渡与动效**：按钮悬停（Hover）、导航切换及卡片组件拥有平滑的 CSS 缓动动画，让系统界面充满灵动活力。
 * **流式自适应布局**：采用 CSS Grid / Flexbox 混合布局，无缝适配不同尺寸的电脑与平板终端。
+* **精细化 UI 细节**：全局按钮卡片化、过滤表单圆角化、表格列省略显示并悬停提示，实现单屏可视化，提升操作舒适度。
+* **响应式单屏布局**：针对笔记本电脑视口优化，表格宽度固定、列宽匹配，避免水平滚动，确保关键信息一次呈现。
+
 
 ---
 
@@ -204,5 +207,14 @@ pytest
 ---
 
 ## 🛡️ 开源声明与商业许可
+## 📦 最新版本更新 (Release Notes)
+
+- **UI美化**：全局按钮卡片化、过滤表单圆角化、表格列省略显示并悬停提示，实现单屏可视化，提升操作舒适度。
+- **响应式布局**：针对笔记本电脑视口优化，表格宽度固定、列宽匹配，避免水平滚动，所有关键信息一次呈现。
+- **圆角过滤卡**：所有筛选表单封装为四角圆润卡片，提升视觉统一性。
+- **表格列对齐**：操作列宽度统一，防止按钮与内容重叠。
+- **部署同步**：已将最新代码推送至 GitHub `master` 分支，并在生产服务器上部署，保持与远端一致。
+- **测试覆盖**：全部 168 项单元/集成测试通过，确保功能可靠。
+
 
 本项目基于标准规范开发，保留完整的主体工程设计。严禁在未经授权的情况下将本项目直接用于恶意或未声明合规性的生产坏境中。

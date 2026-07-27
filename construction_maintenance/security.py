@@ -104,6 +104,14 @@ def _protect_request():
     public = endpoint in PUBLIC_ENDPOINTS
     g.admin_user = None
 
+    if not current_app.config.get("AUTH_REQUIRED", True):
+        user_id = session.get("admin_user_id")
+        user = repo.get_admin_user(int(user_id)) if user_id else repo.get_admin_user(1)
+        if user and user["is_active"]:
+            user = dict(user)
+            user["display_name"] = user.get("real_name") or user.get("username") or "管理员"
+            g.admin_user = user
+
     if current_app.config.get("AUTH_REQUIRED", True) and not public:
         user_id = session.get("admin_user_id")
         if not session.get("authenticated") or not user_id:

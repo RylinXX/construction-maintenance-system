@@ -12,14 +12,14 @@
     <p>全盘财务明细检索、待补录队列处理、费用科目定义与收支多维对账。</p>
 
     <!-- Hero Embedded Nav Buttons -->
-    <nav class="hero-nav-buttons" aria-label="账套管理导航" style="display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 5px; background: rgba(255, 255, 255, 0.55); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 12px; backdrop-filter: blur(12px); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05); flex-wrap: wrap;">
-      <a href="{{ url_for('web.vouchers') }}" class="hero-nav-btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 600; text-decoration: none; background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);">
+    <nav class="hero-nav-buttons" aria-label="账套管理导航">
+      <a href="{{ url_for('web.vouchers') }}" class="hero-nav-btn">
         {{ icon('receipt') }} 全盘财务明细
       </a>
-      <a href="{{ url_for('web.ledger_pending') }}" class="hero-nav-btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 600; text-decoration: none; background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);">
+      <a href="{{ url_for('web.ledger_pending') }}" class="hero-nav-btn">
         {{ icon('inbox') }} 待补录队列
       </a>
-      <a href="{{ url_for('web.expense_categories') }}" class="hero-nav-btn active" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 600; text-decoration: none; background: linear-gradient(135deg, #1d4ed8, #2563eb); border: 1px solid #1d4ed8; color: #ffffff !important; box-shadow: 0 3px 10px rgba(29, 78, 216, 0.35);">
+      <a href="{{ url_for('web.expense_categories') }}" class="hero-nav-btn active">
         {{ icon('checklist') }} 费用科目定义
       </a>
     </nav>
@@ -53,8 +53,8 @@
     </div>
   </div>
 
-  <!-- Consolidated Soft-Blue Filter & Primary Category Map Box -->
-  <div class="category-toolbar-blue-box" style="background: linear-gradient(135deg, rgba(239, 246, 255, 0.85), rgba(219, 234, 254, 0.55)); border: 1px solid rgba(191, 219, 254, 0.85); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
+  <!-- Consolidated Filter & Primary Category Map Box -->
+  <div class="category-toolbar-blue-box">
     <!-- Row 1: Scope Tabs & Search -->
     <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
       <div class="category-scope-tabs" style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -64,23 +64,23 @@
         <button type="button" class="btn btn-secondary scope-tab-btn" data-scope="资金往来" onclick="filterByScope('资金往来', this)">资金往来</button>
       </div>
       <div class="category-search-wrap" style="min-width: 220px; flex: 1; max-width: 320px;">
-        <input type="text" id="categorySearchInput" class="form-input" placeholder="搜索分类名称..." onkeyup="filterCategories()" style="background: #ffffff;">
+        <input type="text" id="categorySearchInput" class="form-input" placeholder="搜索分类名称..." onkeyup="filterCategories()">
       </div>
     </div>
 
     <!-- Row 2: Primary Category Quick Filter Map -->
-    <div class="primary-category-navigator" style="padding-top: 10px; border-top: 1px solid rgba(191, 219, 254, 0.7);">
+    <div class="primary-category-navigator">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-        <span style="font-size: 13px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 6px;">
+        <span class="primary-map-title">
           {{ icon('checklist') }} 一级科目地图 (分支直达导航):
         </span>
-        <span style="font-size: 12px; color: #3b82f6;" id="primaryNavCountHint">点击任意一级科目直达定位</span>
+        <span class="primary-map-hint" id="primaryNavCountHint">点击任意一级科目直达定位</span>
       </div>
       <div class="primary-nav-chips" id="primaryNavChips" style="display: flex; flex-wrap: wrap; gap: 8px;">
         <button type="button" class="btn btn-primary btn-sm primary-chip-btn" data-root-id="all" data-root-scope="all" onclick="filterByPrimaryRoot('all', this)">全部一级科目</button>
         {% for root in roots %}
         {% set child_items = leaves|selectattr('parent_id', 'equalto', root.id)|list %}
-        <button type="button" class="btn btn-secondary btn-sm primary-chip-btn" data-root-id="{{ root.id }}" data-root-name="{{ root.name }}" data-root-scope="{{ root.transaction_scope }}" onclick="filterByPrimaryRoot('{{ root.id }}', this)" style="background: #ffffff; border-color: rgba(191, 219, 254, 0.9);">
+        <button type="button" class="btn btn-secondary btn-sm primary-chip-btn" data-root-id="{{ root.id }}" data-root-name="{{ root.name }}" data-root-scope="{{ root.transaction_scope }}" onclick="filterByPrimaryRoot('{{ root.id }}', this)">
           {{ root.name }} <small style="opacity: 0.85; margin-left: 2px;">({{ child_items|length }})</small>
         </button>
         {% endfor %}

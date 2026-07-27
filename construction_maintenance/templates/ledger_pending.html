@@ -13,14 +13,14 @@
     <p>全盘财务明细检索、待补录队列处理、费用科目定义与收支多维对账。</p>
 
     <!-- Hero Embedded Nav Buttons -->
-    <nav class="hero-nav-buttons" aria-label="账套管理导航" style="display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 5px; background: rgba(255, 255, 255, 0.55); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 12px; backdrop-filter: blur(12px); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05); flex-wrap: wrap;">
-      <a href="{{ url_for('web.vouchers') }}" class="hero-nav-btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 600; text-decoration: none; background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);">
+    <nav class="hero-nav-buttons" aria-label="账套管理导航">
+      <a href="{{ url_for('web.vouchers') }}" class="hero-nav-btn">
         {{ icon('receipt') }} 全盘财务明细
       </a>
-      <a href="{{ url_for('web.ledger_pending') }}" class="hero-nav-btn active" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 600; text-decoration: none; background: linear-gradient(135deg, #1d4ed8, #2563eb); border: 1px solid #1d4ed8; color: #ffffff !important; box-shadow: 0 3px 10px rgba(29, 78, 216, 0.35);">
-        {{ icon('inbox') }} 待补录队列 {% if pending_total_count %}<span class="badge badge-warning" style="margin-left: 2px;">{{ pending_total_count }}</span>{% endif %}
+      <a href="{{ url_for('web.ledger_pending') }}" class="hero-nav-btn active">
+        {{ icon('inbox') }} 待补录队列
       </a>
-      <a href="{{ url_for('web.expense_categories') }}" class="hero-nav-btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 600; text-decoration: none; background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);">
+      <a href="{{ url_for('web.expense_categories') }}" class="hero-nav-btn">
         {{ icon('checklist') }} 费用科目定义
       </a>
     </nav>

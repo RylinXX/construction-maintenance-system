@@ -280,12 +280,12 @@
           <thead>
             <tr>
               <th style="width: 22%;">公司名称</th>
-              <th style="width: 22%;">资质/证照名称</th>
-              <th style="width: 18%;">证书/证件编号</th>
-              <th style="width: 11%;">发证日期</th>
-              <th style="width: 11%;">到期日期</th>
-              <th style="width: 10%;">状态</th>
-              <th class="text-center sticky-col-right" style="width: 140px; min-width: 140px; text-align: center !important;">证件附件/操作</th>
+              <th style="width: 24%;">资质/证照名称</th>
+              <th style="width: 20%;">证书/证件编号</th>
+              <th style="width: 105px;">发证日期</th>
+              <th style="width: 105px;">到期日期</th>
+              <th style="width: 90px;">状态</th>
+              <th class="text-center sticky-col-right" style="width: 150px; min-width: 150px; text-align: center !important;">证件附件/操作</th>
             </tr>
           </thead>
           <tbody id="qualificationsTableBody">
@@ -309,7 +309,7 @@
                 <span class="badge badge-info">正常服务中</span>
                 {% endif %}
               </td>
-              <td class="text-center sticky-col-right" style="white-space: nowrap; width: 140px; min-width: 140px; text-align: center !important; vertical-align: middle;">
+              <td class="text-center sticky-col-right" style="white-space: nowrap; width: 150px; min-width: 150px; text-align: center !important; vertical-align: middle;">
                 <button type="button" class="btn-action-preview" onclick='openDocumentPreview({
                   "id": "{{ item.id }}",
                   "company_name": "{{ item.company_name }}",
