@@ -276,40 +276,40 @@
     <!-- Tradational List View -->
     <div id="qualificationsListView" style="display: none;">
       <div class="table-container">
-        <table class="premium-table">
+        <table class="premium-table" style="table-layout: fixed; width: 100%;">
           <thead>
             <tr>
-              <th>公司名称</th>
-              <th>资质/证照名称</th>
-              <th>证书/证件编号</th>
-              <th>发证日期</th>
-              <th>到期日期</th>
-              <th>有效期状态</th>
-              <th class="text-right">证件附件</th>
+              <th style="width: 22%;">公司名称</th>
+              <th style="width: 22%;">资质/证照名称</th>
+              <th style="width: 18%;">证书/证件编号</th>
+              <th style="width: 11%;">发证日期</th>
+              <th style="width: 11%;">到期日期</th>
+              <th style="width: 10%;">状态</th>
+              <th class="text-center sticky-col-right" style="width: 140px; min-width: 140px; text-align: center !important;">证件附件/操作</th>
             </tr>
           </thead>
           <tbody id="qualificationsTableBody">
             {% for item in qualifications %}
             <tr class="qualification-row" data-company-id="{{ item.company_id }}">
-              <td class="font-semibold text-dark">{{ item.company_name }}</td>
-              <td class="font-semibold">{{ item.name }}</td>
-              <td class="font-mono">{{ item.certificate_no }}</td>
-              <td class="font-mono">{{ item.issue_date or '--' }}</td>
-              <td class="font-mono">
+              <td class="font-semibold text-dark tooltip-cell" data-tooltip="{{ item.company_name }}" title="{{ item.company_name }}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">{{ item.company_name }}</td>
+              <td class="font-semibold tooltip-cell" data-tooltip="{{ item.name }}" title="{{ item.name }}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">{{ item.name }}</td>
+              <td class="font-mono tooltip-cell" data-tooltip="{{ item.certificate_no }}" title="{{ item.certificate_no }}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;">{{ item.certificate_no }}</td>
+              <td class="font-mono" style="white-space: nowrap; vertical-align: middle;">{{ item.issue_date or '--' }}</td>
+              <td class="font-mono" style="white-space: nowrap; vertical-align: middle;">
                 {% if item.is_long_term %}
                 <span class="text-muted">长期有效</span>
                 {% else %}
                 {{ item.expiry_date or '--' }}
                 {% endif %}
               </td>
-              <td>
+              <td style="white-space: nowrap; vertical-align: middle;">
                 {% if item.is_long_term %}
                 <span class="badge badge-success">永久有效</span>
                 {% else %}
                 <span class="badge badge-info">正常服务中</span>
                 {% endif %}
               </td>
-              <td class="text-right" style="white-space: nowrap; width: 200px;">
+              <td class="text-center sticky-col-right" style="white-space: nowrap; width: 140px; min-width: 140px; text-align: center !important; vertical-align: middle;">
                 <button type="button" class="btn-action-preview" onclick='openDocumentPreview({
                   "id": "{{ item.id }}",
                   "company_name": "{{ item.company_name }}",
@@ -321,7 +321,7 @@
                   "notes": "{{ item.notes or '暂无备注说明。' }}",
                   "attachment_path": "{{ item.attachment_path or '' }}"
                 })'>
-                  {{ icon('preview') }} 预览下载
+                  {{ icon('preview') }} 预览
                 </button>
                 <button type="button" class="btn-action-edit" onclick="openModal('editQualificationModal-{{ item.id }}')">
                   {{ icon('edit') }} 修改

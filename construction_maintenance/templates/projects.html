@@ -39,21 +39,21 @@
     </div>
     
     <div class="table-container">
-      <table class="premium-table">
+      <table class="premium-table" style="table-layout: fixed; width: 100%;">
         <thead>
           <tr>
             <th style="width: 22%;">项目名称</th>
             <th style="width: 10%;">负责人</th>
             <th style="width: 12%;">开工日期</th>
-            <th style="width: 10%;">状态</th>
-            <th style="max-width: 180px;">备注信息</th>
-            <th class="text-right sticky-col-right" style="width: 200px; min-width: 200px;">管理操作</th>
+            <th style="width: 9%;">状态</th>
+            <th style="width: 18%; max-width: 140px;">备注信息</th>
+            <th class="text-center sticky-col-right" style="width: 210px; min-width: 210px; text-align: center !important;">管理操作</th>
           </tr>
         </thead>
         <tbody id="projects-table-tbody">
           {% for project in projects %}
           <tr>
-            <td class="font-semibold text-dark tooltip-cell" data-tooltip="项目名称: {{ project.name }}" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <td class="font-semibold text-dark tooltip-cell" data-tooltip="项目名称: {{ project.name }}" title="{{ project.name }}" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               <span style="display: inline-flex; align-items: center; gap: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                 <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="project-link" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                   {{ icon('folder') }} {{ project.name }}
@@ -71,9 +71,9 @@
               <span class="badge badge-warning" style="display: inline-flex; white-space: nowrap;">{{ project.status }}</span>
               {% endif %}
             </td>
-            <td class="text-muted tooltip-cell" data-tooltip="备注信息: {{ project.notes or '--' }}" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ project.notes or '--' }}</td>
-            <td class="text-right sticky-col-right" style="white-space: nowrap; width: 200px; vertical-align: middle;" onclick="event.stopPropagation();">
-              <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
+            <td class="text-muted tooltip-cell" data-tooltip="备注信息: {{ project.notes or '--' }}" title="{{ project.notes or '--' }}" style="vertical-align: middle; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ project.notes or '--' }}</td>
+            <td class="text-center sticky-col-right" style="white-space: nowrap; width: 210px; min-width: 210px; text-align: center !important; vertical-align: middle;" onclick="event.stopPropagation();">
+              <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: center; width: 100%;">
                 <a href="{{ url_for('web.project_vouchers', project_id=project.id) }}" class="btn-action-preview" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="进入该项目专属费用台账">
                   {{ icon('folder') }} 台账
                 </a>
