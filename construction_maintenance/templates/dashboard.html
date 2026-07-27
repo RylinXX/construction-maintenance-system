@@ -327,7 +327,28 @@ function initCategoryPieChart(projectKey) {
             color: themeColors.text,
             font: { family: "'Inter', sans-serif", size: 11, weight: '600' },
             boxWidth: 12,
-            padding: 12
+            padding: 8,
+            generateLabels: function(chart) {
+              const data = chart.data;
+              if (data.labels.length && data.datasets.length) {
+                const dataset = data.datasets[0];
+                const total = dataset.data.reduce((a, b) => a + b, 0);
+                return data.labels.map((label, i) => {
+                  const val = dataset.data[i] || 0;
+                  const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                  let amtFormatted = val >= 10000 ? (val / 10000).toFixed(1) + '万' : '¥' + val.toLocaleString('zh-CN');
+                  return {
+                    text: `${label}  ${pct}% (${amtFormatted})`,
+                    fillStyle: dataset.backgroundColor[i % dataset.backgroundColor.length],
+                    strokeStyle: themeColors.lineLight,
+                    lineWidth: 1,
+                    hidden: isNaN(dataset.data[i]) || (chart.getDatasetMeta(0).data[i] && chart.getDatasetMeta(0).data[i].hidden),
+                    index: i
+                  };
+                });
+              }
+              return [];
+            }
           }
         },
         tooltip: {
@@ -341,7 +362,7 @@ function initCategoryPieChart(projectKey) {
           }
         }
       },
-      cutout: '62%'
+      cutout: '58%'
     }
   });
 }
