@@ -6,21 +6,28 @@
 {% block page_subtitle %}结构化项目收支、付款与复核记录{% endblock %}
 
 {% block content %}
-<section class="ledger-project-header animate-slide-up">
-  <div class="ledger-project-title">
-    <a href="{{ url_for('web.projects') }}" class="icon-button" title="返回项目列表" aria-label="返回项目列表">{{ icon('back') }}</a>
-    <div>
-      <h1>{{ project.name }}</h1>
-      <div class="ledger-project-meta">
-        <span>{{ project.status }}</span>
-        <span>{{ project.owner or '未分配负责人' }}</span>
-        <span>{{ project.company_name }}</span>
-      </div>
+<section class="module-hero animate-slide-up">
+  <div class="module-hero-copy">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+      <a href="{{ url_for('web.projects') }}" class="icon-button" style="background: rgba(255,255,255,0.8); border: 1px solid var(--border-color);" title="返回项目列表" aria-label="返回项目列表">{{ icon('back') }}</a>
+      <span class="eyebrow" style="margin: 0;">Dedicated Project Ledger</span>
     </div>
+    <h1 style="font-size: 24px; margin-bottom: 4px;">{{ project.name }}</h1>
+    <p style="margin: 0; font-size: 13px; color: var(--text-secondary);">
+      负责人：<strong>{{ project.owner or '未指定' }}</strong> &bull; 归属单位：{{ project.company_name }} &bull; 状态：<span class="badge badge-success">{{ project.status }}</span>
+    </p>
   </div>
-  <div class="toolbar-actions">
-    <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.ledger_pending', project_id=project.id) }}">{{ icon('inbox') }} 待补录</a>
-    <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addVoucherModal')">{{ icon('add') }} 录入明细</button>
+  <div class="module-hero-stats">
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">项目净支出</span>
+      <strong class="hero-stat-val">¥{{ financial_summary.net_expense|money_short }}</strong>
+      <span class="hero-stat-sub">专属明细汇总</span>
+    </div>
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">财务记录</span>
+      <strong class="hero-stat-val">{{ financial_summary.entry_count }} <small style="font-size: 11px;">笔</small></strong>
+      <span class="hero-stat-sub">待复核 {{ financial_summary.review_count }} 笔</span>
+    </div>
   </div>
 </section>
 

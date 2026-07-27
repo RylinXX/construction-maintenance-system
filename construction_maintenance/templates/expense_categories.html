@@ -5,25 +5,34 @@
 {% block page_subtitle %}维护一级分类、二级分类与收支范围{% endblock %}
 
 {% block content %}
-<div class="ledger-center-nav animate-slide-up" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-  <a href="{{ url_for('web.vouchers') }}" class="btn btn-secondary toolbar-btn" style="min-height: 36px;">{{ icon('receipt') }} 全盘财务明细</a>
-  <a href="{{ url_for('web.ledger_pending') }}" class="btn btn-secondary toolbar-btn" style="min-height: 36px;">{{ icon('inbox') }} 待补录队列</a>
-  <a href="{{ url_for('web.expense_categories') }}" class="btn btn-primary toolbar-btn" style="min-height: 36px;">{{ icon('checklist') }} 费用科目定义</a>
-</div>
-
-<section class="page-heading-row animate-slide-up">
-  <div>
-    <h1 class="section-page-title">费用科目管理</h1>
-    <p class="panel-subtitle">
-      {{ roots|length }} 个一级分类 / {{ leaves|length }} 个二级分类
-      （启用：{{ roots|selectattr('is_active')|list|length }} 一级 / {{ leaves|selectattr('is_active')|list|length }} 二级）
-    </p>
+<section class="module-hero animate-slide-up">
+  <div class="module-hero-copy">
+    <span class="eyebrow">Financial Ledger Center</span>
+    <h1>账套管理中心</h1>
+    <p>全盘财务明细检索、待补录队列处理、费用科目定义与收支多维对账。</p>
   </div>
-  <div class="toolbar-actions">
-    <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.vouchers') }}">{{ icon('receipt') }} 财务明细</a>
-    <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addCategoryModal')">{{ icon('add') }} 新增分类</button>
+  <div class="module-hero-stats">
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">一级科目</span>
+      <strong class="hero-stat-val">{{ roots|length }} <small style="font-size: 11px;">类</small></strong>
+      <span class="hero-stat-sub">顶级大类映射</span>
+    </div>
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">二级细分科目</span>
+      <strong class="hero-stat-val">{{ leaves|length }} <small style="font-size: 11px;">项</small></strong>
+      <span class="hero-stat-sub">智能勾稽对账</span>
+    </div>
   </div>
 </section>
+
+<!-- Unified Sub-Navigation Tabs Bar -->
+<div class="panel-card animate-slide-up" style="padding: 10px 16px; margin-bottom: 16px;">
+  <div class="company-tabs" style="border-bottom: none; margin: 0;">
+    <a href="{{ url_for('web.vouchers') }}" class="company-tab">{{ icon('receipt') }} 全盘财务明细</a>
+    <a href="{{ url_for('web.ledger_pending') }}" class="company-tab">{{ icon('inbox') }} 待补录队列</a>
+    <a href="{{ url_for('web.expense_categories') }}" class="company-tab active">{{ icon('checklist') }} 费用科目定义</a>
+  </div>
+</div>
 
 <!-- Filter Toolbar: Scope Tabs & Search -->
 <section class="panel-card category-filter-bar animate-slide-up">

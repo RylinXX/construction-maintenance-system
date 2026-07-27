@@ -6,20 +6,39 @@
 {% block page_subtitle %}缺少金额的业务事项不计入财务汇总{% endblock %}
 
 {% block content %}
-<div class="ledger-center-nav animate-slide-up" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-  <a href="{{ url_for('web.vouchers') }}" class="btn btn-secondary toolbar-btn" style="min-height: 36px;">{{ icon('receipt') }} 全盘财务明细</a>
-  <a href="{{ url_for('web.ledger_pending') }}" class="btn btn-primary toolbar-btn" style="min-height: 36px;">{{ icon('inbox') }} 待补录队列</a>
-  <a href="{{ url_for('web.expense_categories') }}" class="btn btn-secondary toolbar-btn" style="min-height: 36px;">{{ icon('checklist') }} 费用科目定义</a>
+<section class="module-hero animate-slide-up">
+  <div class="module-hero-copy">
+    <span class="eyebrow">Financial Ledger Center</span>
+    <h1>账套管理中心</h1>
+    <p>全盘财务明细检索、待补录队列处理、费用科目定义与收支多维对账。</p>
+  </div>
+  <div class="module-hero-stats">
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">待补录事项</span>
+      <strong class="hero-stat-val" style="color: var(--warning-color);">{{ pending_total_count }} <small style="font-size: 11px;">笔待补</small></strong>
+      <span class="hero-stat-sub">缺失金额或经办人</span>
+    </div>
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">补录处理机制</span>
+      <strong class="hero-stat-val">实时入账</strong>
+      <span class="hero-stat-sub">补齐后自动计入账套</span>
+    </div>
+  </div>
+</section>
+
+<!-- Unified Sub-Navigation Tabs Bar -->
+<div class="panel-card animate-slide-up" style="padding: 10px 16px; margin-bottom: 16px;">
+  <div class="company-tabs" style="border-bottom: none; margin: 0;">
+    <a href="{{ url_for('web.vouchers') }}" class="company-tab">{{ icon('receipt') }} 全盘财务明细</a>
+    <a href="{{ url_for('web.ledger_pending') }}" class="company-tab active">{{ icon('inbox') }} 待补录队列 {% if pending_total_count %}<span class="badge badge-warning" style="margin-left: 4px; padding: 2px 6px;">{{ pending_total_count }}</span>{% endif %}</a>
+    <a href="{{ url_for('web.expense_categories') }}" class="company-tab">{{ icon('checklist') }} 费用科目定义</a>
+  </div>
 </div>
 
-<section class="page-heading-row animate-slide-up">
+<section class="page-heading-row animate-slide-up" style="margin-bottom: 12px;">
   <div>
-    <h1 class="section-page-title">待补录队列</h1>
+    <h2 class="section-page-title" style="font-size: 18px; margin: 0;">待补录事项队列</h2>
     <p class="panel-subtitle">{{ pending_total_count }} 条当前结果</p>
-  </div>
-  <div class="toolbar-actions">
-    <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.vouchers') }}">{{ icon('receipt') }} 财务明细</a>
-    <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.expense_categories') }}">{{ icon('checklist') }} 分类管理</a>
   </div>
 </section>
 

@@ -6,22 +6,36 @@
 {% block page_subtitle %}跨项目查询收支、付款、复核与来源记录{% endblock %}
 
 {% block content %}
-<div class="ledger-center-nav animate-slide-up" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-  <a href="{{ url_for('web.vouchers') }}" class="btn btn-primary toolbar-btn" style="min-height: 36px;">{{ icon('receipt') }} 全盘财务明细</a>
-  <a href="{{ url_for('web.ledger_pending') }}" class="btn btn-secondary toolbar-btn" style="min-height: 36px;">{{ icon('inbox') }} 待补录队列</a>
-  <a href="{{ url_for('web.expense_categories') }}" class="btn btn-secondary toolbar-btn" style="min-height: 36px;">{{ icon('checklist') }} 费用科目定义</a>
-</div>
-
-<section class="page-heading-row animate-slide-up">
-  <div><h1 class="section-page-title">财务明细</h1><p class="panel-subtitle">{{ voucher_total_count }} 条筛选结果</p></div>
-  <div class="toolbar-actions">
-    <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.ledger_pending') }}">{{ icon('inbox') }} 待补录</a>
-    <a class="btn btn-secondary toolbar-btn" href="{{ ledger_export_url }}">{{ icon('export') }} 导出</a>
-    <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addVoucherModal')">{{ icon('add') }} 录入明细</button>
+<section class="module-hero animate-slide-up">
+  <div class="module-hero-copy">
+    <span class="eyebrow">Financial Ledger Center</span>
+    <h1>账套管理中心</h1>
+    <p>全盘财务明细检索、待补录队列处理、费用科目定义与收支多维对账。</p>
+  </div>
+  <div class="module-hero-stats">
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">全盘累计净支出</span>
+      <strong class="hero-stat-val">¥{{ financial_summary.net_expense|money_short }}</strong>
+      <span class="hero-stat-sub">全盘精细对账</span>
+    </div>
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">明细总笔数</span>
+      <strong class="hero-stat-val">{{ financial_summary.entry_count }} <small style="font-size: 11px;">笔明细</small></strong>
+      <span class="hero-stat-sub">待复核 {{ financial_summary.review_count }} 笔</span>
+    </div>
   </div>
 </section>
 
-<section class="ledger-kpi-grid animate-slide-up" aria-label="财务台账汇总">
+<!-- Unified Sub-Navigation Tabs Bar -->
+<div class="panel-card animate-slide-up" style="padding: 10px 16px; margin-bottom: 16px;">
+  <div class="company-tabs" style="border-bottom: none; margin: 0;">
+    <a href="{{ url_for('web.vouchers') }}" class="company-tab active">{{ icon('receipt') }} 全盘财务明细</a>
+    <a href="{{ url_for('web.ledger_pending') }}" class="company-tab">{{ icon('inbox') }} 待补录队列 {% if financial_summary.pending_count %}<span class="badge badge-warning" style="margin-left: 4px; padding: 2px 6px;">{{ financial_summary.pending_count }}</span>{% endif %}</a>
+    <a href="{{ url_for('web.expense_categories') }}" class="company-tab">{{ icon('checklist') }} 费用科目定义</a>
+  </div>
+</div>
+
+<section class="ledger-kpi-grid animate-slide-up" aria-label="财务台账汇总" style="margin-bottom: 16px;">
   <div class="ledger-kpi-card ledger-kpi-card-primary">
     <div class="ledger-kpi-header">
       <span>净支出</span>
@@ -70,8 +84,19 @@
   </div>
 </section>
 
-<section class="panel-card ledger-tool animate-slide-up">
-  <form method="get" class="ledger-filter-band ledger-global-filter">
+<div class="panel-card animate-slide-up">
+  <div class="panel-header">
+    <div>
+      <h2 class="panel-title">{{ icon('checklist') }} 全盘财务明细列表</h2>
+      <p class="panel-subtitle">{{ voucher_total_count }} 条筛选结果</p>
+    </div>
+    <div class="toolbar-actions">
+      <a class="btn btn-secondary toolbar-btn" href="{{ ledger_export_url }}">{{ icon('export') }} 导出 Excel</a>
+      <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addVoucherModal')">{{ icon('add') }} 录入明细</button>
+    </div>
+  </div>
+
+  <form method="get" class="ledger-filter-band ledger-global-filter" style="margin-bottom: 16px; border-top: 1px solid var(--border-color); padding-top: 14px;">
     <label>项目<select name="project_id" class="form-select"><option value="">全部项目</option>{% for project in projects %}<option value="{{ project.id }}" {% if filter_project_id == project.id %}selected{% endif %}>{{ project.name }}</option>{% endfor %}</select></label>
     <label>收支类型<select name="transaction_type" class="form-select"><option value="">全部</option>{% for value in transaction_types %}<option value="{{ value }}" {% if ledger_filters.transaction_type == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
     <label>一级分类<select id="globalFilterPrimary" name="primary_category_id" class="form-select"><option value="">全部</option>{% for category in categories if category.parent_id is none %}<option value="{{ category.id }}" {% if ledger_filters.primary_category_id == category.id %}selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></label>
