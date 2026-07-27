@@ -185,6 +185,16 @@ run the SQL acceptance checks first.
 
 ```bash
 systemctl start cam.service
+for pam_attempt in $(seq 1 30); do
+  if curl -fsS -o /dev/null http://127.0.0.1:8000/login; then
+    break
+  fi
+  if test "$pam_attempt" -eq 30; then
+    journalctl -u cam.service --since "5 minutes ago" --no-pager
+    exit 1
+  fi
+  sleep 1
+done
 systemctl is-active cam.service | tee "$pam_backup_dir/service-status.txt"
 curl -fsS -o /dev/null -w '%{http_code}\n' \
   https://pam.etgq.com/login | tee "$pam_backup_dir/login-status.txt"
@@ -384,22 +394,41 @@ data must remain available.
 
 ## Release Evidence
 
-Leave this section blank until the production run. Populate it only with fresh
-output from this runbook, then commit that evidence separately.
+Production run completed on 2026-07-27 (Asia/Shanghai).
 
-- Backup path:
-- Deployed commit:
-- Full test result and count:
-- Copy-verifier JSON:
-- Dry-run totals:
-- Apply result:
-- Pre-deploy protected SQL counts:
-- Post-deploy protected SQL counts and diff:
-- Post-deploy ledger SQL counts and totals:
-- Service status:
-- Nginx validation result:
-- Live login status:
-- Authenticated smoke checks skipped, if any:
+- Backup path: `/root/cam-backups/20260727_120210`
+- Backup artifacts: `construction.sqlite3` 132 KB, `uploads.tar.gz` 1.5 MB,
+  `cam-code.tar.gz` 42 MB, and `pam.etgq.com.conf` 1.9 KB; all were non-empty
+  and recorded in `SHA256SUMS` before deployment.
+- Deployed commit: `5f43fd16a2f7fc248690843348e69fdba84ac5eb`
+- Full test result and count: `167 passed, 5 existing SWIG deprecation warnings`
+- Copy-verifier JSON: protected counts
+  `companies=4, people=33, qualifications=6, attendance=399,
+  salary_payments=24, salary_sheets=0, admin_users=2, system_settings=4`;
+  import values matched all approved totals, including `review_entries=483`.
+- Dry-run totals: `projects=6, entries=4907, pending_items=276,
+  expense=11643311.78, expense_reduction=17573.00,
+  net_expense=11625738.78, income=43670.00, fund_transfer=50128.83`.
+- Apply result: `inserted_entries=4907`, `inserted_pending_items=276`.
+- Pre-deploy protected SQL counts: `4/33/6/399/24/0/2/4` in the table order
+  above; ledger baseline was `projects=12, vouchers=3, contracts=2`.
+- Post-deploy protected SQL counts and diff: identical counts; diff was empty.
+- Post-deploy ledger SQL counts and totals: `projects=6, contracts=0,
+  entries=4907, review_entries=483, pending_items=276`; transaction totals and
+  net expense matched the approved values; 12 active roots, 59 active leaves,
+  0 duplicate source IDs, and 0 orphan categories.
+- Service status: `active`, Gunicorn listening on `127.0.0.1:8000` with four
+  workers and no application exception in the release journal window.
+- Nginx validation result: configuration test successful and reload active;
+  TLS 1.1 rejected, TLS 1.2/1.3 accepted, upload limit 20 MB, proxy timeouts
+  60/120/120 seconds. The global test retains one unrelated pre-existing
+  duplicate MIME warning in `/www/server/panel/vhost/nginx/etgq.com.conf:88`.
+- Live login status: HTTP `200`; dashboard, projects, vouchers, pending queue,
+  and category routes returned the expected HTTP `302` authentication redirect.
+- Authenticated production smoke checks skipped: no PAM application credential
+  was available. The same deployed pages and project export were verified
+  locally against a copied production database at 1440x900 and 390x844 without
+  resetting an administrator password or forging a session.
 
 After filling the fields, record the evidence locally:
 
