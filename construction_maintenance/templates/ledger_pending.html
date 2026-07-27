@@ -11,6 +11,13 @@
     <span class="eyebrow">Financial Ledger Center</span>
     <h1>账套管理中心</h1>
     <p>全盘财务明细检索、待补录队列处理、费用科目定义与收支多维对账。</p>
+
+    <!-- Hero Embedded Nav Buttons -->
+    <nav class="hero-nav-buttons" aria-label="账套管理导航">
+      <a href="{{ url_for('web.vouchers') }}" class="hero-nav-btn">{{ icon('receipt') }} 全盘财务明细</a>
+      <a href="{{ url_for('web.ledger_pending') }}" class="hero-nav-btn active">{{ icon('inbox') }} 待补录队列 {% if pending_total_count %}<span class="badge badge-warning" style="margin-left: 2px;">{{ pending_total_count }}</span>{% endif %}</a>
+      <a href="{{ url_for('web.expense_categories') }}" class="hero-nav-btn">{{ icon('checklist') }} 费用科目定义</a>
+    </nav>
   </div>
   <div class="module-hero-stats">
     <div class="hero-stat-card">
@@ -25,13 +32,6 @@
     </div>
   </div>
 </section>
-
-<!-- Ledger Center Floating Capsule Segment Controller -->
-<nav class="ledger-segment-nav animate-slide-up" aria-label="账套管理导航">
-  <a href="{{ url_for('web.vouchers') }}" class="ledger-segment-btn">{{ icon('receipt') }} 全盘财务明细</a>
-  <a href="{{ url_for('web.ledger_pending') }}" class="ledger-segment-btn active">{{ icon('inbox') }} 待补录队列 {% if pending_total_count %}<span class="badge badge-warning" style="margin-left: 2px; padding: 2px 6px;">{{ pending_total_count }}</span>{% endif %}</a>
-  <a href="{{ url_for('web.expense_categories') }}" class="ledger-segment-btn">{{ icon('checklist') }} 费用科目定义</a>
-</nav>
 
 <section class="page-heading-row animate-slide-up" style="margin-bottom: 12px;">
   <div>
