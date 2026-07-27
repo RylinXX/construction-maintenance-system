@@ -38,47 +38,53 @@
   </div>
 </section>
 
-<!-- Single Master Panel Card Container for Categories -->
 <section class="panel-card animate-slide-up" id="categoryMasterSection">
-  <div class="panel-header">
-    <div>
-      <h2 class="panel-title">{{ icon('checklist') }} 费用科目定义与一级地图导航</h2>
-      <p class="panel-subtitle">{{ roots|length }} 个一级分类 / {{ leaves|length }} 个二级分类 （启用：{{ roots|selectattr('is_active')|list|length }} 一级 / {{ leaves|selectattr('is_active')|list|length }} 二级）</p>
+  <div class="panel-header" style="margin-bottom: 14px;">
+    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+      <h2 class="panel-title" style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
+        {{ icon('checklist') }} 费用科目定义与一级地图
+      </h2>
+      <span class="panel-subtitle" style="font-size: 13px; color: var(--text-tertiary);">
+        ({{ roots|length }} 个一级分类 / {{ leaves|length }} 个二级分类)
+      </span>
     </div>
     <div class="toolbar-actions">
       <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addCategoryModal')">{{ icon('add') }} 新增分类</button>
     </div>
   </div>
 
-  <!-- Consolidated Filter Toolbar: Scope Tabs & Search Bar -->
-  <div class="category-filter-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 14px; margin-bottom: 14px; flex-wrap: wrap;">
-    <div class="category-scope-tabs" style="display: flex; gap: 6px; flex-wrap: wrap;">
-      <button type="button" class="btn btn-primary scope-tab-btn" data-scope="all" onclick="filterByScope('all', this)">全部收支</button>
-      <button type="button" class="btn btn-secondary scope-tab-btn" data-scope="支出" onclick="filterByScope('支出', this)">支出类</button>
-      <button type="button" class="btn btn-secondary scope-tab-btn" data-scope="收入" onclick="filterByScope('收入', this)">收入类</button>
-      <button type="button" class="btn btn-secondary scope-tab-btn" data-scope="资金往来" onclick="filterByScope('资金往来', this)">资金往来</button>
+  <!-- Consolidated Soft-Blue Filter & Primary Category Map Box -->
+  <div class="category-toolbar-blue-box" style="background: linear-gradient(135deg, rgba(239, 246, 255, 0.85), rgba(219, 234, 254, 0.55)); border: 1px solid rgba(191, 219, 254, 0.85); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
+    <!-- Row 1: Scope Tabs & Search -->
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+      <div class="category-scope-tabs" style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-primary scope-tab-btn" data-scope="all" onclick="filterByScope('all', this)">全部收支</button>
+        <button type="button" class="btn btn-secondary scope-tab-btn" data-scope="支出" onclick="filterByScope('支出', this)">支出类</button>
+        <button type="button" class="btn btn-secondary scope-tab-btn" data-scope="收入" onclick="filterByScope('收入', this)">收入类</button>
+        <button type="button" class="btn btn-secondary scope-tab-btn" data-scope="资金往来" onclick="filterByScope('资金往来', this)">资金往来</button>
+      </div>
+      <div class="category-search-wrap" style="min-width: 220px; flex: 1; max-width: 320px;">
+        <input type="text" id="categorySearchInput" class="form-input" placeholder="搜索分类名称..." onkeyup="filterCategories()" style="background: #ffffff;">
+      </div>
     </div>
-    <div class="category-search-wrap" style="min-width: 220px; flex: 1; max-width: 320px;">
-      <input type="text" id="categorySearchInput" class="form-input" placeholder="搜索分类名称..." onkeyup="filterCategories()">
-    </div>
-  </div>
 
-  <!-- Primary Category Quick Filter Map (一级科目地图 / 分支速查导航) -->
-  <div class="primary-category-navigator" style="margin-bottom: 16px; padding: 12px 14px; background: var(--surface-muted); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-      <span style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-        {{ icon('checklist') }} 一级科目地图 (分支直达导航):
-      </span>
-      <span style="font-size: 12px; color: var(--text-tertiary);" id="primaryNavCountHint">点击下方任意一级科目，直接定位并管理其所属分支</span>
-    </div>
-    <div class="primary-nav-chips" id="primaryNavChips" style="display: flex; flex-wrap: wrap; gap: 8px;">
-      <button type="button" class="btn btn-primary btn-sm primary-chip-btn" data-root-id="all" data-root-scope="all" onclick="filterByPrimaryRoot('all', this)">全部一级科目</button>
-      {% for root in roots %}
-      {% set child_items = leaves|selectattr('parent_id', 'equalto', root.id)|list %}
-      <button type="button" class="btn btn-secondary btn-sm primary-chip-btn" data-root-id="{{ root.id }}" data-root-name="{{ root.name }}" data-root-scope="{{ root.transaction_scope }}" onclick="filterByPrimaryRoot('{{ root.id }}', this)">
-        {{ root.name }} <small style="opacity: 0.85; margin-left: 2px;">({{ child_items|length }})</small>
-      </button>
-      {% endfor %}
+    <!-- Row 2: Primary Category Quick Filter Map -->
+    <div class="primary-category-navigator" style="padding-top: 10px; border-top: 1px solid rgba(191, 219, 254, 0.7);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 6px;">
+          {{ icon('checklist') }} 一级科目地图 (分支直达导航):
+        </span>
+        <span style="font-size: 12px; color: #3b82f6;" id="primaryNavCountHint">点击任意一级科目直达定位</span>
+      </div>
+      <div class="primary-nav-chips" id="primaryNavChips" style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <button type="button" class="btn btn-primary btn-sm primary-chip-btn" data-root-id="all" data-root-scope="all" onclick="filterByPrimaryRoot('all', this)">全部一级科目</button>
+        {% for root in roots %}
+        {% set child_items = leaves|selectattr('parent_id', 'equalto', root.id)|list %}
+        <button type="button" class="btn btn-secondary btn-sm primary-chip-btn" data-root-id="{{ root.id }}" data-root-name="{{ root.name }}" data-root-scope="{{ root.transaction_scope }}" onclick="filterByPrimaryRoot('{{ root.id }}', this)" style="background: #ffffff; border-color: rgba(191, 219, 254, 0.9);">
+          {{ root.name }} <small style="opacity: 0.85; margin-left: 2px;">({{ child_items|length }})</small>
+        </button>
+        {% endfor %}
+      </div>
     </div>
   </div>
 
