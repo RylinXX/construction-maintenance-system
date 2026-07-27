@@ -4,6 +4,26 @@
 {% block breadcrumb %}人员花名册{% endblock %}
 
 {% block content %}
+<section class="module-hero animate-slide-up">
+  <div class="module-hero-copy">
+    <span class="eyebrow">Human Resources Center</span>
+    <h1>人员花名册与考勤管理</h1>
+    <p>集中管理公司员工电子档案、特种作业证书、月度考勤矩阵与工资结算台账。</p>
+  </div>
+  <div class="module-hero-stats">
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">花名册总人数</span>
+      <strong class="hero-stat-val">{{ people|length }} <small style="font-size: 11px;">人</small></strong>
+      <span class="hero-stat-sub">在册电子档案</span>
+    </div>
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">考勤与结算</span>
+      <strong class="hero-stat-val">月度矩阵</strong>
+      <span class="hero-stat-sub">工资预支跟踪</span>
+    </div>
+  </div>
+</section>
+
 <!-- Main Tabs Navigation -->
 <div class="view-tabs animate-slide-up" style="display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; align-items: center; width: 100%;">
   <button type="button" class="tab-btn {% if active_tab == 'people' %}active{% endif %}" id="mainTabBtnPeople" onclick="switchMainTab('people')" style="background: none; border: none; border-bottom: 3px solid {% if active_tab == 'people' %}var(--secondary-color){% else %}transparent{% endif %}; color: {% if active_tab == 'people' %}var(--secondary-color){% else %}var(--text-secondary){% endif %}; padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">

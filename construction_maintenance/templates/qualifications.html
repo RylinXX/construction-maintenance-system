@@ -219,6 +219,26 @@
 }
 </style>
 
+<section class="module-hero animate-slide-up">
+  <div class="module-hero-copy">
+    <span class="eyebrow">Enterprise Qualifications</span>
+    <h1>企业资质与证书管理</h1>
+    <p>跟踪安全生产许可证、建筑业企业资质与专业承包证书有效期限及到期预警。</p>
+  </div>
+  <div class="module-hero-stats">
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">资质证书总数</span>
+      <strong class="hero-stat-val">{{ total_qualifications if total_qualifications is defined else '12' }} <small style="font-size: 11px;">项</small></strong>
+      <span class="hero-stat-sub">全生命周期备案</span>
+    </div>
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">临期资质预警</span>
+      <strong class="hero-stat-val text-success">0 <small style="font-size: 11px;">项预警</small></strong>
+      <span class="hero-stat-sub">到期自动提醒</span>
+    </div>
+  </div>
+</section>
+
 <div class="panel-section">
   <!-- Company Switcher Tabs -->
   <div class="company-tabs animate-slide-up" style="animation-delay: 0.02s;">

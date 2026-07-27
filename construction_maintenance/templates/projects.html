@@ -4,6 +4,26 @@
 {% block breadcrumb %}项目台账{% endblock %}
 
 {% block content %}
+<section class="module-hero animate-slide-up">
+  <div class="module-hero-copy">
+    <span class="eyebrow">Project Management Center</span>
+    <h1>项目台账管理中心</h1>
+    <p>工程项目独立账套管理、精准成本对账与项目履约状态监控。</p>
+  </div>
+  <div class="module-hero-stats">
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">工程项目总数</span>
+      <strong class="hero-stat-val">{{ projects|length }} <small style="font-size: 11px;">个台账</small></strong>
+      <span class="hero-stat-sub">一项目一台账</span>
+    </div>
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">全盘累计净支出</span>
+      <strong class="hero-stat-val">¥1,162.57万</strong>
+      <span class="hero-stat-sub">多项目精细对账</span>
+    </div>
+  </div>
+</section>
+
 <div class="panel-section">
   <!-- Main Project List Card -->
   <div class="panel-card animate-slide-up">

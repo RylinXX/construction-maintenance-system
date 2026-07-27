@@ -644,6 +644,73 @@ a {
   line-height: 22px;
 }
 
+/* Reusable Unified Module Hero Banner System */
+.module-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 20px;
+  padding: 18px 24px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, var(--menu-selected-bg), var(--surface-color));
+  box-shadow: var(--shadow-sm);
+}
+
+.dark-theme .module-hero {
+  background:
+    linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(15, 23, 42, 0.94)),
+    var(--surface-color);
+}
+
+.module-hero-copy h1 {
+  margin: 4px 0 6px;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
+.module-hero-copy p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.module-hero-stats {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.hero-stat-card {
+  min-width: 140px;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.65);
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark-theme .hero-stat-card {
+  background: rgba(22, 32, 51, 0.65);
+}
+
+.hero-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
 .dashboard-hero-panel {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
