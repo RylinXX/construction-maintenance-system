@@ -25,6 +25,7 @@
   </div>
 </section>
 
+<!-- Filter Toolbar: Scope Tabs & Search -->
 <section class="panel-card category-filter-bar animate-slide-up">
   <div class="category-scope-tabs">
     <button type="button" class="btn btn-primary scope-tab-btn" data-scope="all" onclick="filterByScope('all', this)">全部收支</button>
@@ -37,9 +38,28 @@
   </div>
 </section>
 
+<!-- Primary Category Quick Filter Map (一级科目地图 / 分支速查导航) -->
+<section class="panel-card primary-category-navigator animate-slide-up" style="margin-bottom: 16px; padding: 12px 16px; background: var(--surface-color);">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+    <span style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+      {{ icon('checklist') }} 一级科目地图 (分支直达导航):
+    </span>
+    <span style="font-size: 12px; color: var(--text-tertiary);" id="primaryNavCountHint">点击下方任意一级科目，直接定位并管理其所属分支</span>
+  </div>
+  <div class="primary-nav-chips" id="primaryNavChips" style="display: flex; flex-wrap: wrap; gap: 8px;">
+    <button type="button" class="btn btn-primary btn-sm primary-chip-btn" data-root-id="all" data-root-scope="all" onclick="filterByPrimaryRoot('all', this)">全部一级科目</button>
+    {% for root in roots %}
+    {% set child_items = leaves|selectattr('parent_id', 'equalto', root.id)|list %}
+    <button type="button" class="btn btn-secondary btn-sm primary-chip-btn" data-root-id="{{ root.id }}" data-root-name="{{ root.name }}" data-root-scope="{{ root.transaction_scope }}" onclick="filterByPrimaryRoot('{{ root.id }}', this)">
+      {{ root.name }} <small style="opacity: 0.85; margin-left: 2px;">({{ child_items|length }})</small>
+    </button>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="category-tree animate-slide-up" id="categoryTreeSection">
   {% for root in roots %}
-  <div class="category-root-band{% if not root.is_active %} is-inactive{% endif %}" data-scope="{{ root.transaction_scope }}" data-name="{{ root.name }}">
+  <div class="category-root-band{% if not root.is_active %} is-inactive{% endif %}" data-root-id="{{ root.id }}" data-scope="{{ root.transaction_scope }}" data-name="{{ root.name }}">
     <form id="edit-category-{{ root.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=root.id) }}" class="category-root-form">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="parent_id" value="">
       <label>一级分类<input class="form-input" name="name" value="{{ root.name }}" required></label>
@@ -105,38 +125,84 @@
 
 <script>
 let currentScopeFilter = 'all';
+let currentPrimaryRootFilter = 'all';
 
 function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
 
 function filterByScope(scope, button) {
   currentScopeFilter = scope;
+  currentPrimaryRootFilter = 'all'; // reset primary root filter when scope changes
+
   document.querySelectorAll('.scope-tab-btn').forEach(btn => {
     btn.classList.remove('btn-primary');
     btn.classList.add('btn-secondary');
   });
   button.classList.remove('btn-secondary');
   button.classList.add('btn-primary');
+
+  // Reset primary chips buttons
+  document.querySelectorAll('.primary-chip-btn').forEach(btn => {
+    if (btn.dataset.rootId === 'all') {
+      btn.classList.remove('btn-secondary');
+      btn.classList.add('btn-primary');
+    } else {
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-secondary');
+    }
+  });
+
+  filterCategories();
+}
+
+function filterByPrimaryRoot(rootId, button) {
+  currentPrimaryRootFilter = rootId;
+
+  document.querySelectorAll('.primary-chip-btn').forEach(btn => {
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-secondary');
+  });
+  button.classList.remove('btn-secondary');
+  button.classList.add('btn-primary');
+
   filterCategories();
 }
 
 function filterCategories() {
   const query = (document.getElementById('categorySearchInput').value || '').trim().toLowerCase();
   const bands = document.querySelectorAll('.category-root-band');
+  const chips = document.querySelectorAll('.primary-chip-btn');
   
+  // 1. Update visibility of primary category chips based on scope
+  chips.forEach(chip => {
+    if (chip.dataset.rootId === 'all') {
+      chip.style.display = '';
+      return;
+    }
+    const chipScope = chip.dataset.rootScope;
+    if (currentScopeFilter === 'all' || chipScope === currentScopeFilter) {
+      chip.style.display = '';
+    } else {
+      chip.style.display = 'none';
+    }
+  });
+
+  // 2. Filter root bands and sub-categories
   bands.forEach(band => {
     const scope = band.dataset.scope;
+    const rootId = band.dataset.rootId;
     const rootName = (band.dataset.name || '').toLowerCase();
     const leafRows = band.querySelectorAll('.category-leaf-row');
     
     let scopeMatch = (currentScopeFilter === 'all' || scope === currentScopeFilter);
+    let rootMatch = (currentPrimaryRootFilter === 'all' || rootId === currentPrimaryRootFilter);
     let nameMatch = !query || rootName.includes(query);
     let hasMatchingLeaf = false;
 
     leafRows.forEach(leaf => {
       const leafName = (leaf.dataset.leafName || '').toLowerCase();
       const match = (!query || leafName.includes(query) || rootName.includes(query));
-      if (match && scopeMatch) {
+      if (match && scopeMatch && rootMatch) {
         leaf.style.display = '';
         hasMatchingLeaf = true;
       } else {
@@ -144,7 +210,7 @@ function filterCategories() {
       }
     });
 
-    if (scopeMatch && (nameMatch || hasMatchingLeaf)) {
+    if (scopeMatch && rootMatch && (nameMatch || hasMatchingLeaf)) {
       band.style.display = '';
     } else {
       band.style.display = 'none';
