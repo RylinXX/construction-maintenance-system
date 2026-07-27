@@ -42,6 +42,16 @@ def test_security_headers_are_present(client):
     assert "camera=()" in response.headers["Permissions-Policy"]
 
 
+def test_external_dashboard_assets_match_content_security_policy(client):
+    response = client.get("/")
+    csp = response.headers["Content-Security-Policy"]
+
+    assert "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com" in csp
+    assert "font-src 'self' https://fonts.gstatic.com" in csp
+    assert "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net" in csp
+    assert b"chart.js@4.4.9/dist/chart.umd.min.js" in response.data
+
+
 def test_invalid_month_and_attendance_payloads_do_not_raise_500(client):
     assert client.get("/people?tab=attendance&month=2026-13").status_code == 200
     response = client.post(
