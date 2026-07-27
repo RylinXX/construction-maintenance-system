@@ -1,3 +1,6 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
 import pytest
 
 from construction_maintenance import repositories as repo
@@ -202,3 +205,91 @@ def test_pending_item_converts_once_to_structured_entry(app):
 
     assert item["status"] == "已转正式明细"
     assert item["voucher_id"] == voucher_id
+
+
+def test_ignore_pending_item_is_atomic_under_concurrent_requests(
+    app, monkeypatch
+):
+    with app.app_context():
+        company = repo.get_main_company()
+        project_id = repo.create_project({
+            "company_id": company["id"],
+            "name": "并发忽略测试",
+        })
+        item_id = repo.create_ledger_pending_item({
+            "project_id": project_id,
+            "item_date": "2026-07-20",
+            "summary": "并发待补录事项",
+            "suggested_category_id": _leaf_id("运输车辆台班"),
+            "source_filename": "concurrent-ignore.xlsx",
+            "source_sheet": "待确认清单",
+            "source_row": 3,
+            "issue_type": "缺少金额",
+        })
+
+    both_selected = Barrier(2)
+    original_get_db = repo.get_db
+
+    class BarrierCursor:
+        def __init__(self, cursor):
+            self.cursor = cursor
+
+        def fetchone(self):
+            row = self.cursor.fetchone()
+            both_selected.wait(timeout=5)
+            return row
+
+    class BarrierConnection:
+        def __init__(self, connection):
+            self.connection = connection
+
+        def execute(self, sql, parameters=()):
+            cursor = self.connection.execute(sql, parameters)
+            normalized = " ".join(sql.lower().split())
+            if normalized.startswith(
+                "select status from ledger_pending_items where id = ?"
+            ):
+                return BarrierCursor(cursor)
+            return cursor
+
+        def __getattr__(self, name):
+            return getattr(self.connection, name)
+
+    monkeypatch.setattr(
+        repo,
+        "get_db",
+        lambda: BarrierConnection(original_get_db()),
+    )
+
+    def ignore_once():
+        with app.app_context():
+            try:
+                repo.ignore_ledger_pending_item(item_id, actor_admin_id=None)
+            except ValueError as exc:
+                return str(exc)
+            return "success"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = [future.result(timeout=10) for future in (
+            executor.submit(ignore_once),
+            executor.submit(ignore_once),
+        )]
+
+    with app.app_context():
+        status = get_db().execute(
+            "select status from ledger_pending_items where id = ?",
+            (item_id,),
+        ).fetchone()["status"]
+        audits = get_db().execute(
+            """
+            select count(*) from audit_events
+            where action = 'ignore'
+              and entity_type = 'ledger_pending_item'
+              and entity_id = ?
+            """,
+            (item_id,),
+        ).fetchone()[0]
+
+    assert sorted(results) == ["success", "只有待补录事项可以忽略"]
+    assert status == "已忽略"
+    assert audits == 1

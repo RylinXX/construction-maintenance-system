@@ -23,6 +23,7 @@ from construction_maintenance.finance import (
     TRANSACTION_TYPES,
 )
 from construction_maintenance.web.forms import required_text
+from construction_maintenance.web.forms import optional_int
 from construction_maintenance.web.forms import text_value
 from construction_maintenance.services.ocr import recognize_batch_upload
 from concurrent.futures import ThreadPoolExecutor
@@ -428,14 +429,20 @@ def dashboard():
 @bp.route("/expense-categories", methods=["GET", "POST"])
 def expense_categories():
     if request.method == "POST":
+        has_parent_id = "parent_id" in request.form
+        parent_id = (
+            optional_int(request.form, "parent_id", "所属分类编号")
+            if has_parent_id
+            else None
+        )
         try:
             category_data = {
                 "name": required_text(request.form, "name", "费用科目名称"),
                 "transaction_scope": text_value(request.form, "transaction_scope") or "支出",
                 "sort_order": text_value(request.form, "sort_order"),
             }
-            if "parent_id" in request.form:
-                category_data["parent_id"] = request.form.get("parent_id", type=int)
+            if has_parent_id:
+                category_data["parent_id"] = parent_id
             repo.create_expense_category(category_data)
             flash("费用科目已成功添加。", "success")
         except (sqlite3.IntegrityError, ValueError) as exc:
@@ -456,14 +463,20 @@ def expense_categories():
 
 @bp.route("/expense-categories/<int:category_id>/edit", methods=["POST"])
 def edit_expense_category(category_id: int):
+    has_parent_id = "parent_id" in request.form
+    parent_id = (
+        optional_int(request.form, "parent_id", "所属分类编号")
+        if has_parent_id
+        else None
+    )
     try:
         category_data = {
             "name": required_text(request.form, "name", "费用科目名称"),
             "sort_order": text_value(request.form, "sort_order"),
             "is_active": 1 if request.form.get("is_active") else 0,
         }
-        if "parent_id" in request.form:
-            category_data["parent_id"] = request.form.get("parent_id", type=int)
+        if has_parent_id:
+            category_data["parent_id"] = parent_id
         if "transaction_scope" in request.form:
             category_data["transaction_scope"] = text_value(
                 request.form, "transaction_scope"
@@ -1492,6 +1505,7 @@ def exports():
 
 @bp.get("/exports/<export_type>")
 def download_export(export_type: str):
+    from io import BytesIO
     from pathlib import Path
     from flask import current_app
     from flask import send_file
@@ -1513,13 +1527,18 @@ def download_export(export_type: str):
         return "Unknown export type", 404
     filename, builder = builders[export_type]
     if export_type == "project-ledger":
-        path = builder(
-            export_dir / filename,
+        workbook_stream = BytesIO()
+        builder(
+            workbook_stream,
             project_id=request.args.get("project_id", type=int),
             **_ledger_filters(),
         )
-    else:
-        path = builder(export_dir / filename)
+        return send_file(
+            workbook_stream,
+            as_attachment=True,
+            download_name=filename,
+        )
+    path = builder(export_dir / filename)
     return send_file(path, as_attachment=True, download_name=filename)
 
 

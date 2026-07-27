@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import BinaryIO
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -99,10 +100,10 @@ PROJECT_LEDGER_HEADERS = [
 
 
 def build_project_ledger_workbook(
-    path: Path,
+    path: Path | BinaryIO,
     project_id: int | None = None,
     **filters,
-) -> Path:
+) -> Path | BinaryIO:
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "项目台账"
@@ -147,8 +148,11 @@ def build_project_ledger_workbook(
     widths = [24, 12, 24, 12, 18, 22, 42, 14, 18, 20, 12, 36, 12, 12, 30, 20, 12, 12]
     for index, width in enumerate(widths, start=1):
         sheet.column_dimensions[get_column_letter(index)].width = width
-    path.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(path, Path):
+        path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(path)
+    if not isinstance(path, Path):
+        path.seek(0)
     return path
 
 

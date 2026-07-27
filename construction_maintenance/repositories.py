@@ -1115,18 +1115,27 @@ def ignore_ledger_pending_item(
         raise ValueError("待补录事项不存在")
     if item["status"] != "待补录":
         raise ValueError("只有待补录事项可以忽略")
-    db.execute(
-        "update ledger_pending_items set status = '已忽略' where id = ?",
-        (item_id,),
-    )
-    _insert_audit(
-        db,
-        actor_admin_id=actor_admin_id,
-        action="ignore",
-        entity_type="ledger_pending_item",
-        entity_id=item_id,
-    )
-    db.commit()
+    try:
+        cursor = db.execute(
+            """
+            update ledger_pending_items set status = '已忽略'
+            where id = ? and status = '待补录'
+            """,
+            (item_id,),
+        )
+        if cursor.rowcount != 1:
+            raise ValueError("只有待补录事项可以忽略")
+        _insert_audit(
+            db,
+            actor_admin_id=actor_admin_id,
+            action="ignore",
+            entity_type="ledger_pending_item",
+            entity_id=item_id,
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 def delete_expense_category(category_id: int) -> None:

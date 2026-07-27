@@ -1,4 +1,6 @@
 from io import BytesIO
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 
 from openpyxl import load_workbook
 
@@ -6,6 +8,7 @@ from construction_maintenance import repositories as repo
 from construction_maintenance.db import get_db
 from construction_maintenance.services.dashboard import build_dashboard
 from construction_maintenance.services.exports import build_project_ledger_workbook
+from construction_maintenance.services import exports as export_service
 
 
 EXPECTED_HEADERS = [
@@ -120,3 +123,72 @@ def test_filtered_ledger_export_includes_all_matches_across_pages(client, app):
     assert "EXPORT_MATCH_00" in notes
     assert "EXPORT_MATCH_29" in notes
     assert "EXPORT_NONMATCH" not in notes
+
+
+def test_concurrent_filtered_ledger_exports_are_request_isolated(
+    app, monkeypatch
+):
+    with app.app_context():
+        company = repo.get_main_company()
+        category_id = _leaf_id("五金辅材及工具")
+        project_ids = {}
+        for marker in ("ONLY_A", "ONLY_B"):
+            project_id = repo.create_project({
+                "company_id": company["id"],
+                "name": f"并发导出-{marker}",
+            })
+            repo.create_voucher({
+                "project_id": project_id,
+                "voucher_date": "2026-07-01",
+                "transaction_type": "支出",
+                "category_id": category_id,
+                "amount": 100,
+                "notes": marker,
+                "payment_status": "未支付",
+            })
+            project_ids[marker] = project_id
+
+    first_written = Event()
+    second_written = Event()
+    original_builder = export_service.build_project_ledger_workbook
+
+    def coordinated_builder(target, project_id=None, **filters):
+        output = original_builder(target, project_id=project_id, **filters)
+        if project_id == project_ids["ONLY_A"]:
+            first_written.set()
+            assert second_written.wait(timeout=5)
+        else:
+            assert first_written.wait(timeout=5)
+            second_written.set()
+        return output
+
+    monkeypatch.setattr(
+        export_service,
+        "build_project_ledger_workbook",
+        coordinated_builder,
+    )
+
+    def download(project_id):
+        with app.test_client() as thread_client:
+            response = thread_client.get(
+                f"/exports/project-ledger?project_id={project_id}"
+            )
+            assert response.status_code == 200
+            return response.data
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(download, project_ids["ONLY_A"])
+        assert first_written.wait(timeout=5)
+        second = executor.submit(download, project_ids["ONLY_B"])
+        payloads = {
+            "ONLY_A": first.result(timeout=5),
+            "ONLY_B": second.result(timeout=5),
+        }
+
+    for marker, payload in payloads.items():
+        sheet = load_workbook(BytesIO(payload)).active
+        notes = {
+            sheet.cell(row=row, column=7).value
+            for row in range(2, sheet.max_row + 1)
+        }
+        assert notes == {marker}

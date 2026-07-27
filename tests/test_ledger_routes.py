@@ -578,6 +578,71 @@ def test_category_route_rejects_forged_parent_and_scope(
         assert created == 0
 
 
+def test_category_create_rejects_invalid_parent_id_without_mutation(client, app):
+    with app.app_context():
+        before = [
+            tuple(row)
+            for row in get_db().execute(
+                """
+                select id, name, parent_id, transaction_scope, sort_order, is_active
+                from expense_categories order by id
+                """
+            )
+        ]
+
+    response = client.post(
+        "/expense-categories",
+        data={
+            "name": "非法父分类创建测试",
+            "parent_id": "not-an-id",
+            "transaction_scope": "支出",
+            "sort_order": "999",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "所属分类编号必须是整数".encode() in response.data
+    with app.app_context():
+        after = [
+            tuple(row)
+            for row in get_db().execute(
+                """
+                select id, name, parent_id, transaction_scope, sort_order, is_active
+                from expense_categories order by id
+                """
+            )
+        ]
+    assert after == before
+
+
+def test_category_edit_rejects_invalid_parent_id_without_mutation(client, app):
+    with app.app_context():
+        leaf = get_db().execute(
+            "select * from expense_categories where name = '五金辅材及工具'"
+        ).fetchone()
+        before = tuple(leaf)
+
+    response = client.post(
+        f"/expense-categories/{leaf['id']}/edit",
+        data={
+            "name": leaf["name"],
+            "parent_id": "not-an-id",
+            "transaction_scope": leaf["transaction_scope"],
+            "sort_order": str(leaf["sort_order"]),
+            "is_active": "1",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "所属分类编号必须是整数".encode() in response.data
+    with app.app_context():
+        after = tuple(get_db().execute(
+            "select * from expense_categories where id = ?",
+            (leaf["id"],),
+        ).fetchone())
+    assert after == before
+
+
 def test_route_rejects_category_scope_mismatch(client, app):
     seeded = seed_structured_financial_entry(app)
     response = client.post(
