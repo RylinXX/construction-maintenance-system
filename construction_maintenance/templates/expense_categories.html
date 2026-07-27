@@ -25,14 +25,12 @@
   </div>
 </section>
 
-<!-- Unified Sub-Navigation Tabs Bar -->
-<div class="panel-card animate-slide-up" style="padding: 10px 16px; margin-bottom: 16px;">
-  <div class="company-tabs" style="border-bottom: none; margin: 0;">
-    <a href="{{ url_for('web.vouchers') }}" class="company-tab">{{ icon('receipt') }} 全盘财务明细</a>
-    <a href="{{ url_for('web.ledger_pending') }}" class="company-tab">{{ icon('inbox') }} 待补录队列</a>
-    <a href="{{ url_for('web.expense_categories') }}" class="company-tab active">{{ icon('checklist') }} 费用科目定义</a>
-  </div>
-</div>
+<!-- Ledger Center Floating Capsule Segment Controller -->
+<nav class="ledger-segment-nav animate-slide-up" aria-label="账套管理导航">
+  <a href="{{ url_for('web.vouchers') }}" class="ledger-segment-btn">{{ icon('receipt') }} 全盘财务明细</a>
+  <a href="{{ url_for('web.ledger_pending') }}" class="ledger-segment-btn">{{ icon('inbox') }} 待补录队列</a>
+  <a href="{{ url_for('web.expense_categories') }}" class="ledger-segment-btn active">{{ icon('checklist') }} 费用科目定义</a>
+</nav>
 
 <!-- Filter Toolbar: Scope Tabs & Search -->
 <section class="panel-card category-filter-bar animate-slide-up">

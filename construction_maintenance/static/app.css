@@ -1132,6 +1132,49 @@ textarea.form-input:focus {
   padding: 48px 20px !important;
 }
 
+/* Ledger Center Floating Capsule Segment Controller */
+.ledger-segment-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  padding: 5px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+}
+
+.ledger-segment-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ledger-segment-btn:hover {
+  color: var(--primary-color);
+  background: var(--surface-muted);
+}
+
+.ledger-segment-btn.active {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, var(--primary-color, #2563eb), #1d4ed8) !important;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.28);
+}
+
+.dark-theme .ledger-segment-btn.active {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  box-shadow: 0 3px 12px rgba(59, 130, 246, 0.35);
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
