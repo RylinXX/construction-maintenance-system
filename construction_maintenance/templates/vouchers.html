@@ -21,14 +21,53 @@
   </div>
 </section>
 
-<section class="ledger-kpi-band animate-slide-up" aria-label="财务汇总">
-  <div><span>支出原额</span><strong>¥{{ financial_summary.expense|money_short }}</strong></div>
-  <div><span>冲减支出</span><strong>¥{{ financial_summary.expense_reduction|money_short }}</strong></div>
-  <div class="ledger-kpi-primary"><span>净支出</span><strong>¥{{ financial_summary.net_expense|money_short }}</strong></div>
-  <div><span>收入</span><strong>¥{{ financial_summary.income|money_short }}</strong></div>
-  <div><span>资金往来</span><strong>¥{{ financial_summary.fund_transfer|money_short }}</strong></div>
-  <div><span>未结金额</span><strong>¥{{ financial_summary.unsettled|money_short }}</strong></div>
-  <div><span>记录数</span><strong data-kpi="entry-count">{{ financial_summary.entry_count }}</strong><small>待复核 {{ financial_summary.review_count }} / 待补录 {{ financial_summary.pending_count }}</small></div>
+<section class="ledger-kpi-grid animate-slide-up" aria-label="财务台账汇总">
+  <div class="ledger-kpi-card ledger-kpi-card-primary">
+    <div class="ledger-kpi-header">
+      <span>净支出</span>
+      <span class="badge badge-secondary">全盘汇总</span>
+    </div>
+    <div class="ledger-kpi-value">¥{{ financial_summary.net_expense|money_short }}</div>
+    <div class="ledger-kpi-subtext">
+      <span>支出原额 ¥{{ financial_summary.expense|money_short }}</span>
+      <span>冲减支出 -¥{{ financial_summary.expense_reduction|money_short }}</span>
+    </div>
+  </div>
+
+  <div class="ledger-kpi-card">
+    <div class="ledger-kpi-header">
+      <span>收入与资金往来</span>
+      <span class="badge badge-success">独立列示</span>
+    </div>
+    <div class="ledger-kpi-value">¥{{ financial_summary.income|money_short }}</div>
+    <div class="ledger-kpi-subtext">
+      <span>收入 ¥{{ financial_summary.income|money_short }}</span>
+      <span>资金往来 ¥{{ financial_summary.fund_transfer|money_short }}</span>
+    </div>
+  </div>
+
+  <div class="ledger-kpi-card">
+    <div class="ledger-kpi-header">
+      <span>未结金额</span>
+      <span class="badge badge-warning">款项跟踪</span>
+    </div>
+    <div class="ledger-kpi-value">¥{{ financial_summary.unsettled|money_short }}</div>
+    <div class="ledger-kpi-subtext">
+      <span>包含垫付与未支付凭证</span>
+    </div>
+  </div>
+
+  <div class="ledger-kpi-card">
+    <div class="ledger-kpi-header">
+      <span>记录数</span>
+      <span class="badge badge-secondary"><strong data-kpi="entry-count">{{ financial_summary.entry_count }}</strong> 笔</span>
+    </div>
+    <div class="ledger-kpi-value"><strong data-kpi="entry-count">{{ financial_summary.entry_count }}</strong> <small style="font-size: 13px;">笔明细</small></div>
+    <div class="ledger-kpi-subtext">
+      <span>待复核 <strong style="color: var(--warning-color);">{{ financial_summary.review_count }}</strong> 笔</span>
+      <a href="{{ url_for('web.ledger_pending') }}" style="color: var(--accent-color); text-decoration: none; font-weight: 600;">待补录 {{ financial_summary.pending_count }} 笔 &rarr;</a>
+    </div>
+  </div>
 </section>
 
 <section class="panel-card ledger-tool animate-slide-up">
