@@ -6,6 +6,7 @@
 {% block page_subtitle %}集中跟踪项目支出、凭证录入、人员与资质状态{% endblock %}
 
 {% block content %}
+<!-- Top Integrated Hero Section with All 6 Core Metric Stats -->
 <section class="dashboard-hero animate-slide-up">
   <div class="dashboard-hero-copy">
     <span class="eyebrow">YLT Digital Operations</span>
@@ -14,78 +15,40 @@
   </div>
   <div class="dashboard-hero-panel">
     <div>
-      <span>本月净支出</span>
-      <strong>¥{{ metrics.month_spending|money_short }}</strong>
+      <span class="hero-stat-title">本月项目净支出</span>
+      <strong class="hero-stat-val">¥{{ metrics.month_spending|money_short }}</strong>
+      <span class="hero-stat-sub">支出扣除冲减</span>
     </div>
     <div>
-      <span>待确认/待补录</span>
-      <strong class="{% if metrics.pending_count > 0 %}text-warning{% endif %}">{{ metrics.pending_count }}</strong>
+      <span class="hero-stat-title">累计项目净支出</span>
+      <strong class="hero-stat-val">¥{{ metrics.net_expense|money_short }}</strong>
+      <span class="hero-stat-sub">覆盖 6 大台账</span>
     </div>
     <div>
-      <span>临期资质</span>
-      <strong class="{% if metrics.expiring_qualifications > 0 %}text-danger{% endif %}">{{ metrics.expiring_qualifications }}</strong>
+      <span class="hero-stat-title">累计收入</span>
+      <strong class="hero-stat-val">¥{{ metrics.income|money_short }}</strong>
+      <span class="hero-stat-sub">废料处置及退款</span>
     </div>
+    <div>
+      <span class="hero-stat-title">资金往来</span>
+      <strong class="hero-stat-val">¥{{ metrics.fund_transfer|money_short }}</strong>
+      <span class="hero-stat-sub">借款/备用金/押金</span>
+    </div>
+    <a href="{{ url_for('web.ledger_pending') }}" class="clickable-metric">
+      <span class="hero-stat-title">待确认/待补录</span>
+      <strong class="hero-stat-val {% if metrics.pending_count > 0 %}text-warning{% endif %}">{{ metrics.pending_count }} <small style="font-size: 11px;">条</small></strong>
+      <span class="hero-stat-sub">前往待补录队列 &rarr;</span>
+    </a>
+    <a href="{{ url_for('web.qualifications') }}" class="clickable-metric">
+      <span class="hero-stat-title">临期资质</span>
+      <strong class="hero-stat-val {% if metrics.expiring_qualifications > 0 %}text-danger{% endif %}">{{ metrics.expiring_qualifications }} <small style="font-size: 11px;">项</small></strong>
+      <span class="hero-stat-sub">查看临期证书 &rarr;</span>
+    </a>
   </div>
 </section>
 
-<section class="metric-grid animate-slide-up" style="animation-delay: 0.05s;">
-  <article class="metric-card blue">
-    <span class="metric-icon">{{ icon('money') }}</span>
-    <div class="metric-info">
-      <span class="metric-title">本月项目净支出</span>
-      <strong class="metric-value">¥{{ metrics.month_spending|money_short }}</strong>
-      <span class="metric-baseline">支出扣除冲减支出</span>
-    </div>
-  </article>
-
-  <article class="metric-card indigo">
-    <span class="metric-icon">{{ icon('trend') }}</span>
-    <div class="metric-info">
-      <span class="metric-title">累计项目净支出</span>
-      <strong class="metric-value">¥{{ metrics.net_expense|money_short }}</strong>
-      <span class="metric-baseline">覆盖 6 大项目台账</span>
-    </div>
-  </article>
-
-  <article class="metric-card emerald">
-    <span class="metric-icon">{{ icon('money') }}</span>
-    <div class="metric-info">
-      <span class="metric-title">累计收入</span>
-      <strong class="metric-value">¥{{ metrics.income|money_short }}</strong>
-      <span class="metric-baseline">废料处置及退款等</span>
-    </div>
-  </article>
-
-  <article class="metric-card cyan">
-    <span class="metric-icon">{{ icon('bank-card') }}</span>
-    <div class="metric-info">
-      <span class="metric-title">资金往来</span>
-      <strong class="metric-value">¥{{ metrics.fund_transfer|money_short }}</strong>
-      <span class="metric-baseline">借款、备用金及押金</span>
-    </div>
-  </article>
-
-  <a href="{{ url_for('web.ledger_pending') }}" class="metric-card sky clickable-metric">
-    <span class="metric-icon">{{ icon('import') }}</span>
-    <div class="metric-info">
-      <span class="metric-title">待确认/待补录</span>
-      <strong class="metric-value">{{ metrics.pending_count }} <small style="font-size: 13px;">条待处理</small></strong>
-      <span class="metric-baseline">点击前往待补录队列 &rarr;</span>
-    </div>
-  </a>
-
-  <a href="{{ url_for('web.qualifications') }}" class="metric-card rose clickable-metric">
-    <span class="metric-icon">{{ icon('qualification') }}</span>
-    <div class="metric-info">
-      <span class="metric-title">临期资质</span>
-      <strong class="metric-value">{{ metrics.expiring_qualifications }} <small style="font-size: 13px;">项预警</small></strong>
-      <span class="metric-baseline">点击查看临期证书 &rarr;</span>
-    </div>
-  </a>
-</section>
-
-<!-- Analytics Grid Row 1: Trend & Pie Chart -->
-<div class="analysis-section-row animate-slide-up" style="animation-delay: 0.1s; margin-top: 24px;">
+<!-- First Screen Main Visual Analytics: Monthly Trend & Category Pie Chart -->
+<div class="analysis-section-row animate-slide-up" style="animation-delay: 0.05s; margin-top: 16px;">
   <!-- Left Chart: Monthly Spending Trend with Year Segment Filter -->
   <div class="panel-card">
     <div class="panel-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
@@ -136,7 +99,7 @@
 </div>
 
 <!-- Analytics Grid Row 2: Project Spending Ranking -->
-<div class="panel-card animate-slide-up" style="animation-delay: 0.15s; margin-top: 24px;">
+<div class="panel-card animate-slide-up" style="animation-delay: 0.1s; margin-top: 20px;">
   <div class="panel-header">
     <div>
       <h2 class="panel-title">{{ icon('dashboard') }} 各项目净支出排行对比</h2>
@@ -160,14 +123,6 @@
   display: grid;
   grid-template-columns: 3fr 2fr;
   gap: 20px;
-}
-.clickable-metric {
-  text-decoration: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.clickable-metric:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 @media (max-width: 1080px) {
   .analysis-section-row {
