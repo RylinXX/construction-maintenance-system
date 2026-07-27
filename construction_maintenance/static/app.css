@@ -1711,6 +1711,34 @@ textarea.form-input:focus {
   background: var(--hover-bg) !important;
 }
 
+/* Universal Sticky Right Action Column for Tables */
+.premium-table th.sticky-col-right,
+.premium-table td.sticky-col-right {
+  position: sticky;
+  right: 0;
+  z-index: 4;
+  background: var(--surface-color);
+  box-shadow: -6px 0 14px rgba(0, 0, 0, 0.06);
+}
+
+.premium-table th.sticky-col-right {
+  background: var(--surface-muted);
+}
+
+.dark-theme .premium-table th.sticky-col-right {
+  background: var(--surface-muted);
+  box-shadow: -6px 0 14px rgba(0, 0, 0, 0.35);
+}
+
+.dark-theme .premium-table td.sticky-col-right {
+  background: var(--surface-color);
+  box-shadow: -6px 0 14px rgba(0, 0, 0, 0.35);
+}
+
+.premium-table tbody tr:hover td.sticky-col-right {
+  background: var(--hover-bg, var(--surface-muted));
+}
+
 .dark-theme .badge-purple {
   background: rgba(167, 139, 250, 0.15);
   color: #C4B5FD;
