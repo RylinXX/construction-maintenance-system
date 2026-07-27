@@ -501,6 +501,17 @@ def migrate_expense_category(category_id: int):
     return redirect(url_for("web.expense_categories"))
 
 
+@bp.post("/expense-categories/<int:category_id>/delete")
+def delete_expense_category(category_id: int):
+    try:
+        repo.delete_expense_category(category_id)
+        flash("费用科目已成功删除。", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("web.expense_categories"))
+
+
+
 @bp.route("/projects", methods=["GET", "POST"])
 def projects():
     if request.method == "POST":

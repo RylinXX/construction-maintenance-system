@@ -6,27 +6,57 @@
 
 {% block content %}
 <section class="page-heading-row animate-slide-up">
-  <div><h1 class="section-page-title">费用科目管理</h1><p class="panel-subtitle">{{ roots|length }} 个一级分类 / {{ leaves|length }} 个二级分类</p></div>
+  <div>
+    <h1 class="section-page-title">费用科目管理</h1>
+    <p class="panel-subtitle">
+      {{ roots|length }} 个一级分类 / {{ leaves|length }} 个二级分类
+      （启用中：{{ roots|selectattr('is_active')|list|length }} 一级 / {{ leaves|selectattr('is_active')|list|length }} 二级）
+    </p>
+  </div>
   <div class="toolbar-actions">
     <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.vouchers') }}">{{ icon('receipt') }} 财务明细</a>
     <button type="button" class="btn btn-primary toolbar-btn" onclick="openModal('addCategoryModal')">{{ icon('add') }} 新增分类</button>
   </div>
 </section>
 
-<section class="category-tree animate-slide-up">
+<section class="panel-card ledger-tool animate-slide-up mb-3" style="margin-bottom: 16px;">
+  <div class="ledger-filter-band" style="display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+    <div class="scope-tabs" style="display: flex; gap: 8px;">
+      <button type="button" class="btn btn-primary" data-scope="all" onclick="filterByScope('all', this)">全部收支</button>
+      <button type="button" class="btn btn-secondary" data-scope="支出" onclick="filterByScope('支出', this)">支出类</button>
+      <button type="button" class="btn btn-secondary" data-scope="收入" onclick="filterByScope('收入', this)">收入类</button>
+      <button type="button" class="btn btn-secondary" data-scope="资金往来" onclick="filterByScope('资金往来', this)">资金往来</button>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; flex: 1; max-width: 320px;">
+      <input type="text" id="categorySearchInput" class="form-input" placeholder="搜索分类名称..." onkeyup="filterCategories()">
+    </div>
+  </div>
+</section>
+
+<section class="category-tree animate-slide-up" id="categoryTreeSection">
   {% for root in roots %}
-  <div class="category-root-band{% if not root.is_active %} is-inactive{% endif %}">
-    <form id="edit-category-{{ root.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=root.id) }}" class="category-root-form">
-      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="parent_id" value="">
-      <label>一级分类<input class="form-input" name="name" value="{{ root.name }}" required></label>
-      <label>收支范围<select class="form-select" name="transaction_scope">{% for value in ['支出', '收入', '资金往来'] %}<option value="{{ value }}" {% if root.transaction_scope == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
-      <label>排序<input class="form-input" name="sort_order" type="number" value="{{ root.sort_order }}"></label>
-      <label class="category-active-toggle"><input type="checkbox" name="is_active" value="1" {% if root.is_active %}checked{% endif %}>{{ '启用中' if root.is_active else '已停用' }}</label>
-      <button type="submit" class="icon-button" title="保存一级分类" aria-label="保存一级分类">{{ icon('save') }}</button>
-    </form>
+  <div class="category-root-band{% if not root.is_active %} is-inactive{% endif %}" data-scope="{{ root.transaction_scope }}" data-name="{{ root.name }}">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <form id="edit-category-{{ root.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=root.id) }}" class="category-root-form" style="flex: 1;">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="parent_id" value="">
+        <label>一级分类<input class="form-input" name="name" value="{{ root.name }}" required></label>
+        <label>收支范围<select class="form-select" name="transaction_scope">{% for value in ['支出', '收入', '资金往来'] %}<option value="{{ value }}" {% if root.transaction_scope == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+        <label>排序<input class="form-input" name="sort_order" type="number" value="{{ root.sort_order }}"></label>
+        <label class="category-active-toggle"><input type="checkbox" name="is_active" value="1" {% if root.is_active %}checked{% endif %}>{{ '启用中' if root.is_active else '已停用' }}</label>
+        <div style="display: flex; gap: 4px; align-items: flex-end;">
+          <button type="submit" class="icon-button" title="保存一级分类" aria-label="保存一级分类">{{ icon('save') }}</button>
+        </div>
+      </form>
+      {% if not root.child_count and not root.voucher_count and not root.pending_count %}
+      <form method="post" action="{{ url_for('web.delete_expense_category', category_id=root.id) }}" class="inline-form" onsubmit="return confirm('确认永久删除该一级分类？');" style="margin-right: 14px;">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button type="submit" class="icon-button" title="删除一级分类" aria-label="删除一级分类">{{ icon('delete') }}</button>
+      </form>
+      {% endif %}
+    </div>
     <div class="category-leaf-list">
       {% for leaf in leaves if leaf.parent_id == root.id %}
-      <div class="category-leaf-row{% if not leaf.is_active %} is-inactive{% endif %}">
+      <div class="category-leaf-row{% if not leaf.is_active %} is-inactive{% endif %}" data-leaf-name="{{ leaf.name }}">
         <form id="edit-category-{{ leaf.id }}" method="post" action="{{ url_for('web.edit_expense_category', category_id=leaf.id) }}" class="category-leaf-form">
           <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
           <input type="hidden" name="transaction_scope" value="{{ leaf.transaction_scope }}">
@@ -34,16 +64,25 @@
           <label>所属一级<select class="form-select" name="parent_id">{% for candidate in roots if candidate.transaction_scope == leaf.transaction_scope %}<option value="{{ candidate.id }}" {% if leaf.parent_id == candidate.id %}selected{% endif %}>{{ candidate.name }}</option>{% endfor %}</select></label>
           <label>排序<input class="form-input" name="sort_order" type="number" value="{{ leaf.sort_order }}"></label>
           <label class="category-active-toggle"><input type="checkbox" name="is_active" value="1" {% if leaf.is_active %}checked{% endif %}>{{ '启用中' if leaf.is_active else '已停用' }}</label>
-          <button type="submit" class="icon-button" title="保存二级分类" aria-label="保存二级分类">{{ icon('save') }}</button>
+          <div style="display: flex; gap: 4px; align-items: flex-end;">
+            <button type="submit" class="icon-button" title="保存二级分类" aria-label="保存二级分类">{{ icon('save') }}</button>
+          </div>
         </form>
         <div class="category-reference-count">{{ leaf.voucher_count }} 条明细{% if leaf.pending_count %} / {{ leaf.pending_count }} 条待补录{% endif %}</div>
-        {% if leaf.voucher_count or leaf.pending_count %}
-        <form method="post" action="{{ url_for('web.migrate_expense_category', category_id=leaf.id) }}" class="category-migrate-form">
-          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-          <select class="form-select" name="target_id" required><option value="">迁移目标</option>{% for target in leaves if target.id != leaf.id and target.transaction_scope == leaf.transaction_scope and target.is_active %}<option value="{{ target.id }}">{{ target.primary_name }} / {{ target.name }}</option>{% endfor %}</select>
-          <button type="submit" class="btn btn-secondary toolbar-btn" onclick="return confirm('确认迁移全部引用并停用原分类？');">迁移并停用</button>
-        </form>
-        {% endif %}
+        <div style="display: flex; gap: 8px; align-items: center;">
+          {% if leaf.voucher_count or leaf.pending_count %}
+          <form method="post" action="{{ url_for('web.migrate_expense_category', category_id=leaf.id) }}" class="category-migrate-form">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <select class="form-select" name="target_id" required><option value="">迁移目标</option>{% for target in leaves if target.id != leaf.id and target.transaction_scope == leaf.transaction_scope and target.is_active %}<option value="{{ target.id }}">{{ target.primary_name }} / {{ target.name }}</option>{% endfor %}</select>
+            <button type="submit" class="btn btn-secondary toolbar-btn" onclick="return confirm('确认迁移全部引用并停用原分类？');">迁移并停用</button>
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('web.delete_expense_category', category_id=leaf.id) }}" class="inline-form" onsubmit="return confirm('确认永久删除该二级分类？');">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" class="icon-button" title="删除二级分类" aria-label="删除二级分类">{{ icon('delete') }}</button>
+          </form>
+          {% endif %}
+        </div>
       </div>
       {% else %}<div class="category-empty-children">暂无二级分类</div>{% endfor %}
     </div>
@@ -65,11 +104,63 @@
 </div></div>
 
 <script>
+let currentScopeFilter = 'all';
+
 function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
+
+function filterByScope(scope, button) {
+  currentScopeFilter = scope;
+  document.querySelectorAll('.scope-tabs button').forEach(btn => {
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-secondary');
+  });
+  button.classList.remove('btn-secondary');
+  button.classList.add('btn-primary');
+  filterCategories();
+}
+
+function filterCategories() {
+  const query = (document.getElementById('categorySearchInput').value || '').trim().toLowerCase();
+  const bands = document.querySelectorAll('.category-root-band');
+  
+  bands.forEach(band => {
+    const scope = band.dataset.scope;
+    const rootName = (band.dataset.name || '').toLowerCase();
+    const leafRows = band.querySelectorAll('.category-leaf-row');
+    
+    let scopeMatch = (currentScopeFilter === 'all' || scope === currentScopeFilter);
+    let nameMatch = !query || rootName.includes(query);
+    let hasMatchingLeaf = false;
+
+    leafRows.forEach(leaf => {
+      const leafName = (leaf.dataset.leafName || '').toLowerCase();
+      const match = (!query || leafName.includes(query) || rootName.includes(query));
+      if (match && scopeMatch) {
+        leaf.style.display = '';
+        hasMatchingLeaf = true;
+      } else {
+        leaf.style.display = 'none';
+      }
+    });
+
+    if (scopeMatch && (nameMatch || hasMatchingLeaf)) {
+      band.style.display = '';
+    } else {
+      band.style.display = 'none';
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-  const parent = document.getElementById('categoryParent'); const scope = document.getElementById('categoryScope');
-  parent.addEventListener('change', function() { const option = this.options[this.selectedIndex]; if (option.dataset.scope) scope.value = option.dataset.scope; });
+  const parent = document.getElementById('categoryParent');
+  const scope = document.getElementById('categoryScope');
+  parent.addEventListener('change', function() {
+    const option = this.options[this.selectedIndex];
+    if (option.dataset.scope) {
+      scope.value = option.dataset.scope;
+    }
+  });
 });
 </script>
 {% endblock %}

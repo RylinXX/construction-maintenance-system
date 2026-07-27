@@ -555,14 +555,31 @@ def test_pending_item_ignore_persists_once_without_creating_voucher(client, app)
     assert len(matching_audits) == 1
 
 
-def test_category_management_does_not_offer_destructive_deletion(client, app):
-    response = client.get("/expense-categories")
-    assert response.status_code == 200
-    assert b"/delete" not in response.data
-
+def test_category_management_rejects_deleting_referenced_category(client, app):
+    # Create project and voucher referencing category
+    client.post("/projects", data={"name": "测试项目"})
     category_id = int(category(app, "五金辅材及工具")["id"])
-    delete_response = client.post(f"/expense-categories/{category_id}/delete")
-    assert delete_response.status_code == 404
+    client.post(
+        "/vouchers",
+        data={
+            "project_id": "1",
+            "voucher_date": "2026-05-29",
+            "transaction_type": "支出",
+            "category_id": str(category_id),
+            "amount": "1000",
+            "payment_status": "已支付/已报销",
+            "notes": "测试支出",
+        },
+    )
+
+    delete_response = client.post(
+        f"/expense-categories/{category_id}/delete",
+        follow_redirects=True,
+    )
+    assert delete_response.status_code == 200
+    assert "分类已被财务明细使用，不能删除".encode("utf-8") in delete_response.data
+
+
 
 
 def test_category_route_rejects_root_scope_change_with_children(client, app):
