@@ -115,9 +115,9 @@ def _ledger_filters() -> dict:
     }
 
 
-def _ledger_pagination_params() -> tuple[int, int]:
+def _ledger_pagination_params(*, default_per_page: int = 25) -> tuple[int, int]:
     page_text = request.args.get("page", "1").strip()
-    per_page_text = request.args.get("per_page", "25").strip()
+    per_page_text = request.args.get("per_page", str(default_per_page)).strip()
     try:
         page = int(page_text)
     except (TypeError, ValueError) as exc:
@@ -672,10 +672,25 @@ def ledger_pending():
     status = request.args.get("status", "待补录").strip()
     if status not in PENDING_STATUSES:
         raise ValueError("待补录状态无效")
+    requested_page, per_page = _ledger_pagination_params(default_per_page=15)
+    total_count = repo.count_ledger_pending_items(
+        project_id=project_id,
+        status=status,
+    )
+    pagination = _ledger_pagination_context(
+        total_count, requested_page, per_page
+    )
     categories = repo.list_expense_categories(include_inactive=False)
     return render_template(
         "ledger_pending.html",
-        items=repo.list_ledger_pending_items(project_id=project_id, status=status),
+        items=repo.list_ledger_pending_items(
+            project_id=project_id,
+            status=status,
+            limit=per_page,
+            offset=(pagination["page"] - 1) * per_page,
+        ),
+        pending_total_count=total_count,
+        pagination=pagination,
         projects=repo.list_projects(),
         categories=categories,
         category_json=[dict(row) for row in categories],

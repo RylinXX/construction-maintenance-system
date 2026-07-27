@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_ledger_pagination.html" import ledger_pagination %}
 {% block title %}待补录队列 - {{ system_settings.system_name }}{% endblock %}
 {% block breadcrumb %}项目台账 / 待补录队列{% endblock %}
 {% block page_subtitle %}缺少金额的业务事项不计入财务汇总{% endblock %}
@@ -8,7 +9,7 @@
 <section class="page-heading-row animate-slide-up">
   <div>
     <h1 class="section-page-title">待补录队列</h1>
-    <p class="panel-subtitle">{{ items|length }} 条当前结果</p>
+    <p class="panel-subtitle">{{ pending_total_count }} 条当前结果</p>
   </div>
   <div class="toolbar-actions">
     <a class="btn btn-secondary toolbar-btn" href="{{ url_for('web.vouchers') }}">{{ icon('receipt') }} 财务明细</a>
@@ -26,6 +27,11 @@
   <label>状态
     <select name="status" class="form-select">
       {% for value in pending_statuses %}<option value="{{ value }}" {% if filter_status == value %}selected{% endif %}>{{ value }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>每页
+    <select name="per_page" class="form-select">
+      {% for value in pagination.per_page_options %}<option value="{{ value }}" {% if pagination.per_page == value %}selected{% endif %}>{{ value }} 条</option>{% endfor %}
     </select>
   </label>
   <div class="ledger-filter-actions"><button type="submit" class="btn btn-primary">{{ icon('search') }} 查询</button></div>
@@ -69,6 +75,7 @@
   <div class="empty-state"><span class="empty-icon">{{ icon('empty-inbox') }}</span><span class="empty-text">当前筛选下没有待补录事项</span></div>
   {% endfor %}
 </section>
+{{ ledger_pagination(pagination, '待补录分页') }}
 
 <script>
 const pendingCategories = {{ category_json|tojson }};

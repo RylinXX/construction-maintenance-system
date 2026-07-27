@@ -350,6 +350,69 @@ def test_ledger_clamps_page_above_filtered_result_range(client, app):
     assert "CLAMP_PAGE_00" in text
 
 
+def test_pending_queue_paginates_on_server_and_preserves_filters(client, app):
+    project_id = create_project(app, "待补录分页测试")
+    category_id = int(category(app, "运输车辆台班")["id"])
+    with app.app_context():
+        for index in range(31):
+            repo.create_ledger_pending_item({
+                "project_id": project_id,
+                "item_date": "2026-03-17",
+                "summary": f"PENDING_PAGE_{index:02d}",
+                "suggested_category_id": category_id,
+                "source_filename": "source.xls",
+                "source_sheet": "汇总",
+                "source_row": index + 1,
+                "issue_type": "缺少金额",
+            })
+
+    default_page = client.get(
+        f"/ledger-pending?project_id={project_id}&status=待补录"
+    ).get_data(as_text=True)
+    assert default_page.count('class="pending-item"') == 15
+    assert "第 1 / 3 页，共 31 条" in default_page
+
+    response = client.get(
+        f"/ledger-pending?project_id={project_id}&status=待补录&per_page=15"
+    )
+    text = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert text.count('class="pending-item"') == 15
+    assert "31 条当前结果" in text
+    assert "第 1 / 3 页，共 31 条" in text
+    assert "PENDING_PAGE_00" in text
+    assert "PENDING_PAGE_15" not in text
+
+    next_links = []
+    for href in re.findall(r'href="([^"]+)"', text):
+        parsed = urlsplit(unescape(href))
+        link_query = parse_qs(parsed.query)
+        if parsed.path == "/ledger-pending" and link_query.get("page") == ["2"]:
+            next_links.append(link_query)
+    assert any(
+        link.get("project_id") == [str(project_id)]
+        and link.get("status") == ["待补录"]
+        and link.get("per_page") == ["15"]
+        for link in next_links
+    )
+
+    final_page = client.get(
+        f"/ledger-pending?project_id={project_id}&status=待补录"
+        "&per_page=15&page=3"
+    ).get_data(as_text=True)
+    assert final_page.count('class="pending-item"') == 1
+    assert "第 3 / 3 页，共 31 条" in final_page
+    assert "PENDING_PAGE_30" in final_page
+
+
+def test_pending_queue_rejects_invalid_pagination_parameters(client):
+    response = client.get("/ledger-pending?page=0")
+
+    assert response.status_code == 400
+    assert "页码必须是正整数".encode() in response.data
+
+
 def test_voucher_route_requires_structured_category(client, app):
     project_id = create_project(app, "结构化写入测试")
     response = client.post(

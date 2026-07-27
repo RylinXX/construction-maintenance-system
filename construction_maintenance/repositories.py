@@ -1012,9 +1012,9 @@ def get_ledger_pending_item(item_id: int):
     ).fetchone()
 
 
-def list_ledger_pending_items(
+def _ledger_pending_filter_clause(
     project_id: int | None = None, status: str | None = None
-):
+) -> tuple[str, list[Any]]:
     conditions: list[str] = []
     params: list[Any] = []
     if project_id is not None:
@@ -1024,6 +1024,34 @@ def list_ledger_pending_items(
         conditions.append("items.status = ?")
         params.append(status)
     where = "where " + " and ".join(conditions) if conditions else ""
+    return where, params
+
+
+def count_ledger_pending_items(
+    project_id: int | None = None, status: str | None = None
+) -> int:
+    where, params = _ledger_pending_filter_clause(project_id, status)
+    return int(get_db().execute(
+        f"select count(*) from ledger_pending_items items {where}",
+        params,
+    ).fetchone()[0])
+
+
+def list_ledger_pending_items(
+    project_id: int | None = None,
+    status: str | None = None,
+    *,
+    limit: int | None = None,
+    offset: int = 0,
+):
+    where, params = _ledger_pending_filter_clause(project_id, status)
+    pagination_sql = ""
+    if limit is not None:
+        pagination_sql = " limit ?"
+        params.append(limit)
+    if offset:
+        pagination_sql += " offset ?"
+        params.append(offset)
     return get_db().execute(
         f"""
         select items.*, projects.name as project_name,
@@ -1036,6 +1064,7 @@ def list_ledger_pending_items(
         left join expense_categories parents on parents.id = categories.parent_id
         {where}
         order by items.item_date, items.id
+        {pagination_sql}
         """,
         params,
     ).fetchall()

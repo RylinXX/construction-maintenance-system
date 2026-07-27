@@ -1,5 +1,5 @@
-{% macro ledger_pagination(pagination) %}
-<nav class="pagination-container" aria-label="财务明细分页">
+{% macro ledger_pagination(pagination, label='财务明细分页') %}
+<nav class="pagination-container" aria-label="{{ label }}">
   <span class="pagination-info">第 {{ pagination.page }} / {{ pagination.total_pages }} 页，共 {{ pagination.total_count }} 条</span>
   <div class="pagination-buttons">
     {% if pagination.previous_url %}
