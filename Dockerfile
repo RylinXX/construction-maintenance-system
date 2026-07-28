@@ -41,7 +41,7 @@ WORKDIR /app
 
 # 复制应用代码
 COPY construction_maintenance/ ./construction_maintenance/
-COPY pyproject.toml ./
+COPY pyproject.toml gunicorn.conf.py ./
 
 # 创建运行时需要的持久化目录（将被挂载为 Volume）
 RUN mkdir -p /data/instance /data/uploads /data/exports \
