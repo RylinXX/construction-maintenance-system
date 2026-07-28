@@ -65,6 +65,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     commands.init_app(app)
     security.init_app(app)
 
+    @app.route("/health")
+    def health_check():
+        return jsonify(status="healthy", version=app.config.get("APP_VERSION", "0.3.0")), 200
+
     @app.errorhandler(ValueError)
     def handle_invalid_input(error: ValueError):
         if request.is_json:

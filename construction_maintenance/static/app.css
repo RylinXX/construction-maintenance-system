@@ -50,7 +50,22 @@
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 8px;
+
+  /* ─── Responsive layout tokens (fluid, driven by html font-size above) ── */
   --sidebar-width: 270px;
+  --content-padding-x: 32px;
+  --content-padding-y: 28px;
+
+  /* ─── Responsive font-size scale ──────────────────────────────────────── */
+  --fs-xs:   0.72rem;   /* ~10px @ 13px base */
+  --fs-sm:   0.85rem;   /* ~11px */
+  --fs-base: 1rem;      /* 13px base, scales up automatically */
+  --fs-md:   1.08rem;   /* ~14px */
+  --fs-lg:   1.23rem;   /* ~16px */
+  --fs-xl:   1.54rem;   /* ~20px */
+  --fs-2xl:  1.85rem;   /* ~24px */
+  --fs-3xl:  2.15rem;   /* ~28px */
+  --fs-4xl:  2.46rem;   /* ~32px */
 
   /* Compatibility tokens used by existing templates and local page styles. */
   --primary: var(--secondary-color);
@@ -116,7 +131,12 @@
   box-sizing: border-box;
 }
 
+/* ─── Fluid Responsive Base Font ───────────────────────────────────────────
+   1280px → 13px  |  1600px → 13.6px  |  1920px → 16.32px  |  2560px → 18px
+   All rem-friendly components scale automatically with this root.
+────────────────────────────────────────────────────────────────────────── */
 html {
+  font-size: clamp(13px, 0.85vw, 18px);
   min-height: 100%;
 }
 
@@ -578,9 +598,88 @@ a {
   padding: 28px 32px 40px;
 }
 
-@media (min-width: 1920px) {
+/* ─── Responsive breakpoints for layout scaling ────────────────────────── */
+
+/* Small laptops / 1280px */
+@media (max-width: 1280px) {
+  :root {
+    --sidebar-width: 250px;
+    --content-padding-x: 24px;
+    --content-padding-y: 22px;
+  }
   .content-body {
-    padding: 32px 40px 48px;
+    padding: var(--content-padding-y) var(--content-padding-x) 36px;
+  }
+  .brand-lockup {
+    min-height: 64px;
+  }
+  .nav-item {
+    min-height: 38px;
+  }
+}
+
+/* Standard desktop 1440px – no override, this is the design base */
+
+/* Large desktop 1600px */
+@media (min-width: 1600px) {
+  :root {
+    --sidebar-width: 276px;
+    --content-padding-x: 36px;
+    --content-padding-y: 30px;
+  }
+  .content-body {
+    padding: var(--content-padding-y) var(--content-padding-x) 44px;
+  }
+}
+
+/* 1080p / 1920px */
+@media (min-width: 1920px) {
+  :root {
+    --sidebar-width: 292px;
+    --content-padding-x: 44px;
+    --content-padding-y: 36px;
+  }
+  .content-body {
+    padding: var(--content-padding-y) var(--content-padding-x) 52px;
+  }
+  .brand-lockup {
+    min-height: 80px;
+  }
+  .nav-item {
+    min-height: 46px;
+    padding: 0 18px;
+  }
+  .sidebar-status {
+    margin: auto 18px 22px;
+    padding: 14px;
+  }
+  .brand-name {
+    font-size: 1.15rem;
+  }
+  .metric-number {
+    font-size: 2.1rem;
+  }
+  .panel-title {
+    font-size: 1.05rem;
+  }
+}
+
+/* 2K / 2560px */
+@media (min-width: 2560px) {
+  :root {
+    --sidebar-width: 310px;
+    --content-padding-x: 56px;
+    --content-padding-y: 44px;
+  }
+  .content-body {
+    padding: var(--content-padding-y) var(--content-padding-x) 64px;
+  }
+  .brand-lockup {
+    min-height: 88px;
+  }
+  .nav-item {
+    min-height: 50px;
+    padding: 0 20px;
   }
 }
 

@@ -193,6 +193,39 @@ flask --app construction_maintenance run --debug
 
 ---
 
+## 🐳 Docker 生产化部署 (Docker & Docker Compose)
+
+系统提供完整的 Docker 化生产部署方案（多阶段构建 + Gunicorn 高并发 + Nginx 反向代理 + 数据持久化 Volume）。
+
+### 一键容器化部署步骤
+
+```bash
+# 1. 复制环境变量配置文件
+cp .env.example .env
+
+# 2. 修改 .env 中的密钥与管理员初始密码哈希
+# 生成密钥: python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+# 生成哈希: python3 -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('MyPassword123'))"
+vim .env
+
+# 3. 启动容器集群 (后台运行)
+docker compose up -d --build
+
+# 4. 查看运行状态与健康检查
+docker compose ps
+docker compose logs -f app
+```
+
+### Docker 部署特性
+
+* **多阶段精简镜像**：采用 Python 3.12-slim 双阶段构建，去除构建依赖，减少镜像体积。
+* **安全非 Root 运行**：容器内以 `appuser` (UID 1001) 运行，提升容器隔离安全性。
+* **Gunicorn 生产级 WSGI**：使用 Gunicorn (4 Workers + Preload + Auto-restart) 替代 Flask 开发服务器。
+* **健康检查 Healthcheck**：配置内置 `/health` 端点自动探测容器存活。
+* **数据持久化 Volume**：数据库、上传文件和导出 Excel 存储在 `ylt_pam_data` 命名卷中，重启镜像数据零丢失。
+
+---
+
 ## 🧪 自动化测试驱动开发 (TDD Verification)
 
 本系统的自动化测试覆盖表结构、仓储读写、Excel 导入导出、OCR 载荷、认证与 CSRF，以及 Web 完整交互链路。
