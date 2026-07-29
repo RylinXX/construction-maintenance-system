@@ -3,8 +3,9 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-# 安装构建依赖（pymupdf 需要）
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 配置腾讯云镜像加速并安装构建依赖
+RUN sed -i 's/deb.debian.org/mirrors.tencent.com/g' /etc/apt/sources.list.d/debian.sources || true \
+    && apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libmupdf-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -12,8 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 先复制依赖声明，利用 Docker 层缓存
 COPY pyproject.toml ./
 
-# 创建虚拟环境并安装生产依赖（不含 dev/pytest）
-RUN python -m venv /opt/venv
+# 创建虚拟环境并配置 PyPI 加速，安装生产依赖
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip config set global.index-url https://mirrors.tencent.com/pypi/simple/
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir -e "."
 
@@ -25,16 +27,17 @@ LABEL maintainer="YLT Digital" \
       version="0.2.34" \
       description="营力特数字化系统 - 建筑工程运营平台"
 
-# 安装 pymupdf 运行时依赖 + gunicorn
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 配置腾讯云镜像加速并安装运行时依赖
+RUN sed -i 's/deb.debian.org/mirrors.tencent.com/g' /etc/apt/sources.list.d/debian.sources || true \
+    && apt-get update && apt-get install -y --no-install-recommends \
     libmupdf-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 从构建层复制虚拟环境
+# 复制虚拟环境（已配置好加速源）
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# 安装 Gunicorn（生产 WSGI 服务器）
+# 安装 Gunicorn
 RUN pip install --no-cache-dir gunicorn==23.0.0
 
 WORKDIR /app
