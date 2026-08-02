@@ -108,7 +108,7 @@
           {% for contract in contracts %}
           <tr>
             <td class="font-mono text-muted" style="vertical-align: middle;">{{ loop.index }}</td>
-            <td class="font-semibold text-dark" style="vertical-align: middle; white-space: nowrap;">{{ contract.name }}</td>
+            <td class="font-semibold text-dark" style="vertical-align: middle; white-space: nowrap; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="{{ contract.name }}">{{ contract.name }}</td>
             <td style="vertical-align: middle;">
               {% if contract.contract_type == '总包合同' %}
               <span class="badge" style="background: rgba(37, 99, 235, 0.1); color: #2563eb; display: inline-flex; white-space: nowrap;">{{ contract.contract_type }}</span>
