@@ -96,7 +96,7 @@
         <thead>
           <tr>
             <th style="width: 80px; white-space: nowrap;">序号</th>
-            <th style="min-width: 250px; white-space: nowrap;">合同名称</th>
+            <th style="width: 250px; max-width: 250px; white-space: nowrap;">合同名称</th>
             <th style="min-width: 120px; white-space: nowrap;">合同分类</th>
             <th style="min-width: 220px; white-space: nowrap;">归属工程项目</th>
             <th style="min-width: 150px; white-space: nowrap;">合同附件</th>
@@ -108,7 +108,9 @@
           {% for contract in contracts %}
           <tr>
             <td class="font-mono text-muted" style="vertical-align: middle;">{{ loop.index }}</td>
-            <td class="font-semibold text-dark" style="vertical-align: middle; white-space: nowrap; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="{{ contract.name }}">{{ contract.name }}</td>
+            <td class="font-semibold text-dark" style="vertical-align: middle; max-width: 250px;">
+              <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ contract.name }}">{{ contract.name }}</div>
+            </td>
             <td style="vertical-align: middle;">
               {% if contract.contract_type == '总包合同' %}
               <span class="badge" style="background: rgba(37, 99, 235, 0.1); color: #2563eb; display: inline-flex; white-space: nowrap;">{{ contract.contract_type }}</span>
