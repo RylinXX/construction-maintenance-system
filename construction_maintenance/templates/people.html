@@ -32,6 +32,9 @@
   <button type="button" class="tab-btn {% if active_tab == 'attendance' %}active{% endif %}" id="mainTabBtnAttendance" onclick="switchMainTab('attendance')" style="background: none; border: none; border-bottom: 3px solid {% if active_tab == 'attendance' %}var(--secondary-color){% else %}transparent{% endif %}; color: {% if active_tab == 'attendance' %}var(--secondary-color){% else %}var(--text-secondary){% endif %}; padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
     {{ icon('checklist') }} 人员考勤与结算
   </button>
+  <button type="button" class="tab-btn {% if active_tab == 'person_contracts' %}active{% endif %}" id="mainTabBtnPersonContracts" onclick="switchMainTab('person_contracts')" style="background: none; border: none; border-bottom: 3px solid {% if active_tab == 'person_contracts' %}var(--secondary-color){% else %}transparent{% endif %}; color: {% if active_tab == 'person_contracts' %}var(--secondary-color){% else %}var(--text-secondary){% endif %}; padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
+    {{ icon('contract') }} 人员合同签署情况
+  </button>
 
   <!-- Sub Tabs Navigation positioned on the right of the main tabs -->
   <div id="subTabsAttendanceContainer" style="margin-left: auto; display: {% if active_tab == 'attendance' %}flex{% else %}none{% endif %}; gap: 4px; align-items: center;">
@@ -707,6 +710,118 @@
   </div>
 </div>
 </div> <!-- 闭合 mainTabContentAttendance -->
+
+<!-- 3. 人员合同签署情况 Tab 内容 -->
+<div id="mainTabContentPersonContracts" style="display: {% if active_tab == 'person_contracts' %}block{% else %}none{% endif %};">
+<div class="panel-section">
+  <div class="panel-card animate-slide-up">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">{{ icon('contract') }} 人员用工合同与签署回传台账</h2>
+        <p class="panel-subtitle">公司所有录入与进场人员的个人劳动合同生成、高保真预览打印及盖章扫描件回传归档管理。</p>
+      </div>
+      <div class="toolbar-actions">
+        <span class="badge badge-info" style="font-size: 13px; padding: 6px 12px;">人员总数: {{ all_people|length }} 人</span>
+      </div>
+    </div>
+
+    <!-- Table of Personnel Contract Status -->
+    <div class="table-responsive">
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th style="width: 50px;">序号</th>
+            <th style="width: 14%;">姓名 / 工种岗位</th>
+            <th style="width: 15%;">身份证号</th>
+            <th style="width: 17%;">合同名称/分类</th>
+            <th style="width: 14%;">关联合同工程项目</th>
+            <th style="width: 110px; text-align: center;">签署状态</th>
+            <th style="width: 110px; text-align: center;">签署原件</th>
+            <th class="text-right sticky-col-right" style="width: 270px; min-width: 270px;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for person in all_people %}
+          {% set p_contract = person_contracts.get(person.id) %}
+          <tr>
+            <td class="font-mono text-muted" style="vertical-align: middle;">{{ loop.index }}</td>
+            <td style="vertical-align: middle;">
+              <strong class="text-dark" style="font-size: 14.5px;">{{ person.name }}</strong>
+              <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">{{ person.job_type or '施工人员' }} ({{ person.salary_type or '日薪' }}: ¥{{ "%.1f"|format(person.salary_rate or 0.0) }})</div>
+            </td>
+            <td class="font-mono text-muted" style="vertical-align: middle; white-space: nowrap;">
+              {% if person.id_number %}
+              {{ person.id_number[:6] }}***{{ person.id_number[-4:] if person.id_number|length >= 10 else person.id_number }}
+              {% else %}
+              --
+              {% endif %}
+            </td>
+            <td style="vertical-align: middle;">
+              {% if p_contract %}
+              <div style="font-weight: 600; color: var(--text); max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ p_contract.name }}">
+                {{ p_contract.name }}
+              </div>
+              <div style="font-size: 11.5px; color: var(--muted);">{{ p_contract.contract_type }}</div>
+              {% else %}
+              <span class="text-muted" style="font-size: 13px;">未起草合同</span>
+              {% endif %}
+            </td>
+            <td style="vertical-align: middle; white-space: nowrap;">
+              {% if p_contract %}
+              <span class="badge badge-subtle">{{ p_contract.project_name }}</span>
+              {% else %}
+              <span class="text-muted">--</span>
+              {% endif %}
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+              {% if p_contract %}
+                {% if p_contract.status == '已签署' %}
+                <span class="badge badge-success" style="display: inline-flex; white-space: nowrap;">已回传盖章</span>
+                {% else %}
+                <span class="badge badge-warning" style="display: inline-flex; white-space: nowrap;">待签署回传</span>
+                {% endif %}
+              {% else %}
+              <span class="badge" style="background: rgba(100, 116, 139, 0.1); color: #64748b;">未起草</span>
+              {% endif %}
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+              {% if p_contract and p_contract.attachment_path %}
+              <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path) }}" target="_blank" class="btn-link-action download" title="查看下载签署原件">
+                {{ icon('import') }} 查看原件
+              </a>
+              {% else %}
+              <span class="text-muted" style="font-size: 12px;">--</span>
+              {% endif %}
+            </td>
+            <td class="text-right sticky-col-right" style="white-space: nowrap; width: 270px; min-width: 270px; vertical-align: middle;">
+              <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
+                {% if p_contract %}
+                  {% if p_contract.attachment_path %}
+                  <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path) }}" target="_blank" class="btn btn-sm btn-secondary" style="font-size: 12px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 3px;">
+                    {{ icon('preview') }} 预览/查看
+                  </a>
+                  {% endif %}
+                  <button type="button" class="btn btn-sm" onclick="openUploadPersonSignedModal({{ p_contract.id }}, '{{ p_contract.name }}')" style="background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px; padding: 4px 8px; font-weight: 600;">
+                    {{ icon('upload') }} 回传签署件
+                  </button>
+                  <button type="button" class="btn btn-sm" onclick="openGenerateContractModal({{ person.id }}, '{{ person.name }}', '{{ person.job_type or "施工人员" }}', '{{ person.salary_type or "日薪" }}', {{ person.salary_rate or 0.0 }})" style="background: rgba(15, 118, 110, 0.08); color: var(--primary); border: 1px solid rgba(15, 118, 110, 0.2); font-size: 12px; padding: 4px 8px;">
+                    {{ icon('contract') }} 重生
+                  </button>
+                {% else %}
+                  <button type="button" class="btn btn-sm btn-primary" onclick="openGenerateContractModal({{ person.id }}, '{{ person.name }}', '{{ person.job_type or "施工人员" }}', '{{ person.salary_type or "日薪" }}', {{ person.salary_rate or 0.0 }})" style="font-size: 12.5px; padding: 4px 10px;">
+                    {{ icon('contract') }} 生成合同
+                  </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div> <!-- 闭合 mainTabContentPersonContracts -->
 
 <!-- Add Person Modal Dialog -->
 <div id="addPersonModal" class="modal">
