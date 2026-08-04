@@ -1233,6 +1233,10 @@ def list_people():
     return get_db().execute("select * from people order by created_at desc").fetchall()
 
 
+def get_person(person_id: int):
+    return get_db().execute("select * from people where id = ?", (person_id,)).fetchone()
+
+
 def create_person(data: dict[str, Any]) -> int:
     is_att = int(data.get("is_attendance", 1))
     name = _required_text(data.get("name"), "姓名", max_length=80)
