@@ -152,11 +152,8 @@
             <td class="text-muted" style="vertical-align: middle; white-space: nowrap; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="{{ contract.notes or '' }}">
               {{ contract.notes or '--' }}
             </td>
-            <td class="text-right" style="white-space: nowrap; width: 140px; min-width: 140px; vertical-align: middle;">
-              <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
-                <button type="button" class="btn-action-upload-signed" onclick="openUploadSignedModal({{ contract.id }}, '{{ contract.name }}')" style="background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: var(--radius-sm); padding: 4px 8px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="上传纸质/电子签署完成后的盖章文件归档">
-                  {{ icon('upload') }} 回传签署件
-                </button>
+            <td class="text-right" style="white-space: nowrap; width: 100px; min-width: 100px; vertical-align: middle;">
+              <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
                 <button type="button" class="btn-action-edit" onclick="openModal('editContractModal-{{ contract.id }}')">
                   {{ icon('edit') }} 编辑
                 </button>
@@ -667,45 +664,7 @@ function closeModal(id) {
   document.body.style.overflow = '';
 }
 
-<!-- Upload Signed Contract Modal -->
-<div id="uploadSignedModal" class="modal">
-  <div class="modal-content" style="max-width: 520px;">
-    <div class="modal-header">
-      <h3 class="modal-title">{{ icon('upload') }} 回传已签署盖章合同</h3>
-      <button type="button" class="modal-close" onclick="closeModal('uploadSignedModal')">&times;</button>
-    </div>
-    <div class="modal-body">
-      <form id="uploadSignedForm" method="post" action="" enctype="multipart/form-data" class="premium-form">
-        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-        <div class="form-grid">
-          <div class="form-group full-width" style="background: var(--bg); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
-            <div style="font-size: 13px; color: var(--muted); margin-bottom: 4px;">归档合同：</div>
-            <strong id="uploadSignedContractName" style="font-size: 15px; color: var(--text);">--</strong>
-          </div>
 
-          <div class="form-group full-width">
-            <label class="form-label" for="signed_attachment">上传已签署合同扫描件 (支持 PDF/图片) <span class="required">*</span></label>
-            <input type="file" class="form-input" id="signed_attachment" name="signed_attachment" accept=".pdf,image/*" required>
-            <p class="text-muted" style="margin-top: 6px; font-size: 12px;">上传后，原临时生成预览将被替换为此签署盖章原件，并正式归档。</p>
-          </div>
-        </div>
-
-        <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 10px;">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('uploadSignedModal')">取消</button>
-          <button type="submit" class="btn btn-primary">{{ icon('save') }} 确认归档回传件</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<script>
-function openUploadSignedModal(contractId, contractName) {
-  document.getElementById('uploadSignedContractName').innerText = contractName;
-  const form = document.getElementById('uploadSignedForm');
-  form.action = `/contracts/${contractId}/upload_signed`;
-  openModal('uploadSignedModal');
-}
 
 // Close modal when clicking outside
 window.addEventListener('click', function(event) {

@@ -830,6 +830,14 @@ def _render_people_and_attendance(active_tab):
     projects = repo.list_projects()
     contract_templates = cg.list_contract_templates()
 
+    all_contracts = repo.list_contracts()
+    person_contracts = {}
+    for c in all_contracts:
+        if c.get("person_id"):
+            p_id = c["person_id"]
+            if p_id not in person_contracts:
+                person_contracts[p_id] = c
+
     return render_template(
         "people.html",
         active_tab=active_tab,
@@ -849,6 +857,7 @@ def _render_people_and_attendance(active_tab):
         salary_payments=salary_payments,
         projects=projects,
         contract_templates=contract_templates,
+        person_contracts=person_contracts,
         metrics={
             "total_people": len(attendance_people),
             "total_shifts": total_shifts,

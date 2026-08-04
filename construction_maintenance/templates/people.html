@@ -91,7 +91,7 @@
               <th style="width: 11%;">工种/岗位</th>
               <th style="width: 16%;">银行卡</th>
               <th style="width: 90px; min-width: 90px;">核实状态</th>
-              <th class="text-right sticky-col-right" style="width: 270px; min-width: 270px;">操作</th>
+              <th class="text-right sticky-col-right" style="width: 175px; min-width: 175px;">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -130,11 +130,10 @@
                 <span class="badge badge-warning" style="display: inline-flex; white-space: nowrap;">{{ person.review_status }}</span>
                 {% endif %}
               </td>
-              <td class="text-right sticky-col-right" style="white-space: nowrap; width: 270px; min-width: 270px; vertical-align: middle;" onclick="event.stopPropagation();">
+              <td class="text-right sticky-col-right" style="white-space: nowrap; width: 175px; min-width: 175px; vertical-align: middle;" onclick="event.stopPropagation();">
                 <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
                   <button type="button" class="btn-action-edit" onclick="openModal('editPersonModal-{{ person.id }}')">{{ icon('edit') }} 编辑</button>
                   <button type="button" class="btn-action-salary" onclick="openSalarySheetModal({{ person.id }})" style="background: rgba(16, 185, 129, 0.08); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-sm); padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(16, 185, 129, 0.16)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'">{{ icon('money') }} 工资表</button>
-                  <button type="button" class="btn-action-contract" onclick="openGenerateContractModal({{ person.id }}, '{{ person.name }}', '{{ person.job_type or "施工人员" }}', '{{ person.salary_type or "日薪" }}', {{ person.salary_rate or 0.0 }})" style="background: rgba(15, 118, 110, 0.08); color: var(--primary); border: 1px solid rgba(15, 118, 110, 0.2); border-radius: var(--radius-sm); padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(15, 118, 110, 0.16)'" onmouseout="this.style.background='rgba(15, 118, 110, 0.08)'">{{ icon('contract') }} 生成合同</button>
                 </div>
               </td>
             </tr>
@@ -193,8 +192,56 @@
                       <div class="profile-text">{{ person.address or '未登记详细居住或身份证地址。' }}</div>
                     </div>
                     <div class="profile-item full-width">
-                      <strong>特种资格证/合同备注说明</strong>
-                      <div class="profile-text" style="white-space: pre-wrap; font-weight: 500; line-height: 1.6; margin-bottom: 12px;">{{ person.notes or '暂无其它特殊资质、证书等级或劳动合同相关备注说明。' }}</div>
+                      <strong>特种资格证/备注说明</strong>
+                      <div class="profile-text" style="white-space: pre-wrap; font-weight: 500; line-height: 1.6; margin-bottom: 12px;">{{ person.notes or '暂无其它特殊资质或证书等级说明。' }}</div>
+                    </div>
+
+                    <!-- 人员个人专属劳动/用工合同管理区 -->
+                    <div class="profile-item full-width" style="background: rgba(15, 118, 110, 0.04); border: 1px solid rgba(15, 118, 110, 0.15); border-radius: var(--radius-md); padding: 16px 20px; margin-top: 10px;">
+                      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 10px;">
+                        <div>
+                          <strong style="color: var(--primary); font-size: 14.5px; display: flex; align-items: center; gap: 6px;">
+                            {{ icon('contract') }} 个人劳动/用工合同与签署回传
+                          </strong>
+                          <span style="font-size: 12.5px; color: var(--muted);">从花名册提取档案字段填充生成规范合同文本、预览打印及签署原件回传归档</span>
+                        </div>
+                        <div>
+                          <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); openGenerateContractModal({{ person.id }}, '{{ person.name }}', '{{ person.job_type or "施工人员" }}', '{{ person.salary_type or "日薪" }}', {{ person.salary_rate or 0.0 }})" style="background: var(--primary); color: #ffffff; font-weight: 600;">
+                            {{ icon('contract') }} {% if person_contracts.get(person.id) %}重新生成合同{% else %}自动填充生成合同{% endif %}
+                          </button>
+                        </div>
+                      </div>
+
+                      {% if person_contracts.get(person.id) %}
+                      {% set p_contract = person_contracts[person.id] %}
+                      <div style="background: var(--surface); border: 1px solid var(--line-light); border-radius: var(--radius-sm); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                          <div style="font-weight: 700; font-size: 14px; color: var(--text);">{{ p_contract.name }}</div>
+                          <div style="font-size: 12.5px; color: var(--muted); margin-top: 2px;">
+                            归属项目: <strong>{{ p_contract.project_name }}</strong> | 分类: {{ p_contract.contract_type }}
+                            {% if p_contract.status == '已签署' %}
+                            <span class="badge badge-success" style="margin-left: 6px;">[已回传签署件]</span>
+                            {% else %}
+                            <span class="badge badge-warning" style="margin-left: 6px;">[待回传签署件]</span>
+                            {% endif %}
+                          </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                          {% if p_contract.attachment_path %}
+                          <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path) }}" target="_blank" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();" style="display: inline-flex; align-items: center; gap: 4px;">
+                            {{ icon('preview') }} 预览/查看合同
+                          </a>
+                          {% endif %}
+                          <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); openUploadPersonSignedModal({{ p_contract.id }}, '{{ p_contract.name }}')" style="background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 600;">
+                            {{ icon('upload') }} 回传签署盖章件
+                          </button>
+                        </div>
+                      </div>
+                      {% else %}
+                      <div style="font-size: 13px; color: var(--muted); padding: 8px 0;">
+                        该人员暂未生成个人劳动或用工合同，点击右上角【自动填充生成合同】即可快速一键生成。
+                      </div>
+                      {% endif %}
                     </div>
                     
                     <div class="profile-item full-width" style="display: flex; justify-content: flex-end; border-top: 1px solid var(--line-light); padding-top: 16px; margin-top: 8px;">
@@ -2763,5 +2810,44 @@ function openGenerateContractModal(personId, personName, jobType, salaryType, sa
   form.action = `/people/${personId}/generate_contract`;
   openModal('generateContractModal');
 }
+
+function openUploadPersonSignedModal(contractId, contractName) {
+  document.getElementById('uploadPersonSignedContractName').innerText = contractName;
+  const form = document.getElementById('uploadPersonSignedForm');
+  form.action = `/contracts/${contractId}/upload_signed`;
+  openModal('uploadPersonSignedModal');
+}
 </script>
+
+<!-- Upload Person Signed Contract Modal -->
+<div id="uploadPersonSignedModal" class="modal">
+  <div class="modal-content" style="max-width: 520px;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('upload') }} 回传人员已签署盖章合同</h3>
+      <button type="button" class="modal-close" onclick="closeModal('uploadPersonSignedModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="uploadPersonSignedForm" method="post" action="" enctype="multipart/form-data" class="premium-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div class="form-grid">
+          <div class="form-group full-width" style="background: var(--bg); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
+            <div style="font-size: 13px; color: var(--muted); margin-bottom: 4px;">归档人员合同：</div>
+            <strong id="uploadPersonSignedContractName" style="font-size: 15px; color: var(--text);">--</strong>
+          </div>
+
+          <div class="form-group full-width">
+            <label class="form-label" for="signed_attachment_p">上传人员已签署合同扫描件 (支持 PDF/图片) <span class="required">*</span></label>
+            <input type="file" class="form-input" id="signed_attachment_p" name="signed_attachment" accept=".pdf,image/*" required>
+            <p class="text-muted" style="margin-top: 6px; font-size: 12px;">上传后，系统原自动生成的示范文本将被替换为此盖章签署原件，并归档保存。</p>
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('uploadPersonSignedModal')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('save') }} 确认归档回传件</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
