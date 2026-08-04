@@ -1724,7 +1724,7 @@ def generate_person_contract(person_id: int):
     })
 
     flash(f"已成功为人员【{person['name']}】自动生成合同，可在线预览或导出。", "success")
-    return redirect(url_for("web.contracts"))
+    return redirect(url_for("web.people", tab="person_contracts"))
 
 
 @bp.route("/contracts/<int:contract_id>/upload_signed", methods=["POST"])
