@@ -833,10 +833,11 @@ def _render_people_and_attendance(active_tab):
     all_contracts = repo.list_contracts()
     person_contracts = {}
     for c in all_contracts:
-        if c.get("person_id"):
-            p_id = c["person_id"]
+        row_dict = dict(c)
+        if row_dict.get("person_id"):
+            p_id = row_dict["person_id"]
             if p_id not in person_contracts:
-                person_contracts[p_id] = c
+                person_contracts[p_id] = row_dict
 
     return render_template(
         "people.html",
