@@ -414,6 +414,9 @@ def init_db() -> None:
     _ensure_column(db, "vouchers", "source_sheet", "text not null default ''")
     _ensure_column(db, "vouchers", "source_row", "integer")
     _ensure_column(db, "vouchers", "original_notes", "text not null default ''")
+    _ensure_column(db, "contracts", "person_id", "integer references people(id)")
+    _ensure_column(db, "contracts", "status", "text not null default '待签署'")
+    _ensure_column(db, "contracts", "template_name", "text not null default ''")
 
     _seed_ledger_categories(db)
     db.execute(

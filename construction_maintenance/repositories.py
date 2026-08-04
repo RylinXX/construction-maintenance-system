@@ -1710,8 +1710,8 @@ def get_contract(contract_id: int):
 def create_contract(data: dict[str, Any]) -> int:
     cursor = get_db().execute(
         """
-        insert into contracts (project_id, name, contract_type, attachment_path, notes)
-        values (?, ?, ?, ?, ?)
+        insert into contracts (project_id, name, contract_type, attachment_path, notes, person_id, status, template_name)
+        values (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             data["project_id"],
@@ -1719,6 +1719,9 @@ def create_contract(data: dict[str, Any]) -> int:
             data.get("contract_type", "其它"),
             data.get("attachment_path", ""),
             data.get("notes", ""),
+            data.get("person_id"),
+            data.get("status", "待签署"),
+            data.get("template_name", ""),
         ),
     )
     get_db().commit()
@@ -1739,6 +1742,10 @@ def update_contract(contract_id: int, data: dict[str, Any]) -> None:
     if "attachment_path" in data and data["attachment_path"]:
         set_clause += ", attachment_path = ?"
         params.append(data["attachment_path"])
+
+    if "status" in data and data["status"]:
+        set_clause += ", status = ?"
+        params.append(data["status"])
         
     params.append(contract_id)
     

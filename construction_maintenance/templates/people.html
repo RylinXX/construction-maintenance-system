@@ -134,6 +134,7 @@
                 <div style="display: inline-flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%;">
                   <button type="button" class="btn-action-edit" onclick="openModal('editPersonModal-{{ person.id }}')">{{ icon('edit') }} 编辑</button>
                   <button type="button" class="btn-action-salary" onclick="openSalarySheetModal({{ person.id }})" style="background: rgba(16, 185, 129, 0.08); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-sm); padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(16, 185, 129, 0.16)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'">{{ icon('money') }} 工资表</button>
+                  <button type="button" class="btn-action-contract" onclick="openGenerateContractModal({{ person.id }}, '{{ person.name }}', '{{ person.job_type or "施工人员" }}', '{{ person.salary_type or "日薪" }}', {{ person.salary_rate or 0.0 }})" style="background: rgba(15, 118, 110, 0.08); color: var(--primary); border: 1px solid rgba(15, 118, 110, 0.2); border-radius: var(--radius-sm); padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(15, 118, 110, 0.16)'" onmouseout="this.style.background='rgba(15, 118, 110, 0.08)'">{{ icon('contract') }} 生成合同</button>
                 </div>
               </td>
             </tr>
@@ -2706,4 +2707,61 @@ function initAllPagination() {
   background: #1e293b;
 }
 </style>
+
+<!-- Generate Contract Modal -->
+<div id="generateContractModal" class="modal">
+  <div class="modal-content" style="max-width: 550px;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon('contract') }} 自动填充生成人员合同</h3>
+      <button type="button" class="modal-close" onclick="closeModal('generateContractModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="generateContractForm" method="post" action="" class="premium-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div class="form-grid">
+          <div class="form-group full-width" style="background: var(--bg); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
+            <div style="font-size: 13px; color: var(--muted); margin-bottom: 4px;">待签约人员：</div>
+            <strong id="genContractPersonName" style="font-size: 16px; color: var(--text);">--</strong>
+            <span id="genContractPersonInfo" style="font-size: 12.5px; color: var(--primary); margin-left: 10px;">--</span>
+          </div>
+
+          <div class="form-group full-width">
+            <label class="form-label" for="gen_project_id">选择归属工程项目 <span class="required">*</span></label>
+            <select class="form-select" id="gen_project_id" name="project_id" required>
+              <option value="">-- 请选择关联合同项目 --</option>
+              {% for p in projects %}
+              <option value="{{ p.id }}">{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group full-width">
+            <label class="form-label" for="gen_template_id">选择指定合同模板 <span class="required">*</span></label>
+            <select class="form-select" id="gen_template_id" name="template_id" required>
+              {% for t in contract_templates %}
+              <option value="{{ t.id }}">{{ t.name }} ({{ t.category }})</option>
+              {% endfor %}
+            </select>
+            <p class="text-muted" style="margin-top: 6px; font-size: 12px;">系统将自动将该人员的身份证、手机号、工种、薪资标准、银行卡号等档案字段填入此合同文本中。</p>
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('generateContractModal')">取消</button>
+          <button type="submit" class="btn btn-primary">{{ icon('contract') }} 立即生成并预览</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openGenerateContractModal(personId, personName, jobType, salaryType, salaryRate) {
+  document.getElementById('genContractPersonName').innerText = personName;
+  document.getElementById('genContractPersonInfo').innerText = `岗位: ${jobType} | ${salaryType}: ${salaryRate}元`;
+  const form = document.getElementById('generateContractForm');
+  form.action = `/people/${personId}/generate_contract`;
+  openModal('generateContractModal');
+}
+</script>
 {% endblock %}

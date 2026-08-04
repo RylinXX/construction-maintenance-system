@@ -826,6 +826,10 @@ def _render_people_and_attendance(active_tab):
     salary_summary = repo.get_salary_summary_by_month(month) if is_attendance_view else []
     salary_payments = repo.list_salary_payments(month=month) if is_attendance_view else []
 
+    from construction_maintenance.services import contract_generator as cg
+    projects = repo.list_projects()
+    contract_templates = cg.list_contract_templates()
+
     return render_template(
         "people.html",
         active_tab=active_tab,
@@ -843,6 +847,8 @@ def _render_people_and_attendance(active_tab):
         person_stats=person_stats,
         salary_summary=salary_summary,
         salary_payments=salary_payments,
+        projects=projects,
+        contract_templates=contract_templates,
         metrics={
             "total_people": len(attendance_people),
             "total_shifts": total_shifts,
@@ -1668,6 +1674,80 @@ def delete_contract(contract_id: int):
     )
     flash("合同删除成功。", "success")
     return redirect(url_for("web.contracts"))
+
+
+@bp.route("/people/<int:person_id>/generate_contract", methods=["POST"])
+def generate_person_contract(person_id: int):
+    from construction_maintenance.services import contract_generator as cg
+    person = repo.get_person(person_id)
+    if person is None:
+        raise ValueError("人员不存在")
+        
+    project_id = int(required_text(request.form, "project_id", "归属工程项目"))
+    template_id = text_value(request.form, "template_id") or "01_labor_contract"
+    
+    project = repo.get_project(project_id)
+    if project is None:
+        raise ValueError("工程项目不存在")
+
+    template_info = cg.get_template_by_id(template_id)
+    html_content = cg.render_contract_html(template_id, dict(person), dict(project))
+    
+    # Save generated HTML to uploads
+    file_name = f"generated_contract_{person_id}_{int(time.time())}.html"
+    upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
+    upload_folder.mkdir(parents=True, exist_ok=True)
+    file_path = upload_folder / file_name
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    contract_name = f"{person['name']}-{template_info['name']}"
+    contract_id = repo.create_contract({
+        "project_id": project_id,
+        "name": contract_name,
+        "contract_type": template_info["category"],
+        "attachment_path": file_name,
+        "notes": f"系统基于档案自动生成；包含人员: {person['name']}({person['job_type']})；请打印/签署后回传原件。",
+        "person_id": person_id,
+        "status": "待签署",
+        "template_name": template_info["name"]
+    })
+
+    flash(f"已成功为人员【{person['name']}】自动生成合同，可在线预览或导出。", "success")
+    return redirect(url_for("web.contracts"))
+
+
+@bp.route("/contracts/<int:contract_id>/upload_signed", methods=["POST"])
+def upload_signed_contract(contract_id: int):
+    existing = repo.get_contract(contract_id)
+    if existing is None:
+        raise ValueError("合同不存在")
+        
+    attachment_path = _save_form_upload("signed_attachment")
+    if not attachment_path:
+        flash("请选择要上传的已签署合同扫描件/PDF。", "warning")
+        return redirect(safe_redirect_target(request.referrer, url_for("web.contracts")))
+
+    data = {
+        "project_id": existing["project_id"],
+        "name": existing["name"],
+        "contract_type": existing["contract_type"],
+        "attachment_path": attachment_path,
+        "notes": (existing["notes"] or "") + " [已回传签署盖章原件]",
+        "status": "已签署"
+    }
+
+    try:
+        repo.update_contract(contract_id, data)
+    except Exception:
+        _delete_upload_file(attachment_path)
+        raise
+
+    if existing["attachment_path"] and existing["attachment_path"] != attachment_path and not existing["attachment_path"].startswith("generated_contract_"):
+        _delete_upload_file(existing["attachment_path"])
+
+    flash("已成功回传归档签署原件！", "success")
+    return redirect(safe_redirect_target(request.referrer, url_for("web.contracts")))
 
 
 @bp.route("/uploads/<path:filename>")
