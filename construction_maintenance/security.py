@@ -166,7 +166,7 @@ def init_app(app) -> None:
     @app.after_request
     def add_security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
-        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers.setdefault("Referrer-Policy", "same-origin")
         response.headers.setdefault(
             "Permissions-Policy",
@@ -174,7 +174,7 @@ def init_app(app) -> None:
         )
         response.headers.setdefault(
             "Content-Security-Policy",
-            "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
+            "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; "
             "object-src 'none'; form-action 'self'; img-src 'self' data:; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
