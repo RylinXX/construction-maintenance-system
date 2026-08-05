@@ -357,6 +357,68 @@
         </div>
       </div>
 
+      <!-- 全局 AI 大语言模型 API 配置 -->
+      <div class="settings-fieldset" style="border: 1px solid rgba(15, 118, 110, 0.25); background: rgba(15, 118, 110, 0.03); border-radius: var(--radius-md); padding: 20px; margin-bottom: 24px;">
+        <div class="settings-fieldset-heading" style="margin-bottom: 16px;">
+          {{ icon('sparkles') }}
+          <div>
+            <strong style="color: var(--primary); font-size: 16px;">全局 AI 大语言模型 API 配置</strong>
+            <span style="font-size: 13px; color: var(--muted); display: block; margin-top: 2px;">配置并对接 DeepSeek、阿里百炼及字节火山引擎大模型 API 密钥与 Endpoint，供系统全局调用。</span>
+          </div>
+        </div>
+
+        <!-- 1. DeepSeek 配置 -->
+        <div style="background: var(--surface); border: 1px solid var(--line-light); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--text); display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
+            🤖 DeepSeek AI 官方接口配置
+          </strong>
+          <div class="settings-form-row">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="deepseek-base-url">DeepSeek API Base URL</label>
+              <input class="form-input font-mono" id="deepseek-base-url" name="deepseek_base_url" value="{{ system_settings.deepseek_base_url or 'https://api.deepseek.com' }}" placeholder="https://api.deepseek.com">
+            </div>
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label" for="deepseek-api-key">DeepSeek API Key (sk-...)</label>
+              <input class="form-input font-mono" id="deepseek-api-key" name="deepseek_api_key" type="password" value="{{ system_settings.deepseek_api_key or '' }}" placeholder="sk-..." autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 阿里百炼 配置 -->
+        <div style="background: var(--surface); border: 1px solid var(--line-light); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--text); display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
+            ☁️ 阿里云 DashScope 百炼 API 配置
+          </strong>
+          <div class="settings-form-row">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="ali-bailian-base-url">阿里百炼 API Base URL</label>
+              <input class="form-input font-mono" id="ali-bailian-base-url" name="ali_bailian_base_url" value="{{ system_settings.ali_bailian_base_url or 'https://dashscope.aliyuncs.com/compatible-mode/v1' }}" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1">
+            </div>
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label" for="ali-bailian-api-key">阿里百炼 API Key (sk-...)</label>
+              <input class="form-input font-mono" id="ali-bailian-api-key" name="ali_bailian_api_key" type="password" value="{{ system_settings.ali_bailian_api_key or '' }}" placeholder="sk-..." autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 字节火山引擎 方舟大模型 配置 -->
+        <div style="background: var(--surface); border: 1px solid var(--line-light); border-radius: var(--radius-sm); padding: 16px;">
+          <strong style="font-size: 14px; color: var(--text); display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
+            ⚡ 字节火山引擎 (Ark/Doubao) API 配置
+          </strong>
+          <div class="settings-form-row">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="bytedance-ark-base-url">字节火山 API Base URL</label>
+              <input class="form-input font-mono" id="bytedance-ark-base-url" name="bytedance_ark_base_url" value="{{ system_settings.bytedance_ark_base_url or 'https://ark.cn-beijing.volces.com/api/v3' }}" placeholder="https://ark.cn-beijing.volces.com/api/v3">
+            </div>
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label" for="bytedance-ark-api-key">字节火山 API Key / Access Key</label>
+              <input class="form-input font-mono" id="bytedance-ark-api-key" name="bytedance_ark_api_key" type="password" value="{{ system_settings.bytedance_ark_api_key or '' }}" placeholder="ark-..." autocomplete="off">
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="settings-actions">
         <button class="btn btn-primary" type="submit">{{ icon('save') }} 保存基本设置</button>
       </div>

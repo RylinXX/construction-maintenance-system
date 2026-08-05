@@ -396,9 +396,15 @@ def update_general_settings():
                 "organization_name": organization_name,
                 "support_contact": support_contact,
                 "session_timeout_minutes": str(timeout_minutes),
+                "deepseek_api_key": request.form.get("deepseek_api_key", "").strip(),
+                "deepseek_base_url": request.form.get("deepseek_base_url", "").strip(),
+                "ali_bailian_api_key": request.form.get("ali_bailian_api_key", "").strip(),
+                "ali_bailian_base_url": request.form.get("ali_bailian_base_url", "").strip(),
+                "bytedance_ark_api_key": request.form.get("bytedance_ark_api_key", "").strip(),
+                "bytedance_ark_base_url": request.form.get("bytedance_ark_base_url", "").strip(),
             }
         )
-        flash("系统基本设置已保存", "success")
+        flash("系统基本设置与 AI 模型 API 配置已成功保存", "success")
     return redirect(url_for("web.settings", tab="general"))
 
 

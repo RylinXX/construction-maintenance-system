@@ -23,6 +23,12 @@ DEFAULT_SYSTEM_SETTINGS = {
     "organization_name": "工程运营管理中心",
     "support_contact": "",
     "session_timeout_minutes": "120",
+    "deepseek_api_key": "",
+    "deepseek_base_url": "https://api.deepseek.com",
+    "ali_bailian_api_key": "",
+    "ali_bailian_base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "bytedance_ark_api_key": "",
+    "bytedance_ark_base_url": "https://ark.cn-beijing.volces.com/api/v3",
 }
 
 
