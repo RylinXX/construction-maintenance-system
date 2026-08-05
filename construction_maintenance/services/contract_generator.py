@@ -198,7 +198,7 @@ def generate_contract_from_template(
     doc.save(output_docx_path)
 
     # Render matching HTML for online browser preview & direct printing (Renders 100% full Word text clauses)
-    html_content = render_contract_html_for_preview(meta["template_name"], mapping, doc=doc)
+    html_content = render_contract_html_for_preview(meta["template_name"], mapping, doc=doc, docx_filename=docx_filename)
     with open(output_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
@@ -256,7 +256,7 @@ def _replace_placeholders_in_paragraph(p: Any, mapping: dict[str, str]) -> None:
         p.text = full_text
 
 
-def render_contract_html_for_preview(template_name: str, mapping: dict[str, str], doc: Any = None) -> str:
+def render_contract_html_for_preview(template_name: str, mapping: dict[str, str], doc: Any = None, docx_filename: str = "") -> str:
     person_name = mapping.get("{{employee_name}}", "")
 
     body_elements = []
@@ -277,6 +277,10 @@ def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]
                 body_elements.append(f'<p style="font-size: 14px; color: #334155; line-height: 1.85; text-align: justify; margin-bottom: 8px;">{txt}</p>')
     
     content_html = "\n".join(body_elements)
+
+    docx_download_btn = ""
+    if docx_filename:
+        docx_download_btn = f'<a href="/uploads/{docx_filename}?download=1" download class="btn-docx" style="background: rgba(255,255,255,0.2); color: #ffffff; text-decoration: none; padding: 6px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; border: 1px solid rgba(255,255,255,0.4);">📥 下载 Word 原始文档 (.docx)</a>'
 
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -308,6 +312,11 @@ def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]
             font-size: 14px;
             font-weight: 600;
         }}
+        .top-action-bar .actions {{
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }}
         .top-action-bar .btn-print {{
             background: #ffffff;
             color: #0f766e;
@@ -327,7 +336,10 @@ def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]
 <body>
     <div class="top-action-bar">
         <span class="title">📄 在线预览：《{template_name}》（签约人：{person_name}）</span>
-        <button class="btn-print" onclick="window.print()">🖨️ 直接打印 (Ctrl+P)</button>
+        <div class="actions">
+            <button class="btn-print" onclick="window.print()">🖨️ 打印合同 (Ctrl+P)</button>
+            {docx_download_btn}
+        </div>
     </div>
     {content_html}
 </body>

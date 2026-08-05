@@ -785,23 +785,20 @@
               {% endif %}
             </td>
             <td style="text-align: center; vertical-align: middle;">
-              {% if p_contract and p_contract.attachment_path %}
-              <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path) }}" target="_blank" class="btn-link-action download" title="查看下载签署原件">
-                {{ icon('import') }} 查看原件
+              {% if p_contract and p_contract.status == '已签署' and p_contract.signed_attachment_path %}
+              <a href="{{ url_for('web.download_attachment', filename=p_contract.signed_attachment_path) }}" target="_blank" class="btn-link-action download" title="查看已归档的签署扫描件">
+                {{ icon('import') }} 已签署原件
               </a>
               {% else %}
-              <span class="text-muted" style="font-size: 12px;">--</span>
+              <span class="text-muted" style="font-size: 12px; color: var(--muted);">--</span>
               {% endif %}
             </td>
-            <td class="text-right sticky-col-right" style="white-space: nowrap; width: 270px; min-width: 270px; vertical-align: middle;">
+            <td class="text-right sticky-col-right" style="white-space: nowrap; width: 220px; min-width: 220px; vertical-align: middle;">
               <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
                 {% if p_contract %}
                   {% if p_contract.attachment_path %}
-                  <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path) }}" target="_blank" class="btn btn-sm btn-secondary" style="font-size: 12px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 3px;" title="在浏览器标签页在线预览完整合同与调起打印">
-                    {{ icon('preview') }} 预览/打印
-                  </a>
-                  <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path.replace('.html', '.docx'), download='1') }}" class="btn btn-sm btn-outline-primary" style="font-size: 12px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 3px;" title="下载生成的 Word (.docx) 源文档">
-                    {{ icon('import') }} 下载 Word
+                  <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path) }}" target="_blank" class="btn btn-sm btn-secondary" style="font-size: 12px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 3px;" title="在线预览完整合同全文（可在顶栏打印或下载 Word 文档）">
+                    {{ icon('preview') }} 预览合同
                   </a>
                   {% endif %}
                   <button type="button" class="btn btn-sm" onclick="openUploadPersonSignedModal({{ p_contract.id }}, '{{ p_contract.name }}')" style="background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px; padding: 4px 8px; font-weight: 600;">
