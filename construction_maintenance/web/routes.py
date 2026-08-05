@@ -1803,6 +1803,7 @@ def generate_person_contract(person_id: int):
     person = repo.get_person(person_id)
     if person is None:
         raise ValueError("人员不存在")
+    person_dict = dict(person)
         
     project_id_raw = request.form.get("project_id")
     project_id = int(project_id_raw) if project_id_raw and project_id_raw.isdigit() else None
@@ -1812,8 +1813,8 @@ def generate_person_contract(person_id: int):
 
     # Contract specific parameters from request form
     contract_data = {
-        "job_position": text_value(request.form, "job_position") or person.get("job_type") or "施工人员",
-        "salary": text_value(request.form, "salary") or str(person.get("salary_rate") or "350.00"),
+        "job_position": text_value(request.form, "job_position") or person_dict.get("job_type") or "施工人员",
+        "salary": text_value(request.form, "salary") or str(person_dict.get("salary_rate") or "350.00"),
         "salary_payment_date": text_value(request.form, "salary_payment_date") or "25",
         "contract_start_date": text_value(request.form, "contract_start_date"),
         "contract_end_date": text_value(request.form, "contract_end_date"),
@@ -1828,7 +1829,7 @@ def generate_person_contract(person_id: int):
     # Strictly generate contract from template (Raises error if template missing or unreplaced placeholders remain; NEVER falls back to LLM)
     audit_record = cg.generate_contract_from_template(
         template_id=template_id,
-        employee_data=dict(person),
+        employee_data=person_dict,
         contract_data=contract_data,
         upload_folder=upload_folder,
         generated_by_user_id=_actor_id(),
