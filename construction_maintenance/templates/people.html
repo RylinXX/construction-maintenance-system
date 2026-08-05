@@ -2932,19 +2932,62 @@ function openUploadPersonSignedModal(contractId, contractName) {
   document.getElementById('uploadPersonSignedContractName').innerText = contractName;
   const form = document.getElementById('uploadPersonSignedForm');
   form.action = `/contracts/${contractId}/upload_signed`;
-  openModal('uploadPersonSignedModal');
-}
-
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
+<script>
 function openPreviewContractModal(htmlUrl, docxUrl, contractName) {
   document.getElementById('previewContractTitle').innerText = contractName || '合同电子档在线预览';
-  document.getElementById('previewContractFrame').src = htmlUrl;
   document.getElementById('previewDocxDownloadBtn').href = docxUrl;
+
+  const docxContainer = document.getElementById('previewDocxContainer');
+  const iframe = document.getElementById('previewContractFrame');
+  docxContainer.innerHTML = '<div style="text-align: center; padding: 60px; color: #94a3b8; font-size: 14px;">📄 正在原汁原味解析加载 Word (.docx) 源文档视图...</div>';
+  docxContainer.style.display = 'block';
+  iframe.style.display = 'none';
+
+  fetch(docxUrl)
+    .then(res => {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.blob();
+    })
+    .then(blob => {
+      docxContainer.innerHTML = '';
+      if (window.docx && window.docx.renderAsync) {
+        window.docx.renderAsync(blob, docxContainer, null, {
+          className: "docx-document",
+          inWrapper: true,
+          ignoreWidth: false,
+          ignoreHeight: false,
+          experimental: true
+        }).catch(err => {
+          console.error("Docx-preview render failed, fallback to A4 view:", err);
+          docxContainer.style.display = 'none';
+          iframe.style.display = 'block';
+          iframe.src = htmlUrl;
+        });
+      } else {
+        docxContainer.style.display = 'none';
+        iframe.style.display = 'block';
+        iframe.src = htmlUrl;
+      }
+    })
+    .catch(err => {
+      console.warn("Fetch docx blob failed, fallback to HTML view:", err);
+      docxContainer.style.display = 'none';
+      iframe.style.display = 'block';
+      iframe.src = htmlUrl;
+    });
+
   openModal('previewContractModal');
 }
 
 function printPreviewFrame() {
+  const docxContainer = document.getElementById('previewDocxContainer');
   const iframe = document.getElementById('previewContractFrame');
-  if (iframe && iframe.contentWindow) {
+  if (docxContainer && docxContainer.style.display !== 'none' && docxContainer.innerText.trim()) {
+    window.print();
+  } else if (iframe && iframe.contentWindow) {
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
   }
@@ -2953,10 +2996,10 @@ function printPreviewFrame() {
 
 <!-- Contract Document Inline Modal Preview -->
 <div id="previewContractModal" class="modal">
-  <div class="modal-content" style="max-width: 950px; width: 92vw; height: 88vh; display: flex; flex-direction: column; padding: 0; border-radius: var(--radius-lg); overflow: hidden;">
+  <div class="modal-content" style="max-width: 980px; width: 94vw; height: 90vh; display: flex; flex-direction: column; padding: 0; border-radius: var(--radius-lg); overflow: hidden;">
     <div class="modal-header" style="padding: 14px 20px; background: var(--bg); border-bottom: 1px solid var(--line-light); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
       <h3 class="modal-title" style="margin: 0; font-size: 15px; color: var(--text); font-weight: 700; display: flex; align-items: center; gap: 8px;">
-        {{ icon('contract') }} <span id="previewContractTitle">合同电子档在线预览</span>
+        {{ icon('contract') }} <span id="previewContractTitle">Word 合同源文档预览</span>
       </h3>
       <div style="display: flex; gap: 10px; align-items: center;">
         <button type="button" class="btn btn-sm btn-primary" onclick="printPreviewFrame()" style="font-size: 12.5px; padding: 5px 14px; display: inline-flex; align-items: center; gap: 4px;">
@@ -2968,8 +3011,9 @@ function printPreviewFrame() {
         <button type="button" class="modal-close" onclick="closeModal('previewContractModal')" style="font-size: 24px; margin-left: 8px; cursor: pointer;">&times;</button>
       </div>
     </div>
-    <div class="modal-body" style="flex: 1; padding: 0; background: #f8fafc; position: relative;">
-      <iframe id="previewContractFrame" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+    <div class="modal-body" style="flex: 1; padding: 0; background: #525659; position: relative; overflow-y: auto;">
+      <div id="previewDocxContainer" style="padding: 20px; min-height: 100%;"></div>
+      <iframe id="previewContractFrame" src="" style="width: 100%; height: 100%; border: none; display: none;"></iframe>
     </div>
   </div>
 </div>

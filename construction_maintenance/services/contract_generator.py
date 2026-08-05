@@ -266,15 +266,15 @@ def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]
             if not txt:
                 continue
             if txt.startswith("合同编号:"):
-                body_elements.append(f'<div style="text-align: right; color: #64748b; font-size: 13.5px; margin-bottom: 20px; font-weight: bold; font-family: monospace;">{txt}</div>')
+                body_elements.append(f'<div style="text-align: right; color: #333333; font-size: 13.5px; margin-bottom: 25px; font-weight: bold; font-family: SimSun, serif;">{txt}</div>')
             elif txt == "劳务合同" or txt == "劳 务 合 同":
-                body_elements.append(f'<h1 style="text-align: center; color: #0f766e; font-size: 26px; margin: 30px 0 24px 0; letter-spacing: 4px; font-weight: 800;">劳 务 合 同</h1>')
+                body_elements.append(f'<h1 style="text-align: center; color: #000000; font-size: 26px; font-family: SimSun, serif; font-weight: bold; margin: 20px 0 30px 0; letter-spacing: 6px;">劳 务 合 同</h1>')
             elif any(txt.startswith(prefix) for prefix in ["一、", "二、", "三、", "四、", "五、", "六、", "补充条款"]):
-                body_elements.append(f'<h3 style="color: #0f766e; font-size: 16px; border-left: 4px solid #0f766e; padding-left: 10px; margin: 26px 0 14px 0;">{txt}</h3>')
+                body_elements.append(f'<h3 style="color: #000000; font-size: 16px; font-family: SimSun, serif; font-weight: bold; margin: 24px 0 12px 0;">{txt}</h3>')
             elif "甲方(盖章 )" in txt or "甲方 (用人单位)：" in txt or "乙方 (劳动者)  ：" in txt or txt.startswith("用工方( 甲方 )") or txt.startswith("劳务方( 乙方 )"):
-                body_elements.append(f'<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 16px; margin: 10px 0; font-weight: 600; color: #0f172a;">{txt}</div>')
+                body_elements.append(f'<div style="padding: 6px 0; font-weight: bold; color: #000000; font-size: 15px; font-family: SimSun, serif;">{txt}</div>')
             else:
-                body_elements.append(f'<p style="font-size: 14px; color: #334155; line-height: 1.85; text-align: justify; margin-bottom: 8px;">{txt}</p>')
+                body_elements.append(f'<p style="font-size: 15px; color: #000000; font-family: SimSun, serif; line-height: 1.8; text-align: justify; margin-bottom: 10px; text-indent: 2em;">{txt}</p>')
     
     content_html = "\n".join(body_elements)
 
@@ -288,29 +288,39 @@ def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]
     <meta charset="UTF-8">
     <title>{template_name} - {person_name}</title>
     <style>
-        body {{
-            font-family: "PingFang SC", "Microsoft YaHei", "SimSun", sans-serif;
-            color: #1e293b;
-            line-height: 1.8;
-            padding: 40px 60px;
-            max-width: 850px;
-            margin: 0 auto;
+        * {{ box-sizing: border-box; }}
+        html, body {{
+            margin: 0;
+            padding: 0;
+            background: #525659;
+            font-family: "SimSun", "宋体", "PingFang SC", "Microsoft YaHei", serif;
+        }}
+        .word-document-viewer {{
+            width: 210mm;
+            min-height: 297mm;
+            padding: 25.4mm 20mm;
+            margin: 20px auto;
             background: #ffffff;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+            border-radius: 2px;
+            position: relative;
         }}
         .top-action-bar {{
-            background: #0f766e;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #2a2d30;
             color: #ffffff;
-            padding: 12px 24px;
-            border-radius: 8px;
-            margin-bottom: 30px;
+            padding: 10px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15);
+            border-bottom: 1px solid #3e4245;
         }}
         .top-action-bar .title {{
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 13.5px;
+            font-weight: 500;
+            color: #e2e8f0;
         }}
         .top-action-bar .actions {{
             display: flex;
@@ -318,30 +328,33 @@ def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]
             align-items: center;
         }}
         .top-action-bar .btn-print {{
-            background: #ffffff;
-            color: #0f766e;
+            background: #0f766e;
+            color: #ffffff;
             border: none;
-            padding: 6px 18px;
-            border-radius: 6px;
+            padding: 6px 16px;
+            border-radius: 4px;
             font-weight: bold;
             cursor: pointer;
             font-size: 13px;
         }}
         @media print {{
-            body {{ padding: 0; margin: 0; }}
+            html, body {{ background: #ffffff; }}
+            .word-document-viewer {{ width: 100%; min-height: auto; padding: 0; margin: 0; box-shadow: none; }}
             .top-action-bar {{ display: none !important; }}
         }}
     </style>
 </head>
 <body>
     <div class="top-action-bar">
-        <span class="title">📄 在线预览：《{template_name}》（签约人：{person_name}）</span>
+        <span class="title">📄 模版视图：《{template_name}》（签约人：{person_name}）</span>
         <div class="actions">
             <button class="btn-print" onclick="window.print()">🖨️ 打印合同 (Ctrl+P)</button>
             {docx_download_btn}
         </div>
     </div>
-    {content_html}
+    <div class="word-document-viewer">
+        {content_html}
+    </div>
 </body>
 </html>"""
     return html
