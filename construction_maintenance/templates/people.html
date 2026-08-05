@@ -1774,6 +1774,11 @@ function deletePerson(personId, name) {
     const form = document.createElement('form');
     form.method = 'post';
     form.action = `/people/${personId}/delete`;
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_csrf';
+    csrfInput.value = '{{ csrf_token() }}';
+    form.appendChild(csrfInput);
     document.body.appendChild(form);
     form.submit();
   }
@@ -2402,6 +2407,11 @@ function deletePayment(paymentId, name, amount, type) {
     const form = document.createElement('form');
     form.method = 'post';
     form.action = `/attendance/salary-payments/${paymentId}/delete`;
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_csrf';
+    csrfInput.value = '{{ csrf_token() }}';
+    form.appendChild(csrfInput);
     document.body.appendChild(form);
     form.submit();
   }

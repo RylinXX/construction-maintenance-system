@@ -1775,10 +1775,13 @@ def delete_contract(contract_id: int):
     contract = repo.get_db().execute(
         "select attachment_path, name from contracts where id = ?", (contract_id,)
     ).fetchone()
+    redirect_target = request.referrer or url_for("web.contracts")
     if contract is None:
-        raise ValueError("合同不存在")
+        flash("合同记录不存在或已被删除。", "warning")
+        return redirect(redirect_target)
     repo.delete_contract(contract_id)
-    _delete_upload_file(contract["attachment_path"])
+    if contract["attachment_path"]:
+        _delete_upload_file(contract["attachment_path"])
     repo.record_audit(
         "delete",
         "contract",
@@ -1787,7 +1790,7 @@ def delete_contract(contract_id: int):
         details={"name": contract["name"]},
     )
     flash("合同删除成功。", "success")
-    return redirect(url_for("web.contracts"))
+    return redirect(redirect_target)
 
 
 @bp.route("/people/<int:person_id>/generate_contract", methods=["POST"])

@@ -598,6 +598,11 @@ function deleteCompany(companyId, companyName) {
     const form = document.createElement('form');
     form.method = 'post';
     form.action = `/companies/${companyId}/delete`;
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_csrf';
+    csrfInput.value = '{{ csrf_token() }}';
+    form.appendChild(csrfInput);
     document.body.appendChild(form);
     form.submit();
   }
@@ -608,6 +613,11 @@ function deleteQualification(qualificationId, name) {
     const form = document.createElement('form');
     form.method = 'post';
     form.action = `/qualifications/${qualificationId}/delete`;
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_csrf';
+    csrfInput.value = '{{ csrf_token() }}';
+    form.appendChild(csrfInput);
     document.body.appendChild(form);
     form.submit();
   }
