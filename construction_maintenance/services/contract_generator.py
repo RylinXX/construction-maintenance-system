@@ -280,7 +280,7 @@ def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]
 
     docx_download_btn = ""
     if docx_filename:
-        docx_download_btn = f'<a href="/uploads/{docx_filename}?download=1" download class="btn-docx" style="background: rgba(255,255,255,0.2); color: #ffffff; text-decoration: none; padding: 6px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; border: 1px solid rgba(255,255,255,0.4);">📥 下载 Word 原始文档 (.docx)</a>'
+        docx_download_btn = f'<a href="/uploads/{docx_filename}?download=1" download class="btn-docx" style="background: #0f766e; color: #ffffff; text-decoration: none; padding: 7px 20px; border-radius: 6px; font-weight: 700; font-size: 13.5px; box-shadow: 0 2px 8px rgba(15, 118, 110, 0.4); display: inline-flex; align-items: center; gap: 6px;">📥 下载 Word 原始文档 (.docx)</a>'
 
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -327,28 +327,12 @@ def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]
             gap: 12px;
             align-items: center;
         }}
-        .top-action-bar .btn-print {{
-            background: #0f766e;
-            color: #ffffff;
-            border: none;
-            padding: 6px 16px;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 13px;
-        }}
-        @media print {{
-            html, body {{ background: #ffffff; }}
-            .word-document-viewer {{ width: 100%; min-height: auto; padding: 0; margin: 0; box-shadow: none; }}
-            .top-action-bar {{ display: none !important; }}
-        }}
     </style>
 </head>
 <body>
     <div class="top-action-bar">
         <span class="title">📄 模版视图：《{template_name}》（签约人：{person_name}）</span>
         <div class="actions">
-            <button class="btn-print" onclick="window.print()">🖨️ 打印合同 (Ctrl+P)</button>
             {docx_download_btn}
         </div>
     </div>
