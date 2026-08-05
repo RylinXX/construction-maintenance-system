@@ -797,9 +797,9 @@
               <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
                 {% if p_contract %}
                   {% if p_contract.attachment_path %}
-                  <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path) }}" target="_blank" class="btn btn-sm btn-secondary" style="font-size: 12px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 3px;" title="在线预览完整合同全文（可在顶栏打印或下载 Word 文档）">
+                  <button type="button" class="btn btn-sm btn-secondary" onclick="openPreviewContractModal('{{ url_for('web.download_attachment', filename=p_contract.attachment_path) }}', '{{ url_for('web.download_attachment', filename=p_contract.attachment_path.replace('.html', '.docx'), download='1') }}', '{{ p_contract.name }}')" style="font-size: 12px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 3px;" title="在页面内弹窗在线预览完整合同">
                     {{ icon('preview') }} 预览合同
-                  </a>
+                  </button>
                   {% endif %}
                   <button type="button" class="btn btn-sm" onclick="openUploadPersonSignedModal({{ p_contract.id }}, '{{ p_contract.name }}')" style="background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px; padding: 4px 8px; font-weight: 600;">
                     {{ icon('upload') }} 回传签署件
@@ -2934,7 +2934,45 @@ function openUploadPersonSignedModal(contractId, contractName) {
   form.action = `/contracts/${contractId}/upload_signed`;
   openModal('uploadPersonSignedModal');
 }
+
+function openPreviewContractModal(htmlUrl, docxUrl, contractName) {
+  document.getElementById('previewContractTitle').innerText = contractName || '合同电子档在线预览';
+  document.getElementById('previewContractFrame').src = htmlUrl;
+  document.getElementById('previewDocxDownloadBtn').href = docxUrl;
+  openModal('previewContractModal');
+}
+
+function printPreviewFrame() {
+  const iframe = document.getElementById('previewContractFrame');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }
+}
 </script>
+
+<!-- Contract Document Inline Modal Preview -->
+<div id="previewContractModal" class="modal">
+  <div class="modal-content" style="max-width: 950px; width: 92vw; height: 88vh; display: flex; flex-direction: column; padding: 0; border-radius: var(--radius-lg); overflow: hidden;">
+    <div class="modal-header" style="padding: 14px 20px; background: var(--bg); border-bottom: 1px solid var(--line-light); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+      <h3 class="modal-title" style="margin: 0; font-size: 15px; color: var(--text); font-weight: 700; display: flex; align-items: center; gap: 8px;">
+        {{ icon('contract') }} <span id="previewContractTitle">合同电子档在线预览</span>
+      </h3>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button type="button" class="btn btn-sm btn-primary" onclick="printPreviewFrame()" style="font-size: 12.5px; padding: 5px 14px; display: inline-flex; align-items: center; gap: 4px;">
+          🖨️ 打印合同
+        </button>
+        <a id="previewDocxDownloadBtn" href="" download class="btn btn-sm btn-outline-primary" style="font-size: 12.5px; padding: 5px 14px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none;">
+          📥 下载 Word (.docx)
+        </a>
+        <button type="button" class="modal-close" onclick="closeModal('previewContractModal')" style="font-size: 24px; margin-left: 8px; cursor: pointer;">&times;</button>
+      </div>
+    </div>
+    <div class="modal-body" style="flex: 1; padding: 0; background: #f8fafc; position: relative;">
+      <iframe id="previewContractFrame" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
+  </div>
+</div>
 
 <!-- Upload Person Signed Contract Modal -->
 <div id="uploadPersonSignedModal" class="modal">
