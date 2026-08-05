@@ -1723,8 +1723,8 @@ def generate_person_contract(person_id: int):
         "template_name": template_info["name"]
     })
 
-    flash(f"已成功为人员【{person['name']}】自动生成合同，可在线预览或导出。", "success")
-    return redirect(url_for("web.people", tab="person_contracts"))
+    flash(f"已成功为人员【{person['name']}】自动生成合同，在下方列表中即可直接【预览/查看】及打印。", "success")
+    return redirect(safe_redirect_target(request.referrer, url_for("web.people", tab="person_contracts")))
 
 
 @bp.route("/contracts/<int:contract_id>/upload_signed", methods=["POST"])
