@@ -788,14 +788,19 @@
             </td>
             <td style="vertical-align: middle;">
               {% if p_contract %}
-              <div style="font-weight: 600; color: var(--text);">{{ p_contract.name }}</div>
-              <div style="font-size: 12px; color: var(--muted);">编号: {{ p_contract.contract_number }}</div>
+              <div style="font-weight: 700; color: #0f172a; font-size: 13.5px;">{{ p_contract.name }}</div>
+              <div style="display: flex; gap: 6px; margin-top: 3px; align-items: center; flex-wrap: wrap;">
+                <span class="badge" style="background: rgba(15, 118, 110, 0.1); color: var(--primary); font-size: 11px; font-weight: 600; padding: 2px 6px;">{{ p_contract.contract_type or '人员用工合同' }}</span>
+                <span style="font-size: 11.5px; color: var(--muted);">《{{ p_contract.template_name or '2026新版劳务合同' }}》</span>
+              </div>
               {% else %}
-              <span class="text-muted" style="font-size: 12.5px;">尚未生成个人合同</span>
+              <div style="display: inline-flex; align-items: center;">
+                <span class="badge" style="font-size: 12px; font-weight: 500; background: #f1f5f9; color: #64748b; border: 1px dashed #cbd5e1; padding: 3px 8px;">⚪ 尚未生成劳动合同</span>
+              </div>
               {% endif %}
             </td>
             <td style="vertical-align: middle;">
-              <span class="badge badge-secondary" style="font-size: 12px;">个人固定模板 (不绑项目)</span>
+              <span class="badge" style="background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; font-size: 11.5px; font-weight: 500; padding: 3px 8px;">个人固定模板 (通用调度)</span>
             </td>
             <td style="text-align: center; vertical-align: middle;">
               {% if p_contract %}
