@@ -557,7 +557,7 @@ let currentRotation = 0;
 
 function isPdfPreviewFile(filename) {
   const lower = (filename || '').toLowerCase();
-  return lower.endsWith('.pdf') || lower.endsWith('_pdf');
+  return lower.endsWith('.pdf') || lower.endsWith('_pdf') || lower.endsWith('.html') || lower.endsWith('.htm');
 }
 
 function openDocumentPreview(item) {
