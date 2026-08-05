@@ -23,6 +23,8 @@ DEFAULT_SYSTEM_SETTINGS = {
     "organization_name": "工程运营管理中心",
     "support_contact": "",
     "session_timeout_minutes": "120",
+    "active_ai_provider": "ali_bailian",
+    "active_ai_model": "qwen3.5-plus",
     "deepseek_api_key": "",
     "deepseek_base_url": "https://api.deepseek.com",
     "ali_bailian_api_key": "",

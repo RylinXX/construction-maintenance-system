@@ -396,6 +396,8 @@ def update_general_settings():
                 "organization_name": organization_name,
                 "support_contact": support_contact,
                 "session_timeout_minutes": str(timeout_minutes),
+                "active_ai_provider": request.form.get("active_ai_provider", "ali_bailian").strip(),
+                "active_ai_model": request.form.get("active_ai_model", "qwen3.5-plus").strip(),
                 "deepseek_api_key": request.form.get("deepseek_api_key", "").strip(),
                 "deepseek_base_url": request.form.get("deepseek_base_url", "").strip(),
                 "ali_bailian_api_key": request.form.get("ali_bailian_api_key", "").strip(),
