@@ -393,6 +393,13 @@
               </select>
             </div>
           </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line-light);">
+            <div id="aiTestStatusBanner" style="font-size: 13px; font-weight: 600; color: var(--muted); display: none;"></div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnTestAIConnect" onclick="testAIConnectivity()" style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; border-color: var(--primary); color: var(--primary); padding: 6px 14px;">
+              {{ icon('sparkles') }} 测试当前 AI 接口连通性
+            </button>
+          </div>
         </div>
 
         <!-- 三大厂商 API 凭证及 Endpoint 选项卡 (Tabs for Providers) -->
@@ -588,5 +595,61 @@ document.addEventListener('DOMContentLoaded', function() {
     onAIProviderChange(providerEl.value);
   }
 });
+
+function testAIConnectivity() {
+  const provider = document.getElementById('active-ai-provider').value;
+  const model = document.getElementById('active-ai-model').value;
+  const btn = document.getElementById('btnTestAIConnect');
+  const banner = document.getElementById('aiTestStatusBanner');
+
+  let baseUrl = '';
+  let apiKey = '';
+
+  if (provider === 'ali_bailian') {
+    baseUrl = document.getElementById('ali-bailian-base-url').value;
+    apiKey = document.getElementById('ali-bailian-api-key').value;
+  } else if (provider === 'deepseek') {
+    baseUrl = document.getElementById('deepseek-base-url').value;
+    apiKey = document.getElementById('deepseek-api-key').value;
+  } else if (provider === 'bytedance_ark') {
+    baseUrl = document.getElementById('bytedance-ark-base-url').value;
+    apiKey = document.getElementById('bytedance-ark-api-key').value;
+  }
+
+  banner.style.display = 'block';
+  banner.style.color = 'var(--muted)';
+  banner.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 6px;">⏳ 正在测试与【' + provider + '】的 API 连通性...</span>';
+  btn.disabled = true;
+
+  fetch('/settings/ai/test', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({
+      provider: provider,
+      model: model,
+      base_url: baseUrl,
+      api_key: apiKey
+    })
+  })
+  .then(res => res.json().then(data => ({ status: res.status, body: data })))
+  .then(res => {
+    btn.disabled = false;
+    if (res.body.status === 'success') {
+      banner.style.color = '#10b981';
+      banner.innerHTML = `<strong>${res.body.message}</strong>`;
+    } else {
+      banner.style.color = '#ef4444';
+      banner.innerHTML = `<strong>${res.body.message || '❌ 连接失败，请检查 API Key 或 Endpoint'}</strong>`;
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    banner.style.color = '#ef4444';
+    banner.innerHTML = `<strong>❌ 测试异常: ${err.message}</strong>`;
+  });
+}
 </script>
 {% endblock %}

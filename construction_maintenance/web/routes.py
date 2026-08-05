@@ -410,6 +410,102 @@ def update_general_settings():
     return redirect(url_for("web.settings", tab="general"))
 
 
+@bp.post("/settings/ai/test")
+@require_super_admin
+def test_ai_connectivity():
+    import json
+    import time
+    import urllib.request
+    import urllib.error
+
+    if request.is_json:
+        data = request.get_json() or {}
+    else:
+        data = request.form.to_dict()
+
+    provider = data.get("provider", "ali_bailian").strip()
+    model = data.get("model", "qwen3.5-plus").strip()
+    
+    all_settings = repo.get_system_settings()
+    
+    if provider == "ali_bailian":
+        base_url = data.get("base_url") or all_settings.get("ali_bailian_base_url") or "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        api_key = data.get("api_key") or all_settings.get("ali_bailian_api_key") or ""
+    elif provider == "deepseek":
+        base_url = data.get("base_url") or all_settings.get("deepseek_base_url") or "https://api.deepseek.com"
+        api_key = data.get("api_key") or all_settings.get("deepseek_api_key") or ""
+    elif provider == "bytedance_ark":
+        base_url = data.get("base_url") or all_settings.get("bytedance_ark_base_url") or "https://ark.cn-beijing.volces.com/api/v3"
+        api_key = data.get("api_key") or all_settings.get("bytedance_ark_api_key") or ""
+    else:
+        base_url = data.get("base_url", "").strip()
+        api_key = data.get("api_key", "").strip()
+
+    if not api_key:
+        return {"status": "error", "message": f"【{provider}】未填写 API Key，无法进行连通性测试。"}, 400
+
+    base_url = base_url.rstrip("/")
+    if not base_url.endswith("/chat/completions"):
+        endpoint_url = f"{base_url}/chat/completions"
+    else:
+        endpoint_url = base_url
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "user", "content": "Hello, respond with OK."}
+        ],
+        "max_tokens": 10
+    }
+
+    start_time = time.time()
+    try:
+        req = urllib.request.Request(
+            endpoint_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            latency_ms = int((time.time() - start_time) * 1000)
+            res_body = resp.read().decode("utf-8")
+            res_json = json.loads(res_body)
+            
+            choices = res_json.get("choices", [])
+            reply = ""
+            if choices and isinstance(choices, list):
+                msg = choices[0].get("message", {})
+                reply = msg.get("content", "").strip()
+
+            return {
+                "status": "success",
+                "message": f"🎉 连通测试成功！模型延迟: {latency_ms} ms (响应: {reply or 'OK'})",
+                "latency_ms": latency_ms,
+                "reply": reply or "OK",
+                "provider": provider,
+                "model": model
+            }
+    except urllib.error.HTTPError as exc:
+        latency_ms = int((time.time() - start_time) * 1000)
+        err_msg = f"HTTP {exc.code}: {exc.reason}"
+        try:
+            body = exc.read().decode("utf-8")
+            body_json = json.loads(body)
+            if "error" in body_json and "message" in body_json["error"]:
+                err_msg = f"HTTP {exc.code}: {body_json['error']['message']}"
+        except Exception:
+            pass
+        return {"status": "error", "message": f"❌ 连通失败 ({err_msg})", "latency_ms": latency_ms}, 400
+    except Exception as exc:
+        latency_ms = int((time.time() - start_time) * 1000)
+        return {"status": "error", "message": f"❌ 网络连接异常: {str(exc)}", "latency_ms": latency_ms}, 500
+
+
 def _download_name_for_upload(filename: str) -> str:
     name = upload_name(filename)
     if "." in name:
