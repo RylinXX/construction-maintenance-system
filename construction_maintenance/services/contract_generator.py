@@ -8,28 +8,28 @@ from datetime import datetime
 TEMPLATES = [
     {
         "id": "01_labor_contract",
-        "name": "建筑施工劳动合同书（标准版）",
+        "name": "公司标准《劳务合同》（不交社保版）",
         "category": "人员合同",
-        "description": "适用于全日制及项目常驻工人的规范劳动合同，包含劳动报酬、安全生产及权益保障条款。",
+        "description": "基于公司官方 DOCX 标准研发，包含双方协商、劳务内容、报酬支付、不建立劳动关系与不缴社保特别约定及公章/签字处。",
         "template_filename": "01_labor_contract.html"
     },
     {
         "id": "02_subcontract_agreement",
-        "name": "工程施工劳务用工协议书",
-        "category": "劳务合同",
-        "description": "适用于班组及专业劳务人员项目包干或按日结算的施工用工协议。",
+        "name": "建筑施工劳动合同书（规范全日制版）",
+        "category": "人员合同",
+        "description": "适用于全日制及项目常驻管理与技术人员的规范劳动合同。",
         "template_filename": "02_subcontract_agreement.html"
     },
     {
         "id": "03_temporary_work_agreement",
-        "name": "建筑工人临时用工协议",
-        "category": "人员合同",
-        "description": "适用于短期零工、临时调配人员的简易用工协议。",
+        "name": "工程施工班组用工协议书",
+        "category": "劳务合同",
+        "description": "适用于班组及专业劳务人员项目包干或按日结算的施工用工协议。",
         "template_filename": "03_temporary_work_agreement.html"
     },
     {
         "id": "04_machinery_lease_contract",
-        "name": "工程机械设备租赁合同（带司机）",
+        "name": "工程机械设备与司机租赁合同",
         "category": "其它",
         "description": "适用于钩机、铲车、水车等机械设备及其操作司机的机械租赁合同。",
         "template_filename": "04_machinery_lease_contract.html"
@@ -50,20 +50,121 @@ def render_contract_html(template_id: str, person: dict, project: dict, signing_
     if not signing_date:
         signing_date = datetime.now().strftime("%Y年%m月%d日")
 
-    company_name = "营力特建筑工程有限公司"
+    company_name = "北京营力特建筑工程有限公司"
     project_name = project.get("name", "工程项目") if project else "通用工程项目"
     
     person_name = person.get("name", "未填写")
     id_number = person.get("id_number", "未填写")
+    gender = person.get("gender", "男")
     phone = person.get("phone", "未填写")
     job_type = person.get("job_type", "施工人员")
     salary_type = person.get("salary_type", "日薪")
     salary_rate = person.get("salary_rate", 0.0)
     bank_name = person.get("bank_name", "中国工商银行")
     bank_card = person.get("bank_card", "未填写")
-    address = person.get("address", "北京市海湾区建设基地")
+    address = person.get("address", "未填写")
 
-    salary_str = f"{salary_rate:.1f} 元 / {salary_type}"
+    salary_str = f"{salary_rate:.1f} 元 / {salary_type}" if salary_rate else f"按约定按月/日结算 ({salary_type})"
+
+    if template_id == "01_labor_contract":
+        # 1-to-1 Replica of 公司官方《合同_谢瑞鸣.docx》
+        body_content = f"""
+        <div class="contract-doc">
+            <div class="contract-header" style="text-align: center; margin-bottom: 30px;">
+                <h2 style="font-size: 18px; color: #475569; margin-bottom: 4px; font-weight: normal;">劳务合同（不交社保版）</h2>
+                <h1 style="font-size: 28px; color: #0f766e; margin-top: 0; letter-spacing: 4px;">劳 务 合 同</h1>
+                <p style="font-size: 13px; color: #94a3b8;">合同编号：YLT-LW-{datetime.now().strftime('%Y%m%d%H%M%S')}</p>
+            </div>
+
+            <div class="party-info" style="font-size: 15px; line-height: 2.0; margin-bottom: 24px;">
+                <p style="margin-bottom: 12px;"><strong>甲方（用工方）：</strong><u>{company_name}</u></p>
+                <p style="margin-bottom: 8px;"><strong>乙方（提供劳务方）：</strong></p>
+                <div style="margin-left: 20px; font-size: 14.5px; line-height: 1.9; background: #f8fafc; padding: 16px 20px; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                    <p style="margin: 4px 0;">姓名：<u>{person_name}</u></p>
+                    <p style="margin: 4px 0;">性别：<u>{gender}</u></p>
+                    <p style="margin: 4px 0;">居民身份证号码：<u class="font-mono">{id_number}</u></p>
+                    <p style="margin: 4px 0;">住址/户籍地址：<u>{address}</u></p>
+                    <p style="margin: 4px 0;">联系电话：<u>{phone}</u></p>
+                </div>
+            </div>
+
+            <div class="contract-body" style="font-size: 15px; line-height: 1.9;">
+                <p style="text-indent: 2em; margin-bottom: 16px;">鉴于乙方为灵活就业人员，双方经平等自愿协商，就乙方为甲方在 <strong>【{project_name}】</strong> 项目提供劳务一事达成如下协议：</p>
+
+                <h3 style="font-size: 16.5px; color: #0f766e; margin-top: 24px; margin-bottom: 8px;">一、劳务内容</h3>
+                <p style="text-indent: 2em; margin-top: 0;">乙方为甲方提供 <strong><u>{job_type}</u></strong> 服务，并遵守现场施工安全生产规范。</p>
+
+                <h3 style="font-size: 16.5px; color: #0f766e; margin-top: 24px; margin-bottom: 8px;">二、劳务报酬</h3>
+                <p style="text-indent: 2em; margin-top: 0; margin-bottom: 6px;">1. 甲方按月支付乙方劳务报酬 <strong><u>{salary_str}</u></strong>（税后）。</p>
+                <p style="text-indent: 2em; margin-top: 0;">2. 劳务费用打款账户：<strong><u>{bank_name}（卡号: {bank_card}）</u></strong>。</p>
+
+                <h3 style="font-size: 16.5px; color: #0f766e; margin-top: 24px; margin-bottom: 8px;">三、特别约定</h3>
+                <p style="text-indent: 2em; margin: 4px 0;">1. <strong>双方不建立劳动关系，不缴纳社会保险。</strong></p>
+                <p style="text-indent: 2em; margin: 4px 0;">2. 乙方自行承担个人所得税申报义务。</p>
+                <p style="text-indent: 2em; margin: 4px 0;">3. 乙方在劳务过程中须做好个人安全防护，佩戴安全帽，严禁违章作业。</p>
+            </div>
+
+            <div class="signature-section" style="margin-top: 50px; padding-top: 30px; border-top: 2px dashed #0f766e; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 15px;">
+                <div class="sig-box" style="position: relative;">
+                    <p style="margin-bottom: 12px;"><strong>甲方（盖章）：</strong> <u>{company_name}</u></p>
+                    <div style="height: 70px; margin: 12px 0; display: flex; align-items: center;">
+                        <span style="border: 2px dashed #dc2626; color: #dc2626; padding: 8px 18px; border-radius: 6px; font-weight: bold; font-size: 13.5px; transform: rotate(-4deg); display: inline-block;">[ 公司公章 / 法人电子印章处 ]</span>
+                    </div>
+                    <p style="margin-top: 16px;">法定代表人（签字）：_________________</p>
+                    <p style="margin-top: 12px;">日期：<u>{signing_date}</u></p>
+                </div>
+                <div class="sig-box">
+                    <p style="margin-bottom: 12px;"><strong>乙方（签字）：</strong> <u>{person_name}</u></p>
+                    <div style="height: 70px; margin: 12px 0; display: flex; align-items: center;">
+                        <span style="color: #64748b; font-size: 14.5px;">手写签名/按手印：_________________</span>
+                    </div>
+                    <p style="margin-top: 16px;">居民身份证号：<u class="font-mono">{id_number}</u></p>
+                    <p style="margin-top: 12px;">日期：<u>{signing_date}</u></p>
+                </div>
+            </div>
+        </div>
+        """
+    else:
+        # 其他用工协议模版
+        body_content = f"""
+        <div class="contract-doc">
+            <div class="contract-header" style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 26px; color: #0f766e; margin-top: 0; letter-spacing: 2px;">{template_info['name']}</h1>
+                <p style="font-size: 13px; color: #94a3b8;">合同编号：YLT-HT-{datetime.now().strftime('%Y%m%d%H%M%S')}</p>
+            </div>
+
+            <div class="party-info" style="font-size: 15px; line-height: 2.0; margin-bottom: 24px;">
+                <p><strong>甲方（用工方/项目部）：</strong><u>{company_name}</u></p>
+                <p><strong>工程项目：</strong><u>{project_name}</u></p>
+                <p><strong>乙方（人员）：</strong><u>{person_name}</u>（身份证：<u class="font-mono">{id_number}</u>，电话：<u>{phone}</u>，住址：<u>{address}</u>）</p>
+            </div>
+
+            <div class="contract-body" style="font-size: 15px; line-height: 1.9;">
+                <h3 style="font-size: 16.5px; color: #0f766e; margin-top: 20px;">一、工作岗位与内容</h3>
+                <p style="text-indent: 2em;">乙方根据工程建设需要，在【{project_name}】从事【{job_type}】服务。</p>
+
+                <h3 style="font-size: 16.5px; color: #0f766e; margin-top: 20px;">二、薪资标准与发放方式</h3>
+                <p style="text-indent: 2em;">1. 报酬标准：<strong><u>{salary_str}</u></strong>。</p>
+                <p style="text-indent: 2em;">2. 指定打款卡号：<strong><u>{bank_name} ({bank_card})</u></strong>。</p>
+
+                <h3 style="font-size: 16.5px; color: #0f766e; margin-top: 20px;">三、安全生产与合规</h3>
+                <p style="text-indent: 2em;">乙方须严格遵守施工现场安全管理规定，佩戴合格劳动防护用品，违章不作业。</p>
+            </div>
+
+            <div class="signature-section" style="margin-top: 50px; padding-top: 30px; border-top: 2px dashed #0f766e; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 15px;">
+                <div class="sig-box">
+                    <p><strong>甲方（盖章）：</strong> <u>{company_name}</u></p>
+                    <p style="margin-top: 16px;">代表人（签字）：_________________</p>
+                    <p style="margin-top: 12px;">日期：<u>{signing_date}</u></p>
+                </div>
+                <div class="sig-box">
+                    <p><strong>乙方（签字）：</strong> <u>{person_name}</u></p>
+                    <p style="margin-top: 16px;">手写签名：_________________</p>
+                    <p style="margin-top: 12px;">日期：<u>{signing_date}</u></p>
+                </div>
+            </div>
+        </div>
+        """
 
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -76,151 +177,25 @@ def render_contract_html(template_id: str, person: dict, project: dict, signing_
             color: #1e293b;
             line-height: 1.8;
             padding: 40px 60px;
-            max-width: 850px;
+            max-width: 820px;
             margin: 0 auto;
             background: #ffffff;
         }}
-        .contract-header {{
-            text-align: center;
-            border-bottom: 2px solid #0f766e;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }}
-        .contract-header h1 {{
-            font-size: 24px;
-            color: #0f766e;
-            margin: 0 0 8px 0;
-            letter-spacing: 1px;
-        }}
-        .contract-header p {{
-            font-size: 13px;
-            color: #64748b;
-            margin: 0;
-        }}
-        .party-box {{
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px 24px;
-            margin-bottom: 30px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }}
-        .party-item {{
-            font-size: 14px;
-        }}
-        .party-item label {{
-            color: #64748b;
+        u {{
+            text-underline-offset: 4px;
+            padding: 0 4px;
             font-weight: 600;
         }}
-        .party-item span {{
-            color: #0f172a;
-            font-weight: 700;
-            border-bottom: 1px dashed #94a3b8;
-            padding: 0 4px;
-        }}
-        .contract-section {{
-            margin-bottom: 24px;
-        }}
-        .contract-section h3 {{
-            font-size: 16px;
-            color: #0f766e;
-            border-left: 4px solid #0f766e;
-            padding-left: 10px;
-            margin-bottom: 12px;
-        }}
-        .contract-section p, .contract-section li {{
-            font-size: 14px;
-            color: #334155;
-            text-align: justify;
-        }}
-        .signature-box {{
-            margin-top: 50px;
-            padding-top: 30px;
-            border-top: 1px solid #cbd5e1;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-        }}
-        .sig-col h4 {{
-            font-size: 15px;
-            margin-bottom: 40px;
-            color: #1e293b;
-        }}
-        .sig-line {{
-            font-size: 14px;
-            color: #64748b;
-            margin-bottom: 12px;
-        }}
-        .stamp-badge {{
-            display: inline-block;
-            border: 2px dashed #ef4444;
-            color: #ef4444;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            transform: rotate(-5deg);
+        .font-mono {{
+            font-family: Monaco, Consolas, monospace;
         }}
         @media print {{
             body {{ padding: 0; margin: 0; }}
-            .no-print {{ display: none; }}
         }}
     </style>
 </head>
 <body>
-    <div class="contract-header">
-        <h1>{template_info['name']}</h1>
-        <p>编号：YLT-CON-{datetime.now().strftime('%Y%m%d%H%M%S')}</p>
-    </div>
-
-    <div class="party-box">
-        <div class="party-item"><label>甲方（用人单位/项目部）：</label><span>{company_name}</span></div>
-        <div class="party-item"><label>归属工程项目：</label><span>{project_name}</span></div>
-        <div class="party-item"><label>乙方（劳动者/人员）：</label><span>{person_name}</span></div>
-        <div class="party-item"><label>身份证号码：</label><span>{id_number}</span></div>
-        <div class="party-item"><label>联系电话：</label><span>{phone}</span></div>
-        <div class="party-item"><label>工作岗位/工种：</label><span>{job_type}</span></div>
-        <div class="party-item"><label>薪资标准与结算：</label><span>{salary_str}</span></div>
-        <div class="party-item"><label>指定收款银行卡：</label><span>{bank_name} ({bank_card})</span></div>
-    </div>
-
-    <div class="contract-section">
-        <h3>第一条 工作内容与工作地点</h3>
-        <p>1. 乙方同意根据甲方工作需要，在 <strong>{project_name}</strong> 现场从事 <strong>{job_type}</strong> 岗位工作。</p>
-        <p>2. 乙方应严格遵守现场安全生产规章制度，服从现场施工管理人员的合理调度与安排。</p>
-    </div>
-
-    <div class="contract-section">
-        <h3>第二条 劳动报酬与支付方式</h3>
-        <p>1. 双方约定劳报酬结算标准为：<strong>{salary_str}</strong>。</p>
-        <p>2. 结算周期：甲方按月根据考勤打卡记录核算工资，打款至乙方指定银行账户：<strong>{bank_name} ({bank_card})</strong>。</p>
-    </div>
-
-    <div class="contract-section">
-        <h3>第三条 安全生产与权益保障</h3>
-        <p>1. 甲方依法为乙方提供符合国家标准的劳动安全卫生条件和必要的劳动防护用品。</p>
-        <p>2. 乙方入场前须接受三级安全教育培训，遵守安全操作规程，严禁违章作业。</p>
-    </div>
-
-    <div class="contract-section">
-        <h3>第四条 协议期限与终止</h3>
-        <p>本协议自双方签字/盖章之日起生效，至 <strong>{project_name}</strong> 项目相关工种作业完工结清薪资后自动终止。</p>
-    </div>
-
-    <div class="signature-box">
-        <div class="sig-col">
-            <h4>甲方（盖章/签字）：</h4>
-            <div class="sig-line">代表人（签字）：________________</div>
-            <div class="sig-line">签署日期：{signing_date}</div>
-        </div>
-        <div class="sig-col">
-            <h4>乙方（签字/手印）：</h4>
-            <div class="sig-line">乙方签名：<strong>{person_name}</strong></div>
-            <div class="sig-line">签署日期：{signing_date}</div>
-        </div>
-    </div>
+    {body_content}
 </body>
 </html>"""
     return html
