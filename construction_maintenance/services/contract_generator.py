@@ -197,8 +197,8 @@ def generate_contract_from_template(
     upload_folder.mkdir(parents=True, exist_ok=True)
     doc.save(output_docx_path)
 
-    # Render matching HTML for online browser preview & direct printing
-    html_content = render_contract_html_for_preview(meta["template_name"], mapping)
+    # Render matching HTML for online browser preview & direct printing (Renders 100% full Word text clauses)
+    html_content = render_contract_html_for_preview(meta["template_name"], mapping, doc=doc)
     with open(output_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
@@ -256,16 +256,27 @@ def _replace_placeholders_in_paragraph(p: Any, mapping: dict[str, str]) -> None:
         p.text = full_text
 
 
-def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]) -> str:
-    company_name = mapping.get("{{employer_name}}", "北京营力特建筑工程有限公司")
+def render_contract_html_for_preview(template_name: str, mapping: dict[str, str], doc: Any = None) -> str:
     person_name = mapping.get("{{employee_name}}", "")
-    id_number = mapping.get("{{employee_id_number}}", "")
-    phone = mapping.get("{{employee_phone}}", "")
-    job_position = mapping.get("{{job_position}}", "")
-    salary = mapping.get("{{salary}}", "")
-    signing_date = mapping.get("{{signing_date}}", "")
-    address = mapping.get("{{employee_address}}", "")
-    contract_no = mapping.get("{{contract_no}}", "")
+
+    body_elements = []
+    if doc:
+        for p in doc.paragraphs:
+            txt = p.text.strip()
+            if not txt:
+                continue
+            if txt.startswith("合同编号:"):
+                body_elements.append(f'<div style="text-align: right; color: #64748b; font-size: 13.5px; margin-bottom: 20px; font-weight: bold; font-family: monospace;">{txt}</div>')
+            elif txt == "劳务合同" or txt == "劳 务 合 同":
+                body_elements.append(f'<h1 style="text-align: center; color: #0f766e; font-size: 26px; margin: 30px 0 24px 0; letter-spacing: 4px; font-weight: 800;">劳 务 合 同</h1>')
+            elif any(txt.startswith(prefix) for prefix in ["一、", "二、", "三、", "四、", "五、", "六、", "补充条款"]):
+                body_elements.append(f'<h3 style="color: #0f766e; font-size: 16px; border-left: 4px solid #0f766e; padding-left: 10px; margin: 26px 0 14px 0;">{txt}</h3>')
+            elif "甲方(盖章 )" in txt or "甲方 (用人单位)：" in txt or "乙方 (劳动者)  ：" in txt or txt.startswith("用工方( 甲方 )") or txt.startswith("劳务方( 乙方 )"):
+                body_elements.append(f'<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 16px; margin: 10px 0; font-weight: 600; color: #0f172a;">{txt}</div>')
+            else:
+                body_elements.append(f'<p style="font-size: 14px; color: #334155; line-height: 1.85; text-align: justify; margin-bottom: 8px;">{txt}</p>')
+    
+    content_html = "\n".join(body_elements)
 
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -282,119 +293,44 @@ def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]
             margin: 0 auto;
             background: #ffffff;
         }}
-        .contract-header {{
-            text-align: center;
-            border-bottom: 2px solid #0f766e;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }}
-        .contract-header h1 {{
-            font-size: 24px;
-            color: #0f766e;
-            margin: 0 0 8px 0;
-            letter-spacing: 1px;
-        }}
-        .contract-header p {{
-            font-size: 13px;
-            color: #64748b;
-            margin: 0;
-        }}
-        .party-box {{
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+        .top-action-bar {{
+            background: #0f766e;
+            color: #ffffff;
+            padding: 12px 24px;
             border-radius: 8px;
-            padding: 20px 24px;
             margin-bottom: 30px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15);
         }}
-        .party-item {{
+        .top-action-bar .title {{
             font-size: 14px;
-        }}
-        .party-item label {{
-            color: #64748b;
             font-weight: 600;
         }}
-        .party-item span {{
-            color: #0f172a;
-            font-weight: 700;
-            border-bottom: 1px dashed #94a3b8;
-            padding: 0 4px;
-        }}
-        .contract-section {{
-            margin-bottom: 24px;
-        }}
-        .contract-section h3 {{
-            font-size: 16px;
+        .top-action-bar .btn-print {{
+            background: #ffffff;
             color: #0f766e;
-            border-left: 4px solid #0f766e;
-            padding-left: 10px;
-            margin-bottom: 12px;
-        }}
-        .contract-section p {{
-            font-size: 14px;
-            color: #334155;
-            text-align: justify;
-        }}
-        .signature-box {{
-            margin-top: 50px;
-            padding-top: 30px;
-            border-top: 1px solid #cbd5e1;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-        }}
-        .sig-col h4 {{
-            font-size: 15px;
-            margin-bottom: 40px;
-            color: #1e293b;
-        }}
-        .sig-line {{
-            font-size: 14px;
-            color: #64748b;
-            margin-bottom: 12px;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
         }}
         @media print {{
             body {{ padding: 0; margin: 0; }}
+            .top-action-bar {{ display: none !important; }}
         }}
     </style>
 </head>
 <body>
-    <div class="contract-header">
-        <h1>{template_name}</h1>
-        <p>合同编号：{contract_no}</p>
+    <div class="top-action-bar">
+        <span class="title">📄 在线预览：《{template_name}》（签约人：{person_name}）</span>
+        <button class="btn-print" onclick="window.print()">🖨️ 直接打印 (Ctrl+P)</button>
     </div>
-
-    <div class="party-box">
-        <div class="party-item"><label>甲方（用人单位）：</label><span>{company_name}</span></div>
-        <div class="party-item"><label>乙方（劳动者）：</label><span>{person_name}</span></div>
-        <div class="party-item"><label>身份证号码：</label><span>{id_number}</span></div>
-        <div class="party-item"><label>联系电话：</label><span>{phone}</span></div>
-        <div class="party-item"><label>工作岗位/工种：</label><span>{job_position}</span></div>
-        <div class="party-item"><label>月劳动报酬：</label><span>{salary} 元</span></div>
-        <div class="party-item"><label>户籍住址：</label><span>{address}</span></div>
-        <div class="party-item"><label>签订日期：</label><span>{signing_date}</span></div>
-    </div>
-
-    <div class="contract-section">
-        <h3>一、合同主要约定说明</h3>
-        <p>本电子文本系基于服务器端固定 Word 模板 <strong>《{template_name}》</strong> 自动替换字段生成。</p>
-        <p>完整格式、页眉页脚、原法律条款与排版已完全保存在生成的 Word (.docx) 源文档中。</p>
-    </div>
-
-    <div class="signature-box">
-        <div class="sig-col">
-            <h4>甲方（盖章/签字）：</h4>
-            <div class="sig-line">代表人：________________</div>
-            <div class="sig-line">签订日期：{signing_date}</div>
-        </div>
-        <div class="sig-col">
-            <h4>乙方（签字/手印）：</h4>
-            <div class="sig-line">乙方签名：<strong>{person_name}</strong></div>
-            <div class="sig-line">签订日期：{signing_date}</div>
-        </div>
-    </div>
+    {content_html}
 </body>
 </html>"""
     return html
+

@@ -797,8 +797,11 @@
               <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; width: 100%;">
                 {% if p_contract %}
                   {% if p_contract.attachment_path %}
-                  <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path) }}" target="_blank" class="btn btn-sm btn-secondary" style="font-size: 12px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 3px;">
-                    {{ icon('preview') }} 预览/查看
+                  <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path) }}" target="_blank" class="btn btn-sm btn-secondary" style="font-size: 12px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 3px;" title="在浏览器标签页在线预览完整合同与调起打印">
+                    {{ icon('preview') }} 预览/打印
+                  </a>
+                  <a href="{{ url_for('web.download_attachment', filename=p_contract.attachment_path.replace('.html', '.docx'), download='1') }}" class="btn btn-sm btn-outline-primary" style="font-size: 12px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 3px;" title="下载生成的 Word (.docx) 源文档">
+                    {{ icon('import') }} 下载 Word
                   </a>
                   {% endif %}
                   <button type="button" class="btn btn-sm" onclick="openUploadPersonSignedModal({{ p_contract.id }}, '{{ p_contract.name }}')" style="background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px; padding: 4px 8px; font-weight: 600;">

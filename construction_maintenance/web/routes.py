@@ -1900,7 +1900,9 @@ def download_attachment(filename):
 
     download_name = _download_name_for_upload(filename)
     mimetype = mimetypes.guess_type(download_name)[0] or "application/octet-stream"
-    safe_inline = mimetype == "application/pdf" or mimetype.startswith("image/")
+    if filename.endswith(".html"):
+        mimetype = "text/html; charset=utf-8"
+    safe_inline = mimetype == "application/pdf" or mimetype == "text/html; charset=utf-8" or mimetype.startswith("image/")
     as_attachment = request.args.get("download", "0") == "1" or not safe_inline
     return send_from_directory(
         current_app.config["UPLOAD_FOLDER"],
