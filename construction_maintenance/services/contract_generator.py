@@ -8,9 +8,9 @@ from datetime import datetime
 TEMPLATES = [
     {
         "id": "01_labor_contract",
-        "name": "公司标准《劳务合同》（不交社保版）",
+        "name": "2026新版《劳务合同》（不交社保官方版）",
         "category": "人员合同",
-        "description": "基于公司官方 DOCX 标准研发，包含双方协商、劳务内容、报酬支付、不建立劳动关系与不缴社保特别约定及公章/签字处。",
+        "description": "基于桌面《2026新版劳务合同（不交社保）.docx》官方规范研制，包含完整六大章节条款、包含社保费用申明、解约与保密承诺及印章栏。",
         "template_filename": "01_labor_contract.html"
     },
     {
@@ -51,76 +51,148 @@ def render_contract_html(template_id: str, person: dict, project: dict, signing_
         signing_date = datetime.now().strftime("%Y年%m月%d日")
 
     company_name = "北京营力特建筑工程有限公司"
-    project_name = project.get("name", "工程项目") if project else "通用工程项目"
+    company_address = "北京市门头沟区妙峰山镇水丁路1号院"
+    project_name = project.get("name", "通用工程项目") if project else "通用工程项目"
     
     person_name = person.get("name", "未填写")
     id_number = person.get("id_number", "未填写")
-    gender = person.get("gender", "男")
     phone = person.get("phone", "未填写")
+    emergency_phone = person.get("emergency_phone") or phone
     job_type = person.get("job_type", "施工人员")
     salary_type = person.get("salary_type", "日薪")
     salary_rate = person.get("salary_rate", 0.0)
     bank_name = person.get("bank_name", "中国工商银行")
     bank_card = person.get("bank_card", "未填写")
     address = person.get("address", "未填写")
+    entry_date = person.get("entry_date") or datetime.now().strftime("%Y-%m-%d")
 
-    salary_str = f"{salary_rate:.1f} 元 / {salary_type}" if salary_rate else f"按约定按月/日结算 ({salary_type})"
+    salary_str = f"每月 {salary_rate:.1f} 元 ({salary_type})" if salary_rate else f"按约定按月结算 ({salary_type})"
 
     if template_id == "01_labor_contract":
-        # 1-to-1 Replica of 公司官方《合同_谢瑞鸣.docx》
+        # 100% Word-for-Word Replica of Desktop: 2026新版劳务合同（不交社保）.docx
         body_content = f"""
         <div class="contract-doc">
-            <div class="contract-header" style="text-align: center; margin-bottom: 30px;">
-                <h2 style="font-size: 18px; color: #475569; margin-bottom: 4px; font-weight: normal;">劳务合同（不交社保版）</h2>
-                <h1 style="font-size: 28px; color: #0f766e; margin-top: 0; letter-spacing: 4px;">劳 务 合 同</h1>
-                <p style="font-size: 13px; color: #94a3b8;">合同编号：YLT-LW-{datetime.now().strftime('%Y%m%d%H%M%S')}</p>
+            <div class="contract-header" style="text-align: center; margin-bottom: 24px; border-bottom: 2px solid #0f766e; padding-bottom: 16px;">
+                <h1 style="font-size: 28px; color: #0f766e; margin: 0 0 6px 0; letter-spacing: 6px;">劳 务 合 同</h1>
+                <p style="font-size: 13px; color: #64748b; margin: 0;">合同编号：YLT-2026-LW-{datetime.now().strftime('%Y%m%d%H%M%S')}</p>
             </div>
 
-            <div class="party-info" style="font-size: 15px; line-height: 2.0; margin-bottom: 24px;">
-                <p style="margin-bottom: 12px;"><strong>甲方（用工方）：</strong><u>{company_name}</u></p>
-                <p style="margin-bottom: 8px;"><strong>乙方（提供劳务方）：</strong></p>
-                <div style="margin-left: 20px; font-size: 14.5px; line-height: 1.9; background: #f8fafc; padding: 16px 20px; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                    <p style="margin: 4px 0;">姓名：<u>{person_name}</u></p>
-                    <p style="margin: 4px 0;">性别：<u>{gender}</u></p>
-                    <p style="margin: 4px 0;">居民身份证号码：<u class="font-mono">{id_number}</u></p>
-                    <p style="margin: 4px 0;">住址/户籍地址：<u>{address}</u></p>
-                    <p style="margin: 4px 0;">联系电话：<u>{phone}</u></p>
-                </div>
+            <!-- Party Table Info Box -->
+            <div class="party-table" style="margin-bottom: 24px;">
+                <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #0f766e; font-size: 14px;">
+                    <tr style="background: #f0fdf4;">
+                        <th colspan="2" style="border: 1px solid #99f6e4; padding: 8px 12px; text-align: left; color: #0f766e; font-size: 15px;">用工方 ( 甲方 )</th>
+                        <th colspan="2" style="border: 1px solid #99f6e4; padding: 8px 12px; text-align: left; color: #0f766e; font-size: 15px;">劳务方 ( 乙方 )</th>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-weight: bold; width: 15%; background: #fafafa;">单位名称</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; width: 35%;"><u>{company_name}</u></td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-weight: bold; width: 15%; background: #fafafa;">姓名</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; width: 35%;"><u>{person_name}</u></td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-weight: bold; background: #fafafa;">单位地址</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><u>{company_address}</u></td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-weight: bold; background: #fafafa;">联系电话</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><u>{phone}</u></td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-weight: bold; background: #fafafa;">归属项目</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><u>{project_name}</u></td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-weight: bold; background: #fafafa;">身份证号码</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px;" class="font-mono"><u>{id_number}</u></td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-weight: bold; background: #fafafa;">户籍所在地</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><u>{address}</u></td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-weight: bold; background: #fafafa;">紧急联系电话</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px;"><u>{emergency_phone}</u></td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 8px 12px; font-weight: bold; background: #fafafa;">现居住地址</td>
+                        <td colspan="3" style="border: 1px solid #cbd5e1; padding: 8px 12px;"><u>{address}</u></td>
+                    </tr>
+                </table>
             </div>
 
-            <div class="contract-body" style="font-size: 15px; line-height: 1.9;">
-                <p style="text-indent: 2em; margin-bottom: 16px;">鉴于乙方为灵活就业人员，双方经平等自愿协商，就乙方为甲方在 <strong>【{project_name}】</strong> 项目提供劳务一事达成如下协议：</p>
+            <div class="contract-body" style="font-size: 14.5px; line-height: 1.85; color: #1e293b;">
+                <p style="text-indent: 2em; margin-bottom: 16px;">
+                    鉴于甲方业务发展需要，雇佣乙方为 <strong><u>【{project_name}】</u></strong> 提供 <strong><u>{job_type}</u></strong> 劳务服务，经双方协商订立正式《劳务雇佣合同书》如下：
+                </p>
 
-                <h3 style="font-size: 16.5px; color: #0f766e; margin-top: 24px; margin-bottom: 8px;">一、劳务内容</h3>
-                <p style="text-indent: 2em; margin-top: 0;">乙方为甲方提供 <strong><u>{job_type}</u></strong> 服务，并遵守现场施工安全生产规范。</p>
+                <h3 style="font-size: 16px; color: #0f766e; margin-top: 20px; margin-bottom: 8px;">一、合同期限</h3>
+                <p style="text-indent: 2em; margin: 4px 0;">
+                    1、本合同期限自 <strong><u>{entry_date}</u></strong> 起至 <strong><u>项目完工及劳务费用总结清日</u></strong> 止；
+                </p>
+                <p style="text-indent: 2em; margin: 4px 0;">
+                    2、如双方需要，可在合同期满前 1 个月协商续签劳务雇佣合同。如合同期已满，双方未续签合同，但乙方从事的有关工作尚未结束，则合同应顺延至有关业务结束。
+                </p>
 
-                <h3 style="font-size: 16.5px; color: #0f766e; margin-top: 24px; margin-bottom: 8px;">二、劳务报酬</h3>
-                <p style="text-indent: 2em; margin-top: 0; margin-bottom: 6px;">1. 甲方按月支付乙方劳务报酬 <strong><u>{salary_str}</u></strong>（税后）。</p>
-                <p style="text-indent: 2em; margin-top: 0;">2. 劳务费用打款账户：<strong><u>{bank_name}（卡号: {bank_card}）</u></strong>。</p>
+                <h3 style="font-size: 16px; color: #0f766e; margin-top: 20px; margin-bottom: 8px;">二、劳务内容</h3>
+                <p style="text-indent: 2em; margin: 4px 0;">
+                    乙方承担的劳务内容为：<strong><u>{job_type} 岗位施工及现场劳务服务</u></strong>。
+                </p>
 
-                <h3 style="font-size: 16.5px; color: #0f766e; margin-top: 24px; margin-bottom: 8px;">三、特别约定</h3>
-                <p style="text-indent: 2em; margin: 4px 0;">1. <strong>双方不建立劳动关系，不缴纳社会保险。</strong></p>
-                <p style="text-indent: 2em; margin: 4px 0;">2. 乙方自行承担个人所得税申报义务。</p>
-                <p style="text-indent: 2em; margin: 4px 0;">3. 乙方在劳务过程中须做好个人安全防护，佩戴安全帽，严禁违章作业。</p>
+                <h3 style="font-size: 16px; color: #0f766e; margin-top: 20px; margin-bottom: 8px;">三、劳务要求</h3>
+                <p style="text-indent: 2em; margin: 3px 0;">1、爱护甲方财物，保守甲方机密，维护甲方利益，服从甲方的管理。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">2、因乙方过失给甲方造成经济损失的，甲方有权要求乙方承担赔偿责任。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">3、乙方应严格遵守国家各项法律规定。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">4、乙方应遵守甲方制定的工作规范和各项规章制度，尽职尽责做好工作。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">5、如由于工作需要，甲方在要求乙方加班时，在无特殊原因的情况下，乙方必须配合。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">6、乙方应严格遵守本合同的附加条款。</p>
+
+                <h3 style="font-size: 16px; color: #0f766e; margin-top: 20px; margin-bottom: 8px;">四、劳务时间、劳务报酬及福利</h3>
+                <p style="text-indent: 2em; margin: 3px 0;">1、甲方根据国家规定和工作的需要，合理安排乙方工作时间，乙方应服从统一安排，不得以种种理由推脱，否则甲方有权视情节轻重程度给予处罚或解除劳务合同。甲方在劳务关系建立的同时告知乙方应遵守的各项规章制度。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">2、甲乙双方约定，乙方的劳动报酬为：<strong><u>{salary_str}</u></strong>，劳务报酬发放日期为每月的 <strong><u>25 日</u></strong>，如遇发放日为节假日，甲方将顺延到最接近的一个工作日发放。指定收款银行账户：<strong><u>{bank_name} (卡号: {bank_card})</u></strong>。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">3、乙方在正常出勤并付出正常劳务后，有权获得相应劳务报酬。</p>
+                <p style="text-indent: 2em; margin: 3px 0; background: #fff7ed; padding: 6px 10px; border-left: 4px solid #f97316;">
+                    4、<strong>乙方作为劳务人员，甲方支付给乙方的工资已包含各种社会保险费用，不再额外支付乙方的任何社会保险费用。乙方个人社会养老保险金由乙方自行缴纳。</strong>
+                </p>
+
+                <h3 style="font-size: 16px; color: #0f766e; margin-top: 20px; margin-bottom: 8px;">五、协议的解除与终止</h3>
+                <p style="text-indent: 2em; margin: 3px 0;">1、在本合同期限内，任何一方均有权提前 30 天通知对方解除本合同，解除本合同不需支付经济补偿金。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">2、甲方因乙方不能胜任工作或有违法违纪行为，甲方可随时与乙方解除本合同，不需要提前通知乙方。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">3、在没有特殊情况的前提下，若甲方未能按照本合同的约定提供劳务报酬，经乙方书面催告后 7 日内仍未支付的，乙方可以随时解除本合同，不受提前通知的限制。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">4、本合同到期或过期，如双方未答复，自行终止本合同，不需要提前通知。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">5、甲乙双方无论因何原因解除或终止本合同，乙方应在 3 日内办理工作交接归还甲方财物等解约手续。如离职时未办理财物交接手续，甲方有权在不违反有关法律法规规定的前提下，扣除乙方相等的劳务报酬。</p>
+
+                <h3 style="font-size: 16px; color: #0f766e; margin-top: 20px; margin-bottom: 8px;">六、其它</h3>
+                <p style="text-indent: 2em; margin: 3px 0;">1、乙方承诺：乙方与甲方建立劳务关系完全是真实、自由的意愿，且不会让任何第三方就甲乙双方的劳务关系对甲方进行法律申诉。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">2、乙方承诺：在用工期限内及解除劳务合同后 2 年内，乙方不得向任何第三方透露甲方客户信息，包括但不仅限于经营管理信息，项目内容及各项数据信息等。否则乙方应赔偿甲方因此而造成的全部损失。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">3、如乙方自身身体原因，在上下班期间发生意外的，所有的责任均由乙方自行承担，甲方不承担由此发生的一切责任，但是甲方必须及时组织实施施救、送医等措施。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">4、本合同自双方签订之日起，任何一方不得擅自修改或变更，合同履行中如有未尽事宜，经双方协商另行补充，与本合同具有同等效力。</p>
+                <p style="text-indent: 2em; margin: 3px 0;">5、双方如因履行合同发生争议，应首先友好协商解决。协商不成，任何一方都有权向甲方所在地人民法院提起诉讼。</p>
             </div>
 
-            <div class="signature-section" style="margin-top: 50px; padding-top: 30px; border-top: 2px dashed #0f766e; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 15px;">
-                <div class="sig-box" style="position: relative;">
-                    <p style="margin-bottom: 12px;"><strong>甲方（盖章）：</strong> <u>{company_name}</u></p>
-                    <div style="height: 70px; margin: 12px 0; display: flex; align-items: center;">
-                        <span style="border: 2px dashed #dc2626; color: #dc2626; padding: 8px 18px; border-radius: 6px; font-weight: bold; font-size: 13.5px; transform: rotate(-4deg); display: inline-block;">[ 公司公章 / 法人电子印章处 ]</span>
+            <!-- Signature Box -->
+            <div class="signature-section" style="margin-top: 40px; padding-top: 24px; border-top: 2px dashed #0f766e; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 14.5px;">
+                <div class="sig-box">
+                    <p style="margin-bottom: 10px;"><strong>甲方 (盖章)：</strong> <u>{company_name}</u></p>
+                    <div style="height: 70px; margin: 10px 0; display: flex; align-items: center;">
+                        <span style="border: 2px dashed #dc2626; color: #dc2626; padding: 8px 18px; border-radius: 6px; font-weight: bold; font-size: 13.5px; transform: rotate(-4deg); display: inline-block;">[ 公司公章 / 法人电子盖章处 ]</span>
                     </div>
-                    <p style="margin-top: 16px;">法定代表人（签字）：_________________</p>
-                    <p style="margin-top: 12px;">日期：<u>{signing_date}</u></p>
+                    <p style="margin: 6px 0;">法定代表人：_________________</p>
+                    <p style="margin: 6px 0;">签订日期：<u>{signing_date}</u></p>
                 </div>
                 <div class="sig-box">
-                    <p style="margin-bottom: 12px;"><strong>乙方（签字）：</strong> <u>{person_name}</u></p>
-                    <div style="height: 70px; margin: 12px 0; display: flex; align-items: center;">
-                        <span style="color: #64748b; font-size: 14.5px;">手写签名/按手印：_________________</span>
+                    <p style="margin-bottom: 10px;"><strong>乙方 (签字/盖章)：</strong> <u>{person_name}</u></p>
+                    <div style="height: 70px; margin: 10px 0; display: flex; align-items: center;">
+                        <span style="color: #64748b; font-size: 14px;">手写签名 / 按手印处：_________________</span>
                     </div>
-                    <p style="margin-top: 16px;">居民身份证号：<u class="font-mono">{id_number}</u></p>
-                    <p style="margin-top: 12px;">日期：<u>{signing_date}</u></p>
+                    <p style="margin: 6px 0;">身份证号码：<u class="font-mono">{id_number}</u></p>
+                    <p style="margin: 6px 0;">签订日期：<u>{signing_date}</u></p>
                 </div>
+            </div>
+
+            <!-- Supplement Box -->
+            <div style="margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 16px;">
+                <h4 style="font-size: 15px; color: #0f766e; margin: 0 0 8px 0;">补充条款</h4>
+                <p style="font-size: 13.5px; color: #64748b; margin-bottom: 40px;">经甲乙双方协商一致，对本合同做以下补充说明：_____________________________________________________</p>
+            </div>
+
+            <!-- Attachment Area -->
+            <div style="margin-top: 20px; border: 1.5px dashed #94a3b8; padding: 20px; border-radius: 8px; text-align: center; background: #fafafa;">
+                <span style="font-size: 13px; color: #64748b; font-weight: bold;">【 粘贴附件区域 】：乙方身份证正反面复印件或其他证明文件粘贴栏</span>
             </div>
         </div>
         """
