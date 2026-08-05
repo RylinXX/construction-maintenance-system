@@ -1,133 +1,277 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from datetime import datetime
+from typing import Any
 
-# Standard Templates for Personnel & Project Contract Generation
-TEMPLATES = [
-    {
-        "id": "01_no_social_security_labor_contract",
-        "name": "2026新版劳务合同（不交社保标准 Word 模板）",
+import docx
+
+# Strict Template Registry
+TEMPLATE_REGISTRY: dict[str, dict[str, Any]] = {
+    "labor_contract_no_social_insurance_v1": {
+        "template_id": "labor_contract_no_social_insurance_v1",
+        "template_name": "2026新版劳务合同（不交社保）",
+        "version": "1.0",
+        "enabled": True,
         "category": "人员合同",
-        "description": "基于桌面 Word .docx 模板自动提取填充：乙方姓名、身份证号、电话、住址、工种岗位及薪资报酬。",
-        "docx_template": "2026_labor_contract_no_social_security.docx"
+        "relative_path": "templates/docx_templates/2026_labor_contract_no_social_security.docx",
+        "description": "基于服务器上固定的 Word (.docx) 模版填充生成，原法律条款、排版及样式保持 100% 不变。",
+        "required_placeholders": [
+            "{{employee_name}}",
+            "{{employee_id_number}}",
+            "{{signing_date}}",
+        ]
     },
-    {
-        "id": "02_standard_labor_contract",
-        "name": "建筑施工劳动合同书（全日制规范版）",
+    "01_no_social_security_labor_contract": {
+        "template_id": "01_no_social_security_labor_contract",
+        "template_name": "2026新版劳务合同（不交社保）",
+        "version": "1.0",
+        "enabled": True,
         "category": "人员合同",
-        "description": "适用于全日制及常驻工人的规范劳动合同，包含劳动报酬、安全生产及权益保障条款。",
-        "docx_template": None
-    },
-    {
-        "id": "03_subcontract_agreement",
-        "name": "工程施工劳务用工协议书",
-        "category": "劳务合同",
-        "description": "适用于班组及专业劳务人员项目包干或按日结算的施工用工协议。",
-        "docx_template": None
-    },
-    {
-        "id": "04_temporary_work_agreement",
-        "name": "建筑工人临时用工协议",
-        "category": "人员合同",
-        "description": "适用于短期零工、临时调配人员的简易用工协议。",
-        "docx_template": None
-    },
-    {
-        "id": "05_machinery_lease_contract",
-        "name": "工程机械设备租赁合同（带司机）",
-        "category": "其它",
-        "description": "适用于钩机、铲车、水车等机械设备及其操作司机的机械租赁合同。",
-        "docx_template": None
+        "relative_path": "templates/docx_templates/2026_labor_contract_no_social_security.docx",
+        "description": "基于服务器上固定的 Word (.docx) 模版填充生成，原法律条款、排版及样式保持 100% 不变。",
+        "required_placeholders": [
+            "{{employee_name}}",
+            "{{employee_id_number}}",
+            "{{signing_date}}",
+        ]
     }
-]
+}
 
-def list_contract_templates():
-    return TEMPLATES
 
-def get_template_by_id(template_id: str):
-    for t in TEMPLATES:
-        if t["id"] == template_id:
-            return t
-    return TEMPLATES[0]
+def list_contract_templates() -> list[dict[str, Any]]:
+    templates = []
+    seen = set()
+    for t_id, meta in TEMPLATE_REGISTRY.items():
+        name = meta["template_name"]
+        if name not in seen:
+            seen.add(name)
+            templates.append({
+                "id": t_id,
+                "name": meta["template_name"],
+                "version": meta["version"],
+                "category": meta["category"],
+                "description": meta["description"],
+            })
+    return templates
 
-def fill_docx_template(dest_docx_path: Path, person: dict, project: dict | None, signing_date: str, contract_no: str):
-    """Fill the real Word (.docx) document template with person and contract data."""
-    try:
-        import docx
-        base_docx = Path(__file__).parent.parent / "templates" / "docx_templates" / "2026_labor_contract_no_social_security.docx"
-        if not base_docx.exists():
-            return
-        doc = docx.Document(base_docx)
-        
-        person_name = person.get("name", "未填写")
-        id_number = person.get("id_number", "未填写")
-        phone = person.get("phone", "未填写")
-        job_type = person.get("job_type", "施工人员")
-        salary_type = person.get("salary_type", "日薪")
-        salary_rate = person.get("salary_rate", 0.0)
-        salary_str = f"{salary_rate:.1f}元/{salary_type}"
-        address = person.get("address", "未填写")
-        company_name = "北京营力特建筑工程有限公司"
 
-        for p in doc.paragraphs:
-            text = p.text
-            if '合同编号:' in text:
-                p.text = f'                                       合同编号: {contract_no}'
-            elif '甲方 (用人单位)：' in text:
-                p.text = f'甲方 (用人单位)： {company_name}'
-            elif '乙方 (劳动者)  ：' in text:
-                p.text = f'乙方 (劳动者)  ： {person_name}'
-            elif '单位名称:' in text:
-                p.text = f'单位名称: {company_name}'
-            elif '地址:' in text:
-                p.text = f'地址: 北京市门头沟区妙峰山镇水丁路1号院A074室'
-            elif '姓名:' in text and '联系电话:' in text:
-                p.text = f'姓名: {person_name}                                   联系电话: {phone}'
-            elif '身份证号码:' in text:
-                p.text = f'身份证号码: {id_number}                    紧急联系人电话: {phone}'
-            elif '户籍所在地:' in text:
-                p.text = f'户籍所在地: {address}'
-            elif '住址:' in text:
-                p.text = f'住址: {address}'
-            elif '雇佣乙方为' in text:
-                p.text = f'鉴于甲方业务发展需要，雇佣乙方为 {job_type} 提供劳务服务，经双方协商订立正式《劳务雇佣合同书》如下:'
-            elif '乙方的劳动报酬为:' in text:
-                p.text = f'2、甲乙双方约定，乙方的劳动报酬为: {salary_str}，劳务报酬发放日期为每月的 25 日，如遇发放日为节假日，甲方将顺延到最接近的一个工作日发放。'
-            elif '签 订 时 间' in text:
-                p.text = f'签 订 时 间   :  {signing_date}'
+def get_template_by_id(template_id: str) -> dict[str, Any]:
+    if template_id in TEMPLATE_REGISTRY:
+        return TEMPLATE_REGISTRY[template_id]
+    return TEMPLATE_REGISTRY["labor_contract_no_social_insurance_v1"]
 
-        dest_docx_path.parent.mkdir(parents=True, exist_ok=True)
-        doc.save(dest_docx_path)
-    except Exception as exc:
-        print(f"Error filling docx template: {exc}")
 
-def render_contract_html(template_id: str, person: dict, project: dict | None = None, signing_date: str = None) -> str:
-    template_info = get_template_by_id(template_id)
-    if not signing_date:
-        signing_date = datetime.now().strftime("%Y年%m月%d日")
-
-    company_name = "北京营力特建筑工程有限公司"
-    project_name = project.get("name") if project else "个人通用/全公司人员调度"
+def verify_template_file(template_id: str) -> Path:
+    """
+    Strict verification step:
+    1. Check if template_id exists in registry and enabled.
+    2. Check if template file exists on server.
+    3. Check read permissions.
+    4. Check .docx format and readability.
+    5. Check required placeholders.
+    Raises exception on ANY error; NEVER falls back to free-text LLM generation!
+    """
+    if template_id not in TEMPLATE_REGISTRY:
+        raise ValueError(f"指定合同模板不存在 (template_id={template_id})")
     
-    person_name = person.get("name", "未填写")
-    id_number = person.get("id_number", "未填写")
-    phone = person.get("phone", "未填写")
-    job_type = person.get("job_type", "施工人员")
-    salary_type = person.get("salary_type", "日薪")
-    salary_rate = person.get("salary_rate", 0.0)
-    bank_name = person.get("bank_name", "中国工商银行")
-    bank_card = person.get("bank_card", "未填写")
-    address = person.get("address", "未填写")
+    meta = TEMPLATE_REGISTRY[template_id]
+    if not meta.get("enabled"):
+        raise ValueError(f"指定合同模板当前已被禁用 (template_id={template_id})")
 
-    salary_str = f"{salary_rate:.1f} 元 / {salary_type}"
+    base_dir = Path(__file__).parent.parent
+    template_file_path = base_dir / meta["relative_path"]
+
+    # 1. Existence check
+    if not template_file_path.exists():
+        raise FileNotFoundError(f"指定合同模板文件不存在，终止生成: {template_file_path}")
+
+    # 2. Permission check
+    if not os.access(template_file_path, os.R_OK):
+        raise PermissionError(f"服务无权读取指定合同模板文件: {template_file_path}")
+
+    # 3. Format check
+    if template_file_path.suffix.lower() != ".docx":
+        raise ValueError(f"指定合同模板格式错误，必须为 .docx 格式文档: {template_file_path}")
+
+    # 4. Readability check
+    try:
+        doc = docx.Document(template_file_path)
+    except Exception as exc:
+        raise ValueError(f"指定合同模板文件损坏或无法读取打开: {exc}")
+
+    # 5. Placeholders check
+    full_text = "\n".join([p.text for p in doc.paragraphs])
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                full_text += "\n" + cell.text
+
+    missing_tags = []
+    for tag in meta.get("required_placeholders", []):
+        if tag not in full_text:
+            missing_tags.append(tag)
+
+    if missing_tags:
+        raise ValueError(f"指定合同模板文件缺少预定义的占位符标签 {missing_tags}，终止生成。")
+
+    return template_file_path
+
+
+def generate_contract_from_template(
+    template_id: str,
+    employee_data: dict[str, Any],
+    contract_data: dict[str, Any],
+    upload_folder: Path,
+    generated_by_user_id: int = 1,
+) -> dict[str, Any]:
+    """
+    Fixed Template Population Mode.
+    Open template -> Replace placeholders -> Verify result -> Save output files.
+    STRICTLY NO LLM WRITING/REWRITING OF CONTRACT CLAUSES.
+    """
+    # 1. Verify template file strictly
+    template_path = verify_template_file(template_id)
+    meta = TEMPLATE_REGISTRY[template_id]
+
+    doc = docx.Document(template_path)
+
+    # 2. Build field mapping
+    contract_no = f"YLT-CON-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    signing_date = contract_data.get("signing_date") or datetime.now().strftime("%Y年%m月%d日")
+    
+    start_date = contract_data.get("contract_start_date") or datetime.now().strftime("%Y年%m月%d日")
+    end_date = contract_data.get("contract_end_date") or "作业完工结清薪资止"
+    salary = str(contract_data.get("salary") or employee_data.get("salary_rate") or "350.00")
+    salary_payment_date = str(contract_data.get("salary_payment_date") or "25")
+    job_position = contract_data.get("job_position") or employee_data.get("job_type") or "施工人员"
+    work_location = contract_data.get("work_location") or "工程现场"
+
+    mapping = {
+        "{{contract_no}}": contract_no,
+        "{{employer_name}}": contract_data.get("employer_name") or "北京营力特建筑工程有限公司",
+        "{{employer_address}}": contract_data.get("employer_address") or "北京市门头沟区妙峰山镇水丁路1号院A074室",
+        "{{legal_representative}}": contract_data.get("legal_representative") or "谢世营",
+        "{{employee_name}}": employee_data.get("name") or "",
+        "{{employee_gender}}": employee_data.get("gender") or "男",
+        "{{employee_ethnicity}}": employee_data.get("ethnicity") or "汉",
+        "{{employee_birth_date}}": employee_data.get("birth_date") or "",
+        "{{employee_id_number}}": employee_data.get("id_number") or "",
+        "{{employee_phone}}": employee_data.get("phone") or contract_data.get("employee_phone") or "",
+        "{{employee_address}}": employee_data.get("address") or "",
+        "{{id_issuing_authority}}": employee_data.get("issuing_authority") or "",
+        "{{id_valid_from}}": employee_data.get("valid_from") or "",
+        "{{id_valid_until}}": employee_data.get("valid_until") or "",
+        "{{job_position}}": job_position,
+        "{{work_location}}": work_location,
+        "{{contract_start_date}}": start_date,
+        "{{contract_end_date}}": end_date,
+        "{{salary}}": salary,
+        "{{salary_payment_date}}": salary_payment_date,
+        "{{signing_date}}": signing_date,
+    }
+
+    # 3. Replace placeholders in paragraphs
+    for p in doc.paragraphs:
+        _replace_placeholders_in_paragraph(p, mapping)
+
+    # Replace in tables
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    _replace_placeholders_in_paragraph(p, mapping)
+
+    # 4. Save output .docx file (Original template remains read-only!)
+    emp_id = employee_data.get("id") or 0
+    timestamp = int(datetime.now().timestamp())
+    file_prefix = f"generated_contract_{emp_id}_{timestamp}"
+    docx_filename = f"{file_prefix}.docx"
+    html_filename = f"{file_prefix}.html"
+
+    output_docx_path = upload_folder / docx_filename
+    output_html_path = upload_folder / html_filename
+
+    upload_folder.mkdir(parents=True, exist_ok=True)
+    doc.save(output_docx_path)
+
+    # Render matching HTML for online browser preview & direct printing
+    html_content = render_contract_html_for_preview(meta["template_name"], mapping)
+    with open(output_html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    # 5. Output Verification
+    output_doc = docx.Document(output_docx_path)
+    output_text = "\n".join([p.text for p in output_doc.paragraphs])
+
+    unreplaced = re.findall(r"\{\{[a-zA-Z0-9_]+\}\}", output_text)
+    if unreplaced:
+        # Check if unreplaced tags are in required list
+        unreplaced_required = [u for u in set(unreplaced) if u in meta.get("required_placeholders", [])]
+        if unreplaced_required:
+            raise ValueError(f"合同生成失败：存在未替换的必填占位符字段 {unreplaced_required}")
+
+    # Check employee name and ID card number exist in output text
+    emp_name = employee_data.get("name")
+    if emp_name and emp_name not in output_text:
+        raise ValueError(f"合同生成校验失败：人员姓名【{emp_name}】未能注入文档。")
+
+    # Record Audit Data
+    audit_record = {
+        "template_id": template_id,
+        "template_name": meta["template_name"],
+        "template_version": meta["version"],
+        "employee_id": emp_id,
+        "employee_name": emp_name,
+        "generated_file_path": docx_filename,
+        "generated_html_path": html_filename,
+        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "generated_by": generated_by_user_id,
+    }
+
+    return audit_record
+
+
+def _replace_placeholders_in_paragraph(p: Any, mapping: dict[str, str]) -> None:
+    full_text = p.text
+    has_match = False
+    for k in mapping:
+        if k in full_text:
+            has_match = True
+            break
+    if not has_match:
+        return
+
+    for k, v in mapping.items():
+        if k in full_text:
+            full_text = full_text.replace(k, str(v or ""))
+
+    if p.runs:
+        p.runs[0].text = full_text
+        for r in p.runs[1:]:
+            r.text = ""
+    else:
+        p.text = full_text
+
+
+def render_contract_html_for_preview(template_name: str, mapping: dict[str, str]) -> str:
+    company_name = mapping.get("{{employer_name}}", "北京营力特建筑工程有限公司")
+    person_name = mapping.get("{{employee_name}}", "")
+    id_number = mapping.get("{{employee_id_number}}", "")
+    phone = mapping.get("{{employee_phone}}", "")
+    job_position = mapping.get("{{job_position}}", "")
+    salary = mapping.get("{{salary}}", "")
+    signing_date = mapping.get("{{signing_date}}", "")
+    address = mapping.get("{{employee_address}}", "")
+    contract_no = mapping.get("{{contract_no}}", "")
 
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>{template_info['name']} - {person_name}</title>
+    <title>{template_name} - {person_name}</title>
     <style>
         body {{
             font-family: "PingFang SC", "Microsoft YaHei", "SimSun", sans-serif;
@@ -188,7 +332,7 @@ def render_contract_html(template_id: str, person: dict, project: dict | None = 
             padding-left: 10px;
             margin-bottom: 12px;
         }}
-        .contract-section p, .contract-section li {{
+        .contract-section p {{
             font-size: 14px;
             color: #334155;
             text-align: justify;
@@ -211,65 +355,42 @@ def render_contract_html(template_id: str, person: dict, project: dict | None = 
             color: #64748b;
             margin-bottom: 12px;
         }}
-        .stamp-badge {{
-            display: inline-block;
-            border: 2px dashed #ef4444;
-            color: #ef4444;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            transform: rotate(-5deg);
-        }}
         @media print {{
             body {{ padding: 0; margin: 0; }}
-            .no-print {{ display: none; }}
         }}
     </style>
 </head>
 <body>
     <div class="contract-header">
-        <h1>{template_info['name']}</h1>
-        <p>合同编号：YLT-CON-{datetime.now().strftime('%Y%m%d%H%M%S')}</p>
+        <h1>{template_name}</h1>
+        <p>合同编号：{contract_no}</p>
     </div>
 
     <div class="party-box">
         <div class="party-item"><label>甲方（用人单位）：</label><span>{company_name}</span></div>
-        <div class="party-item"><label>项目/归属：</label><span>{project_name}</span></div>
         <div class="party-item"><label>乙方（劳动者）：</label><span>{person_name}</span></div>
         <div class="party-item"><label>身份证号码：</label><span>{id_number}</span></div>
         <div class="party-item"><label>联系电话：</label><span>{phone}</span></div>
-        <div class="party-item"><label>工作岗位/工种：</label><span>{job_type}</span></div>
-        <div class="party-item"><label>薪资标准：</label><span>{salary_str}</span></div>
+        <div class="party-item"><label>工作岗位/工种：</label><span>{job_position}</span></div>
+        <div class="party-item"><label>月劳动报酬：</label><span>{salary} 元</span></div>
         <div class="party-item"><label>户籍住址：</label><span>{address}</span></div>
+        <div class="party-item"><label>签订日期：</label><span>{signing_date}</span></div>
     </div>
 
     <div class="contract-section">
-        <h3>第一条 劳务用工约定</h3>
-        <p>1. 乙方同意根据甲方工作安排，从事 <strong>{job_type}</strong> 岗位劳务服务工作。</p>
-        <p>2. 乙方应遵守各项安全生产制度与规章，尽职尽责完成工作需要。</p>
-    </div>
-
-    <div class="contract-section">
-        <h3>第二条 劳务报酬与保险约定</h3>
-        <p>1. 双方约定劳务报酬标准为：<strong>{salary_str}</strong>。</p>
-        <p>2. 乙方作为劳务人员，甲方支付给乙方的劳务报酬已包含各项补贴与相关社会保险费用，不再额外支付任何社会保险费用。乙方个人社会保障由乙方自行缴纳。</p>
-    </div>
-
-    <div class="contract-section">
-        <h3>第三条 安全生产与解约条款</h3>
-        <p>1. 任何一方均有权提前通知解除本合同，解除本合同不需支付经济补偿金。</p>
-        <p>2. 如乙方自身身体原因发生意外的，所有责任由乙方自行承担，甲方及时组织送医协助。</p>
+        <h3>一、合同主要约定说明</h3>
+        <p>本电子文本系基于服务器端固定 Word 模板 <strong>《{template_name}》</strong> 自动替换字段生成。</p>
+        <p>完整格式、页眉页脚、原法律条款与排版已完全保存在生成的 Word (.docx) 源文档中。</p>
     </div>
 
     <div class="signature-box">
         <div class="sig-col">
-            <h4>甲方（用人单位盖章/签字）：</h4>
+            <h4>甲方（盖章/签字）：</h4>
             <div class="sig-line">代表人：________________</div>
             <div class="sig-line">签订日期：{signing_date}</div>
         </div>
         <div class="sig-col">
-            <h4>乙方（劳动者签字/手印）：</h4>
+            <h4>乙方（签字/手印）：</h4>
             <div class="sig-line">乙方签名：<strong>{person_name}</strong></div>
             <div class="sig-line">签订日期：{signing_date}</div>
         </div>

@@ -188,21 +188,40 @@ def recognize_batch_upload(
     return recognizer.recognize_image(path, item_type)
 
 
+def validate_id_card_checksum(id_number: str) -> bool:
+    """Validate 18-digit Chinese Resident ID card number using ISO 7064:1983.MOD 11-2 algorithm."""
+    id_str = str(id_number or "").strip().upper()
+    if len(id_str) != 18 or not id_str[:17].isdigit():
+        return False
+    weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
+    check_codes = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
+    total = sum(int(id_str[i]) * weights[i] for i in range(17))
+    return check_codes[total % 11] == id_str[17]
+
+
 def _prompt_for_item_type(item_type: str) -> str:
     if item_type == "person":
         return (
-            "你是一个高精度中国居民身份证与员工资料 OCR 识别专家。"
-            "请识别图片中的员工身份证（可能是单独正面人像面、单独反面国徽面、或是【正反双面在同一张图里/上下并排/左右拼图】/员工花名册名片）。\n"
-            "【识别提取要求】：\n"
-            "1. name: 身份证人像面上的【姓名】（如'张三'）。\n"
-            "2. id_number: 身份证人像面上的 18 位公民身份号码（如'110101199003072345'），包含大写字母 X。\n"
-            "3. gender: 身份证人像面上的【性别】（必须为'男'或'女'）。\n"
-            "4. birth_date: 身份证人像面上的【出生】日期，转换为标准 YYYY-MM-DD 格式（如 '1990-03-07'）。\n"
-            "5. address: 身份证人像面上的【住址】完整文本。\n"
-            "6. notes: 若图片包含身份证反面（国徽面），请提取【签发机关】与【有效期限】放置于 notes 中（例如 '签发机关:北京市公安局; 有效期:2020.05.10-2040.05.10'）。若有其他额外识别说明亦可在此标注。\n"
-            "7. confidence: 综合识别置信度，输出 0.0 到 1.0 之间的数值。\n"
-            "8. 必须严格返回合法 JSON 对象，不要输出任何代码块以外的解释说明。\n"
-            "无法识别或不存在的文字字段使用空字符串 \"\"。"
+            "你是一个高精度中国居民身份证结构化数据 OCR 识别接口。"
+            "请读取图片中的身份证（含正面人像面、反面国徽面或双面拼图），严格输出符合以下规范的 JSON 对象：\n"
+            "{\n"
+            '  "name": "姓名（若未找到返回 null）",\n'
+            '  "gender": "性别（必须为 男 或 女，若未找到返回 null）",\n'
+            '  "ethnicity": "民族（如 汉，若未找到返回 null）",\n'
+            '  "birth_date": "出生日期（YYYY-MM-DD，若未找到返回 null）",\n'
+            '  "address": "身份证住址完整文本（若未找到返回 null）",\n'
+            '  "id_number": "18位公民身份号码（包含大写 X，若未找到返回 null）",\n'
+            '  "issuing_authority": "签发机关（国徽面上的签发机关，若未找到返回 null）",\n'
+            '  "valid_from": "有效期限起始日期（YYYY-MM-DD，若未找到返回 null）",\n'
+            '  "valid_until": "有效期限截止日期（YYYY-MM-DD，若是长期有效请填 长期，若未找到返回 null）",\n'
+            '  "is_long_term": false,\n'
+            '  "confidence": {\n'
+            '    "name": 0.99,\n'
+            '    "id_number": 0.98,\n'
+            '    "address": 0.92\n'
+            '  }\n'
+            "}\n"
+            "【严禁事项】：未识别到的字段必须返回 null，绝对禁止猜测、虚构、推测或编写任何自然语言合同正文！"
         )
     if item_type == "qualification":
         return (
@@ -234,10 +253,25 @@ def _prompt_for_item_type(item_type: str) -> str:
     )
 
 
+def mask_id_number(id_num: str) -> str:
+    """Mask ID card number for privacy security in logs."""
+    s = str(id_num or "").strip()
+    if len(s) == 18:
+        return f"{s[:6]}********{s[14:]}"
+    return s
+
+
 def _post_process_person_data(parsed: dict[str, Any]) -> dict[str, Any]:
+    fields = ["name", "gender", "ethnicity", "birth_date", "address", "id_number", "issuing_authority", "valid_from", "valid_until"]
+    for f in fields:
+        val = parsed.get(f)
+        if val in ("", "null", "None", None):
+            parsed[f] = None
+
     id_num = str(parsed.get("id_number") or "").strip().replace(" ", "").replace("-", "").upper()
     if id_num:
         parsed["id_number"] = id_num
+        parsed["id_checksum_valid"] = validate_id_card_checksum(id_num)
         if len(id_num) == 18 and id_num[:17].isdigit():
             year = id_num[6:10]
             month = id_num[10:12]
@@ -246,13 +280,22 @@ def _post_process_person_data(parsed: dict[str, Any]) -> dict[str, Any]:
                 y, m, d = int(year), int(month), int(day)
                 if 1920 <= y <= 2030 and 1 <= m <= 12 and 1 <= d <= 31:
                     derived_date = f"{year}-{month:02d}-{day:02d}"
-                    if not parsed.get("birth_date") or len(str(parsed.get("birth_date"))) < 8:
+                    if not parsed.get("birth_date"):
                         parsed["birth_date"] = derived_date
-
-                if not parsed.get("gender") or parsed.get("gender") not in ("男", "女"):
+                if not parsed.get("gender"):
                     parsed["gender"] = "男" if int(id_num[16]) % 2 == 1 else "女"
             except Exception:
                 pass
+
+    # Confidence dictionary
+    if not isinstance(parsed.get("confidence"), dict):
+        c_val = _normalize_confidence(parsed.get("confidence")) or 0.95
+        parsed["confidence"] = {
+            "name": c_val,
+            "id_number": c_val,
+            "address": c_val,
+        }
+
     return parsed
 
 
