@@ -1808,6 +1808,9 @@ def generate_person_contract(person_id: int):
     html_content = cg.render_contract_html(template_id, dict(person), dict(project))
     
     # Save generated HTML to uploads
+    from pathlib import Path
+    import time
+    from flask import current_app
     file_name = f"generated_contract_{person_id}_{int(time.time())}.html"
     upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
     upload_folder.mkdir(parents=True, exist_ok=True)

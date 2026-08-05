@@ -157,7 +157,7 @@ def recognize_batch_upload(
         api_key = current_app.config.get("ARK_API_KEY", "")
 
         try:
-            from construction_maintenance.repositories import repo
+            from construction_maintenance import repositories as repo
 
             s = repo.get_system_settings()
             provider = s.get("active_ai_provider", "ali_bailian")
