@@ -2932,6 +2932,8 @@ function openUploadPersonSignedModal(contractId, contractName) {
   document.getElementById('uploadPersonSignedContractName').innerText = contractName;
   const form = document.getElementById('uploadPersonSignedForm');
   form.action = `/contracts/${contractId}/upload_signed`;
+  openModal('uploadPersonSignedModal');
+}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
