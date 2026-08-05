@@ -252,7 +252,7 @@ def init_db() -> None:
 
         create table if not exists contracts (
             id integer primary key autoincrement,
-            project_id integer not null references projects(id),
+            project_id integer references projects(id),
             name text not null,
             contract_type text not null,
             attachment_path text not null default '',
@@ -425,6 +425,36 @@ def init_db() -> None:
     _ensure_column(db, "contracts", "person_id", "integer references people(id)")
     _ensure_column(db, "contracts", "status", "text not null default '待签署'")
     _ensure_column(db, "contracts", "template_name", "text not null default ''")
+
+    # Migrate contracts table to allow NULL project_id for personnel contracts
+    try:
+        table_sql = db.execute("select sql from sqlite_master where type='table' and name='contracts'").fetchone()
+        if table_sql and "project_id integer not null" in table_sql[0]:
+            db.execute("pragma foreign_keys=off")
+            db.execute("alter table contracts rename to contracts_old")
+            db.execute("""
+                create table contracts (
+                    id integer primary key autoincrement,
+                    project_id integer references projects(id),
+                    name text not null,
+                    contract_type text not null,
+                    attachment_path text not null default '',
+                    notes text not null default '',
+                    created_at text not null default current_timestamp,
+                    person_id integer references people(id),
+                    status text not null default '待签署',
+                    template_name text not null default ''
+                )
+            """)
+            db.execute("""
+                insert into contracts (id, project_id, name, contract_type, attachment_path, notes, created_at, person_id, status, template_name)
+                select id, project_id, name, contract_type, attachment_path, notes, created_at, person_id, status, template_name from contracts_old
+            """)
+            db.execute("drop table contracts_old")
+            db.execute("pragma foreign_keys=on")
+            db.commit()
+    except Exception as exc:
+        print(f"Contracts schema migration skipped/completed: {exc}")
 
     _seed_ledger_categories(db)
     db.execute(
