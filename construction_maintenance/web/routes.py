@@ -943,6 +943,41 @@ def _render_people_and_attendance(active_tab):
             if p_id not in person_contracts:
                 person_contracts[p_id] = row_dict
 
+    # --- 3. 人员用工合同 搜索筛选与分页 (10条/页) ---
+    q_contract = request.args.get("q_contract", "").strip()
+    status_filter = request.args.get("status_filter", "").strip()
+    
+    filtered_contract_people = []
+    for person in all_people:
+        p_contract = person_contracts.get(person["id"])
+        
+        if q_contract:
+            needle = q_contract.casefold()
+            searchable = " ".join(str(person[f] or "") for f in ("name", "id_number", "phone", "job_type")).casefold()
+            if needle not in searchable:
+                continue
+                
+        if status_filter:
+            if status_filter == "未生成":
+                if p_contract is not None:
+                    continue
+            elif status_filter == "已签署":
+                if not p_contract or p_contract.get("status") != "已签署":
+                    continue
+            elif status_filter == "待签署":
+                if not p_contract or p_contract.get("status") == "已签署":
+                    continue
+                    
+        filtered_contract_people.append(person)
+
+    contract_page_size = 10
+    contract_total_count = len(filtered_contract_people)
+    contract_total_pages = max(1, (contract_total_count + contract_page_size - 1) // contract_page_size)
+    requested_contract_page = request.args.get("contract_page", 1, type=int) or 1
+    contract_page = max(1, min(requested_contract_page, contract_total_pages))
+    contract_start = (contract_page - 1) * contract_page_size
+    visible_contract_people = filtered_contract_people[contract_start : contract_start + contract_page_size]
+
     return render_template(
         "people.html",
         active_tab=active_tab,
@@ -951,6 +986,13 @@ def _render_people_and_attendance(active_tab):
         people_page=people_page,
         people_total_pages=people_total_pages,
         people_total_count=len(filtered_people),
+        contract_people=visible_contract_people,
+        q_contract=q_contract,
+        status_filter=status_filter,
+        contract_page=contract_page,
+        contract_page_size=contract_page_size,
+        contract_total_pages=contract_total_pages,
+        contract_total_count=contract_total_count,
         batch_items=batch_items,
         attendance_people=attendance_people,
         all_people=all_people,

@@ -721,8 +721,38 @@
         <p class="panel-subtitle">公司所有录入与进场人员的个人劳动合同生成、高保真预览打印及盖章扫描件回传归档管理。</p>
       </div>
       <div class="toolbar-actions">
-        <span class="badge badge-info" style="font-size: 13px; padding: 6px 12px;">人员总数: {{ all_people|length }} 人</span>
+        <span class="badge badge-info" style="font-size: 13px; padding: 6px 12px;">符合条件记录: {{ contract_total_count }} 人</span>
       </div>
+    </div>
+
+    <!-- Contract Search & Filter Bar -->
+    <div style="background: var(--bg); border: 1px solid var(--line-light); padding: 14px 20px; border-radius: var(--radius-md); margin-bottom: 20px;">
+      <form method="get" action="{{ url_for('web.people') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <input type="hidden" name="tab" value="person_contracts">
+        
+        <div style="flex: 1; min-width: 240px; position: relative;">
+          <input type="text" name="q_contract" class="form-input" value="{{ q_contract }}" placeholder="🔍 输入人员姓名 / 身份证号 / 手机号 / 工种岗位..." style="height: 38px; font-size: 13.5px;">
+        </div>
+
+        <div style="width: 160px;">
+          <select name="status_filter" class="form-input" style="height: 38px; font-size: 13.5px; padding-top: 4px; padding-bottom: 4px;">
+            <option value="" {% if not status_filter %}selected{% endif %}>所有签署状态</option>
+            <option value="未生成" {% if status_filter == '未生成' %}selected{% endif %}>⚪ 未生成合同</option>
+            <option value="待签署" {% if status_filter == '待签署' %}selected{% endif %}>🟡 待签署归档</option>
+            <option value="已签署" {% if status_filter == '已签署' %}selected{% endif %}>🟢 已盖章归档</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="height: 38px; padding: 0 18px; font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+          查询搜索
+        </button>
+
+        {% if q_contract or status_filter %}
+        <a href="{{ url_for('web.people', tab='person_contracts') }}" class="btn btn-secondary" style="height: 38px; padding: 0 14px; font-size: 13.5px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; text-decoration: none;">
+          重置
+        </a>
+        {% endif %}
+      </form>
     </div>
 
     <!-- Table of Personnel Contract Status -->
@@ -737,14 +767,14 @@
             <th style="width: 14%;">关联合同工程项目</th>
             <th style="width: 110px; text-align: center;">签署状态</th>
             <th style="width: 110px; text-align: center;">签署原件</th>
-            <th class="text-right sticky-col-right" style="width: 270px; min-width: 270px;">操作</th>
+            <th class="text-right sticky-col-right" style="width: 220px; min-width: 220px;">操作</th>
           </tr>
         </thead>
         <tbody>
-          {% for person in all_people %}
+          {% for person in contract_people %}
           {% set p_contract = person_contracts.get(person.id) %}
           <tr>
-            <td class="font-mono text-muted" style="vertical-align: middle;">{{ loop.index }}</td>
+            <td class="font-mono text-muted" style="vertical-align: middle;">{{ loop.index + (contract_page - 1) * contract_page_size }}</td>
             <td style="vertical-align: middle;">
               <strong class="text-dark" style="font-size: 14.5px;">{{ person.name }}</strong>
               <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">{{ person.job_type or '施工人员' }} ({{ person.salary_type or '日薪' }}: ¥{{ "%.1f"|format(person.salary_rate or 0.0) }})</div>
@@ -758,30 +788,24 @@
             </td>
             <td style="vertical-align: middle;">
               {% if p_contract %}
-              <div style="font-weight: 600; color: var(--text); max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ p_contract.name }}">
-                {{ p_contract.name }}
-              </div>
-              <div style="font-size: 11.5px; color: var(--muted);">{{ p_contract.contract_type }}</div>
+              <div style="font-weight: 600; color: var(--text);">{{ p_contract.name }}</div>
+              <div style="font-size: 12px; color: var(--muted);">编号: {{ p_contract.contract_number }}</div>
               {% else %}
-              <span class="text-muted" style="font-size: 13px;">未起草合同</span>
+              <span class="text-muted" style="font-size: 12.5px;">尚未生成个人合同</span>
               {% endif %}
             </td>
-            <td style="vertical-align: middle; white-space: nowrap;">
-              {% if p_contract %}
-              <span class="badge badge-subtle">{{ p_contract.project_name }}</span>
-              {% else %}
-              <span class="text-muted">--</span>
-              {% endif %}
+            <td style="vertical-align: middle;">
+              <span class="badge badge-secondary" style="font-size: 12px;">个人固定模板 (不绑项目)</span>
             </td>
             <td style="text-align: center; vertical-align: middle;">
               {% if p_contract %}
                 {% if p_contract.status == '已签署' %}
-                <span class="badge badge-success" style="display: inline-flex; white-space: nowrap;">已回传盖章</span>
+                <span class="badge badge-success" style="font-size: 12px;">已签署归档</span>
                 {% else %}
-                <span class="badge badge-warning" style="display: inline-flex; white-space: nowrap;">待签署回传</span>
+                <span class="badge badge-warning" style="font-size: 12px;">待签署回传</span>
                 {% endif %}
               {% else %}
-              <span class="badge" style="background: rgba(100, 116, 139, 0.1); color: #64748b;">未起草</span>
+              <span class="badge badge-secondary" style="font-size: 12px;">未生成</span>
               {% endif %}
             </td>
             <td style="text-align: center; vertical-align: middle;">
@@ -815,10 +839,46 @@
               </div>
             </td>
           </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--muted);">
+              没有找到符合条件的劳动合同记录。
+            </td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+
+    <!-- Pagination Controls (10 items per page) -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line-light); flex-wrap: wrap; gap: 12px;">
+      <div style="font-size: 13px; color: var(--muted);">
+        共 <strong style="color: var(--text);">{{ contract_total_count }}</strong> 条人员合同记录，每页显示 <strong>{{ contract_page_size }}</strong> 条 (第 <strong>{{ contract_page }}</strong> / <strong>{{ contract_total_pages }}</strong> 页)
+      </div>
+
+      {% if contract_total_pages > 1 %}
+      <div style="display: flex; gap: 6px; align-items: center;">
+        {% if contract_page > 1 %}
+        <a href="{{ url_for('web.people', tab='person_contracts', q_contract=q_contract, status_filter=status_filter, contract_page=1) }}" class="btn btn-sm btn-secondary" style="padding: 4px 10px; font-size: 12.5px; text-decoration: none;">首页</a>
+        <a href="{{ url_for('web.people', tab='person_contracts', q_contract=q_contract, status_filter=status_filter, contract_page=contract_page - 1) }}" class="btn btn-sm btn-secondary" style="padding: 4px 10px; font-size: 12.5px; text-decoration: none;">上一页</a>
+        {% else %}
+        <button class="btn btn-sm btn-secondary" disabled style="opacity: 0.5; padding: 4px 10px; font-size: 12.5px;">首页</button>
+        <button class="btn btn-sm btn-secondary" disabled style="opacity: 0.5; padding: 4px 10px; font-size: 12.5px;">上一页</button>
+        {% endif %}
+
+        <span style="font-size: 13px; padding: 0 8px; font-weight: 600; color: var(--primary);">第 {{ contract_page }} 页</span>
+
+        {% if contract_page < contract_total_pages %}
+        <a href="{{ url_for('web.people', tab='person_contracts', q_contract=q_contract, status_filter=status_filter, contract_page=contract_page + 1) }}" class="btn btn-sm btn-secondary" style="padding: 4px 10px; font-size: 12.5px; text-decoration: none;">下一页</a>
+        <a href="{{ url_for('web.people', tab='person_contracts', q_contract=q_contract, status_filter=status_filter, contract_page=contract_total_pages) }}" class="btn btn-sm btn-secondary" style="padding: 4px 10px; font-size: 12.5px; text-decoration: none;">末页</a>
+        {% else %}
+        <button class="btn btn-sm btn-secondary" disabled style="opacity: 0.5; padding: 4px 10px; font-size: 12.5px;">下一页</button>
+        <button class="btn btn-sm btn-secondary" disabled style="opacity: 0.5; padding: 4px 10px; font-size: 12.5px;">末页</button>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
   </div>
 </div>
 </div> <!-- 闭合 mainTabContentPersonContracts -->
