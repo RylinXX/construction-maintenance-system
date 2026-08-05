@@ -2898,23 +2898,15 @@ function initAllPagination() {
           </div>
 
           <div class="form-group full-width">
-            <label class="form-label" for="gen_project_id">选择归属工程项目 <span class="required">*</span></label>
-            <select class="form-select" id="gen_project_id" name="project_id" required>
-              <option value="">-- 请选择关联合同项目 --</option>
-              {% for p in projects %}
-              <option value="{{ p.id }}">{{ p.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="form-group full-width">
-            <label class="form-label" for="gen_template_id">选择指定合同模板 <span class="required">*</span></label>
-            <select class="form-select" id="gen_template_id" name="template_id" required>
+            <label class="form-label" for="gen_template_id">选择合同 Word 文本模板 <span class="required">*</span></label>
+            <select class="form-select" id="gen_template_id" name="template_id" required style="font-weight: 700; color: var(--primary);">
               {% for t in contract_templates %}
-              <option value="{{ t.id }}">{{ t.name }} ({{ t.category }})</option>
+              <option value="{{ t.id }}" {% if loop.first %}selected{% endif %}>📄 {{ t.name }} ({{ t.category }})</option>
               {% endfor %}
             </select>
-            <p class="text-muted" style="margin-top: 6px; font-size: 12px;">系统将自动将该人员的身份证、手机号、工种、薪资标准、银行卡号等档案字段填入此合同文本中。</p>
+            <p class="text-muted" style="margin-top: 8px; font-size: 12.5px; line-height: 1.6; background: rgba(15, 118, 110, 0.06); padding: 10px 12px; border-radius: var(--radius-sm); color: var(--primary-color);">
+              💡 <strong>提示：</strong> 系统将自动套用标准 Word (.docx) 文档模板，自动填充该人员的姓名、18位身份证号、电话、住址、岗位工种、薪资报酬等字段，生成规范文档。
+            </p>
           </div>
         </div>
 

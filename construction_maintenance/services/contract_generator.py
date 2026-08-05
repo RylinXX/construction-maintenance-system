@@ -4,35 +4,42 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-# Standard HTML Templates for Contract Generation
+# Standard Templates for Personnel & Project Contract Generation
 TEMPLATES = [
     {
-        "id": "01_labor_contract",
-        "name": "建筑施工劳动合同书（标准版）",
+        "id": "01_no_social_security_labor_contract",
+        "name": "2026新版劳务合同（不交社保标准 Word 模板）",
         "category": "人员合同",
-        "description": "适用于全日制及项目常驻工人的规范劳动合同，包含劳动报酬、安全生产及权益保障条款。",
-        "template_filename": "01_labor_contract.html"
+        "description": "基于桌面 Word .docx 模板自动提取填充：乙方姓名、身份证号、电话、住址、工种岗位及薪资报酬。",
+        "docx_template": "2026_labor_contract_no_social_security.docx"
     },
     {
-        "id": "02_subcontract_agreement",
+        "id": "02_standard_labor_contract",
+        "name": "建筑施工劳动合同书（全日制规范版）",
+        "category": "人员合同",
+        "description": "适用于全日制及常驻工人的规范劳动合同，包含劳动报酬、安全生产及权益保障条款。",
+        "docx_template": None
+    },
+    {
+        "id": "03_subcontract_agreement",
         "name": "工程施工劳务用工协议书",
         "category": "劳务合同",
         "description": "适用于班组及专业劳务人员项目包干或按日结算的施工用工协议。",
-        "template_filename": "02_subcontract_agreement.html"
+        "docx_template": None
     },
     {
-        "id": "03_temporary_work_agreement",
+        "id": "04_temporary_work_agreement",
         "name": "建筑工人临时用工协议",
         "category": "人员合同",
         "description": "适用于短期零工、临时调配人员的简易用工协议。",
-        "template_filename": "03_temporary_work_agreement.html"
+        "docx_template": None
     },
     {
-        "id": "04_machinery_lease_contract",
+        "id": "05_machinery_lease_contract",
         "name": "工程机械设备租赁合同（带司机）",
         "category": "其它",
         "description": "适用于钩机、铲车、水车等机械设备及其操作司机的机械租赁合同。",
-        "template_filename": "04_machinery_lease_contract.html"
+        "docx_template": None
     }
 ]
 
@@ -45,13 +52,64 @@ def get_template_by_id(template_id: str):
             return t
     return TEMPLATES[0]
 
-def render_contract_html(template_id: str, person: dict, project: dict, signing_date: str = None) -> str:
+def fill_docx_template(dest_docx_path: Path, person: dict, project: dict | None, signing_date: str, contract_no: str):
+    """Fill the real Word (.docx) document template with person and contract data."""
+    try:
+        import docx
+        base_docx = Path(__file__).parent.parent / "templates" / "docx_templates" / "2026_labor_contract_no_social_security.docx"
+        if not base_docx.exists():
+            return
+        doc = docx.Document(base_docx)
+        
+        person_name = person.get("name", "未填写")
+        id_number = person.get("id_number", "未填写")
+        phone = person.get("phone", "未填写")
+        job_type = person.get("job_type", "施工人员")
+        salary_type = person.get("salary_type", "日薪")
+        salary_rate = person.get("salary_rate", 0.0)
+        salary_str = f"{salary_rate:.1f}元/{salary_type}"
+        address = person.get("address", "未填写")
+        company_name = "北京营力特建筑工程有限公司"
+
+        for p in doc.paragraphs:
+            text = p.text
+            if '合同编号:' in text:
+                p.text = f'                                       合同编号: {contract_no}'
+            elif '甲方 (用人单位)：' in text:
+                p.text = f'甲方 (用人单位)： {company_name}'
+            elif '乙方 (劳动者)  ：' in text:
+                p.text = f'乙方 (劳动者)  ： {person_name}'
+            elif '单位名称:' in text:
+                p.text = f'单位名称: {company_name}'
+            elif '地址:' in text:
+                p.text = f'地址: 北京市门头沟区妙峰山镇水丁路1号院A074室'
+            elif '姓名:' in text and '联系电话:' in text:
+                p.text = f'姓名: {person_name}                                   联系电话: {phone}'
+            elif '身份证号码:' in text:
+                p.text = f'身份证号码: {id_number}                    紧急联系人电话: {phone}'
+            elif '户籍所在地:' in text:
+                p.text = f'户籍所在地: {address}'
+            elif '住址:' in text:
+                p.text = f'住址: {address}'
+            elif '雇佣乙方为' in text:
+                p.text = f'鉴于甲方业务发展需要，雇佣乙方为 {job_type} 提供劳务服务，经双方协商订立正式《劳务雇佣合同书》如下:'
+            elif '乙方的劳动报酬为:' in text:
+                p.text = f'2、甲乙双方约定，乙方的劳动报酬为: {salary_str}，劳务报酬发放日期为每月的 25 日，如遇发放日为节假日，甲方将顺延到最接近的一个工作日发放。'
+            elif '签 订 时 间' in text:
+                p.text = f'签 订 时 间   :  {signing_date}'
+
+        dest_docx_path.parent.mkdir(parents=True, exist_ok=True)
+        doc.save(dest_docx_path)
+    except Exception as exc:
+        print(f"Error filling docx template: {exc}")
+
+def render_contract_html(template_id: str, person: dict, project: dict | None = None, signing_date: str = None) -> str:
     template_info = get_template_by_id(template_id)
     if not signing_date:
         signing_date = datetime.now().strftime("%Y年%m月%d日")
 
-    company_name = "营力特建筑工程有限公司"
-    project_name = project.get("name", "工程项目") if project else "通用工程项目"
+    company_name = "北京营力特建筑工程有限公司"
+    project_name = project.get("name") if project else "个人通用/全公司人员调度"
     
     person_name = person.get("name", "未填写")
     id_number = person.get("id_number", "未填写")
@@ -61,7 +119,7 @@ def render_contract_html(template_id: str, person: dict, project: dict, signing_
     salary_rate = person.get("salary_rate", 0.0)
     bank_name = person.get("bank_name", "中国工商银行")
     bank_card = person.get("bank_card", "未填写")
-    address = person.get("address", "北京市海湾区建设基地")
+    address = person.get("address", "未填写")
 
     salary_str = f"{salary_rate:.1f} 元 / {salary_type}"
 
@@ -172,53 +230,48 @@ def render_contract_html(template_id: str, person: dict, project: dict, signing_
 <body>
     <div class="contract-header">
         <h1>{template_info['name']}</h1>
-        <p>编号：YLT-CON-{datetime.now().strftime('%Y%m%d%H%M%S')}</p>
+        <p>合同编号：YLT-CON-{datetime.now().strftime('%Y%m%d%H%M%S')}</p>
     </div>
 
     <div class="party-box">
-        <div class="party-item"><label>甲方（用人单位/项目部）：</label><span>{company_name}</span></div>
-        <div class="party-item"><label>归属工程项目：</label><span>{project_name}</span></div>
-        <div class="party-item"><label>乙方（劳动者/人员）：</label><span>{person_name}</span></div>
+        <div class="party-item"><label>甲方（用人单位）：</label><span>{company_name}</span></div>
+        <div class="party-item"><label>项目/归属：</label><span>{project_name}</span></div>
+        <div class="party-item"><label>乙方（劳动者）：</label><span>{person_name}</span></div>
         <div class="party-item"><label>身份证号码：</label><span>{id_number}</span></div>
         <div class="party-item"><label>联系电话：</label><span>{phone}</span></div>
         <div class="party-item"><label>工作岗位/工种：</label><span>{job_type}</span></div>
-        <div class="party-item"><label>薪资标准与结算：</label><span>{salary_str}</span></div>
-        <div class="party-item"><label>指定收款银行卡：</label><span>{bank_name} ({bank_card})</span></div>
+        <div class="party-item"><label>薪资标准：</label><span>{salary_str}</span></div>
+        <div class="party-item"><label>户籍住址：</label><span>{address}</span></div>
     </div>
 
     <div class="contract-section">
-        <h3>第一条 工作内容与工作地点</h3>
-        <p>1. 乙方同意根据甲方工作需要，在 <strong>{project_name}</strong> 现场从事 <strong>{job_type}</strong> 岗位工作。</p>
-        <p>2. 乙方应严格遵守现场安全生产规章制度，服从现场施工管理人员的合理调度与安排。</p>
+        <h3>第一条 劳务用工约定</h3>
+        <p>1. 乙方同意根据甲方工作安排，从事 <strong>{job_type}</strong> 岗位劳务服务工作。</p>
+        <p>2. 乙方应遵守各项安全生产制度与规章，尽职尽责完成工作需要。</p>
     </div>
 
     <div class="contract-section">
-        <h3>第二条 劳动报酬与支付方式</h3>
-        <p>1. 双方约定劳报酬结算标准为：<strong>{salary_str}</strong>。</p>
-        <p>2. 结算周期：甲方按月根据考勤打卡记录核算工资，打款至乙方指定银行账户：<strong>{bank_name} ({bank_card})</strong>。</p>
+        <h3>第二条 劳务报酬与保险约定</h3>
+        <p>1. 双方约定劳务报酬标准为：<strong>{salary_str}</strong>。</p>
+        <p>2. 乙方作为劳务人员，甲方支付给乙方的劳务报酬已包含各项补贴与相关社会保险费用，不再额外支付任何社会保险费用。乙方个人社会保障由乙方自行缴纳。</p>
     </div>
 
     <div class="contract-section">
-        <h3>第三条 安全生产与权益保障</h3>
-        <p>1. 甲方依法为乙方提供符合国家标准的劳动安全卫生条件和必要的劳动防护用品。</p>
-        <p>2. 乙方入场前须接受三级安全教育培训，遵守安全操作规程，严禁违章作业。</p>
-    </div>
-
-    <div class="contract-section">
-        <h3>第四条 协议期限与终止</h3>
-        <p>本协议自双方签字/盖章之日起生效，至 <strong>{project_name}</strong> 项目相关工种作业完工结清薪资后自动终止。</p>
+        <h3>第三条 安全生产与解约条款</h3>
+        <p>1. 任何一方均有权提前通知解除本合同，解除本合同不需支付经济补偿金。</p>
+        <p>2. 如乙方自身身体原因发生意外的，所有责任由乙方自行承担，甲方及时组织送医协助。</p>
     </div>
 
     <div class="signature-box">
         <div class="sig-col">
-            <h4>甲方（盖章/签字）：</h4>
-            <div class="sig-line">代表人（签字）：________________</div>
-            <div class="sig-line">签署日期：{signing_date}</div>
+            <h4>甲方（用人单位盖章/签字）：</h4>
+            <div class="sig-line">代表人：________________</div>
+            <div class="sig-line">签订日期：{signing_date}</div>
         </div>
         <div class="sig-col">
-            <h4>乙方（签字/手印）：</h4>
+            <h4>乙方（劳动者签字/手印）：</h4>
             <div class="sig-line">乙方签名：<strong>{person_name}</strong></div>
-            <div class="sig-line">签署日期：{signing_date}</div>
+            <div class="sig-line">签订日期：{signing_date}</div>
         </div>
     </div>
 </body>

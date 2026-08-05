@@ -1673,11 +1673,18 @@ def update_people_attendance_status(status_map: dict[int, int]) -> None:
     db.commit()
 
 
-def list_contracts(project_id: int | None = None, contract_type: str | None = None, query: str | None = None):
+def list_contracts(
+    project_id: int | None = None,
+    contract_type: str | None = None,
+    query: str | None = None,
+    only_project_contracts: bool = False,
+):
     db = get_db()
     params: list[Any] = []
     where_clauses: list[str] = []
     
+    if only_project_contracts:
+        where_clauses.append("(contracts.person_id IS NULL OR contracts.person_id = 0)")
     if project_id:
         where_clauses.append("contracts.project_id = ?")
         params.append(project_id)
@@ -1693,9 +1700,9 @@ def list_contracts(project_id: int | None = None, contract_type: str | None = No
     
     return db.execute(
         f"""
-        select contracts.*, projects.name as project_name
+        select contracts.*, COALESCE(projects.name, '个人通用/公司调度') as project_name
         from contracts
-        join projects on projects.id = contracts.project_id
+        left join projects on projects.id = contracts.project_id
         {where}
         order by contracts.created_at desc, contracts.id desc
         """,
@@ -1706,9 +1713,9 @@ def list_contracts(project_id: int | None = None, contract_type: str | None = No
 def get_contract(contract_id: int):
     return get_db().execute(
         """
-        select contracts.*, projects.name as project_name
+        select contracts.*, COALESCE(projects.name, '个人通用/公司调度') as project_name
         from contracts
-        join projects on projects.id = contracts.project_id
+        left join projects on projects.id = contracts.project_id
         where contracts.id = ?
         """,
         (contract_id,),

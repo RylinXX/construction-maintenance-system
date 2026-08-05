@@ -1716,10 +1716,11 @@ def contracts():
         project_id=filter_project_id,
         contract_type=filter_contract_type,
         query=search_query,
+        only_project_contracts=True,
     )
 
-    # 计算合同统计指标
-    all_c = repo.list_contracts()
+    # 计算合同统计指标（仅针对项目/商业合同，人员合同于人员花名册独立管理）
+    all_c = repo.list_contracts(only_project_contracts=True)
     type_stats = {
         "总包合同": sum(1 for c in all_c if c["contract_type"] == "总包合同"),
         "劳务合同": sum(1 for c in all_c if c["contract_type"] == "劳务合同"),
@@ -1795,45 +1796,55 @@ def delete_contract(contract_id: int):
 
 @bp.route("/people/<int:person_id>/generate_contract", methods=["POST"])
 def generate_person_contract(person_id: int):
+    from pathlib import Path
+    import time
+    from datetime import datetime
+    from flask import current_app
     from construction_maintenance.services import contract_generator as cg
+
     person = repo.get_person(person_id)
     if person is None:
         raise ValueError("人员不存在")
         
-    project_id = int(required_text(request.form, "project_id", "归属工程项目"))
-    template_id = text_value(request.form, "template_id") or "01_labor_contract"
+    project_id_raw = request.form.get("project_id")
+    project_id = int(project_id_raw) if project_id_raw and project_id_raw.isdigit() else None
+    template_id = text_value(request.form, "template_id") or "01_no_social_security_labor_contract"
     
-    project = repo.get_project(project_id)
-    if project is None:
-        raise ValueError("工程项目不存在")
+    project = repo.get_project(project_id) if project_id else None
 
     template_info = cg.get_template_by_id(template_id)
-    html_content = cg.render_contract_html(template_id, dict(person), dict(project))
     
-    # Save generated HTML to uploads
-    from pathlib import Path
-    import time
-    from flask import current_app
-    file_name = f"generated_contract_{person_id}_{int(time.time())}.html"
+    # Save generated HTML & DOCX files to uploads
+    file_prefix = f"generated_contract_{person_id}_{int(time.time())}"
+    html_name = f"{file_prefix}.html"
+    docx_name = f"{file_prefix}.docx"
+    
     upload_folder = Path(current_app.config["UPLOAD_FOLDER"])
     upload_folder.mkdir(parents=True, exist_ok=True)
-    file_path = upload_folder / file_name
-    with open(file_path, "w", encoding="utf-8") as f:
+    
+    # Render HTML for online preview/printing
+    html_content = cg.render_contract_html(template_id, dict(person), dict(project) if project else None)
+    with open(upload_folder / html_name, "w", encoding="utf-8") as f:
         f.write(html_content)
+
+    # Populate Word (.docx) document template
+    contract_no = f"YLT-CON-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    signing_date = datetime.now().strftime("%Y年%m月%d日")
+    cg.fill_docx_template(upload_folder / docx_name, dict(person), dict(project) if project else None, signing_date, contract_no)
 
     contract_name = f"{person['name']}-{template_info['name']}"
     contract_id = repo.create_contract({
         "project_id": project_id,
         "name": contract_name,
         "contract_type": template_info["category"],
-        "attachment_path": file_name,
-        "notes": f"系统基于档案自动生成；包含人员: {person['name']}({person['job_type']})；请打印/签署后回传原件。",
+        "attachment_path": html_name,
+        "notes": f"基于《{template_info['name']}》标准 Word .docx 模板生成；包含人员: {person['name']}({person['job_type']})；双击预览可在线打印，也可直接下载 .docx 源文档。",
         "person_id": person_id,
         "status": "待签署",
         "template_name": template_info["name"]
     })
 
-    flash(f"已成功为人员【{person['name']}】自动生成合同，在下方列表中即可直接【预览/查看】及打印。", "success")
+    flash(f"已成功为人员【{person['name']}】使用《{template_info['name']}》生成电子合同，可在下方直接预览、打印或下载 Word 文档。", "success")
     return redirect(safe_redirect_target(request.referrer, url_for("web.people", tab="person_contracts")))
 
 
