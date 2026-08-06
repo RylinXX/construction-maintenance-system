@@ -328,6 +328,17 @@
       }
       window.paginators = {};
 
+      window.toggleNavGroup = function(event, groupId, defaultUrl) {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        const group = document.getElementById(groupId);
+        if (group) {
+          group.classList.toggle('collapsed');
+        }
+      };
+
       // Add the session token to legacy HTML forms and same-origin JSON requests.
       (function() {
         const token = document.querySelector('meta[name="csrf-token"]')?.content;

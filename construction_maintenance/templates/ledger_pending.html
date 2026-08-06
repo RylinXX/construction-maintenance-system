@@ -9,21 +9,8 @@
 <section class="module-hero animate-slide-up">
   <div class="module-hero-copy">
     <span class="eyebrow">Financial Ledger Center</span>
-    <h1>账套管理中心</h1>
-    <p>全盘财务明细检索、待补录队列处理、费用科目定义与收支多维对账。</p>
-
-    <!-- Hero Embedded Nav Buttons -->
-    <nav class="hero-nav-buttons" aria-label="账套管理导航">
-      <a href="{{ url_for('web.vouchers') }}" class="hero-nav-btn">
-        {{ icon('receipt') }} 全盘财务明细
-      </a>
-      <a href="{{ url_for('web.ledger_pending') }}" class="hero-nav-btn active">
-        {{ icon('inbox') }} 待补录队列
-      </a>
-      <a href="{{ url_for('web.expense_categories') }}" class="hero-nav-btn">
-        {{ icon('checklist') }} 费用科目定义
-      </a>
-    </nav>
+    <h1>待补录费用队列</h1>
+    <p>检索与补充财务凭证缺少金额或关键信息的业务事项独立队列。</p>
   </div>
   <div class="module-hero-stats">
     <div class="hero-stat-card">
