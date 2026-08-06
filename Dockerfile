@@ -17,7 +17,7 @@ COPY pyproject.toml ./
 RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip config set global.index-url https://mirrors.tencent.com/pypi/simple/
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir -e "."
+RUN pip install --no-cache-dir setuptools wheel python-docx==1.2.0 Flask openpyxl python-dateutil pymupdf
 
 
 # ─── Stage 2: 运行层（精简镜像）───────────────────────────────────────────────
@@ -35,10 +35,11 @@ RUN sed -i 's/deb.debian.org/mirrors.tencent.com/g' /etc/apt/sources.list.d/debi
 
 # 复制虚拟环境（已配置好加速源）
 COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONPATH="/app:$PYTHONPATH"
 
-# 安装 Gunicorn
-RUN pip install --no-cache-dir gunicorn==23.0.0
+# 安装 Gunicorn 与 运行时依赖
+RUN pip install --no-cache-dir gunicorn==23.0.0 python-docx==1.2.0 Flask>=3.0 openpyxl>=3.1 python-dateutil>=2.9 pymupdf>=1.24.0
 
 WORKDIR /app
 
@@ -47,7 +48,8 @@ COPY construction_maintenance/ ./construction_maintenance/
 COPY pyproject.toml gunicorn.conf.py ./
 
 # 创建运行时需要的持久化目录（将被挂载为 Volume）
-RUN mkdir -p /data/instance /data/uploads /data/exports \
+RUN chmod -R a+rX /opt/venv \
+    && mkdir -p /data/instance /data/uploads /data/exports \
     && useradd -r -u 1001 -s /sbin/nologin appuser \
     && chown -R appuser:appuser /app /data
 

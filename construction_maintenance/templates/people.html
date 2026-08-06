@@ -4,7 +4,7 @@
 {% block breadcrumb %}公司人员档案管理 / {% if active_tab == 'attendance' %}人员考勤{% elif active_tab == 'person_contracts' %}人员合同签署情况{% else %}花名册{% endif %}{% endblock %}
 
 {% block content %}
-<section class="module-hero animate-slide-up">
+<section class="module-hero animate-slide-up" style="{% if active_tab == 'person_contracts' %}margin-bottom: 6px;{% endif %}">
   <div class="module-hero-copy">
     <span class="eyebrow">Human Resources Center</span>
     {% if active_tab == 'attendance' %}
@@ -709,9 +709,9 @@
 </div> <!-- 闭合 mainTabContentAttendance -->
 
 <!-- 3. 人员合同签署情况 Tab 内容 -->
-<div id="mainTabContentPersonContracts" style="display: {% if active_tab == 'person_contracts' %}block{% else %}none{% endif %};">
-<div class="panel-section" style="margin-top: -6px; gap: 12px;">
-  <div class="panel-card animate-slide-up" style="padding: 16px 20px;">
+<div id="mainTabContentPersonContracts" style="display: {% if active_tab == 'person_contracts' %}block{% else %}none{% endif %}; margin-top: -6px;">
+<div class="panel-section" style="gap: 10px;">
+  <div class="panel-card animate-slide-up" style="padding: 12px 18px !important;">
     <div class="panel-header" style="margin-bottom: 12px;">
       <div>
         <h2 class="panel-title">{{ icon('contract') }} 人员用工合同与签署回传台账</h2>
@@ -2017,11 +2017,8 @@ document.addEventListener("DOMContentLoaded", function() {
     dateInput.value = today;
   }
   
-  const activeTab = localStorage.getItem('attendance_active_tab') || 'attendance';
-  switchAttendanceTab(activeTab);
-
-  const savedSalarySubTab = localStorage.getItem('salary_active_sub_tab') || 'long';
-  switchSalarySubTab(savedSalarySubTab);
+  const savedAttSubTab = localStorage.getItem('attendance_active_sub_tab') || 'attendance';
+  switchAttendanceView(savedAttSubTab);
 });
 
 function openModal(id) {
@@ -2092,64 +2089,60 @@ function switchMainTab(tab) {
   }
 }
 
-// 子 Tab 切换逻辑
-function switchAttendanceTab(tab) {
+// 人员考勤与结算 视角统一切换逻辑（考勤表 / 长期员工工资结算 / 日结工人工资结算）
+function switchAttendanceView(view) {
   const attTab = document.getElementById('attendanceTabContent');
-  const salTab = document.getElementById('salaryTabContent');
-  const btnAtt = document.getElementById('tabBtnAttendance');
-  const btnSal = document.getElementById('tabBtnSalary');
-  
-  if (tab === 'attendance') {
-    if (attTab) attTab.style.display = 'block';
-    if (salTab) salTab.style.display = 'none';
-    if (btnAtt) {
-      btnAtt.style.borderBottomColor = 'var(--secondary-color)';
-      btnAtt.style.color = 'var(--secondary-color)';
-      btnAtt.style.fontWeight = '700';
-    }
-    if (btnSal) {
-      btnSal.style.borderBottomColor = 'transparent';
-      btnSal.style.color = 'var(--text-secondary)';
-      btnSal.style.fontWeight = '650';
-    }
-    localStorage.setItem('attendance_active_tab', 'attendance');
-  } else {
+  const salaryContainer = document.getElementById('salaryTabContent');
+  const cardLong = document.getElementById('salaryLongCard');
+  const cardDaily = document.getElementById('salaryDailyCard');
+
+  const btnAtt = document.getElementById('attSubTabBtnAttendance');
+  const btnLong = document.getElementById('attSubTabBtnLong');
+  const btnDaily = document.getElementById('attSubTabBtnDaily');
+
+  if (view === 'long') {
     if (attTab) attTab.style.display = 'none';
-    if (salTab) salTab.style.display = 'flex';
-    if (btnSal) {
-      btnSal.style.borderBottomColor = 'var(--secondary-color)';
-      btnSal.style.color = 'var(--secondary-color)';
-      btnSal.style.fontWeight = '700';
-    }
-    if (btnAtt) {
-      btnAtt.style.borderBottomColor = 'transparent';
-      btnAtt.style.color = 'var(--text-secondary)';
-      btnAtt.style.fontWeight = '650';
-    }
-    localStorage.setItem('attendance_active_tab', 'salary');
+    if (salaryContainer) salaryContainer.style.display = 'flex';
+    if (cardLong) cardLong.style.display = 'block';
+    if (cardDaily) cardDaily.style.display = 'none';
+
+    if (btnAtt) btnAtt.classList.remove('active');
+    if (btnLong) btnLong.classList.add('active');
+    if (btnDaily) btnDaily.classList.remove('active');
+    localStorage.setItem('attendance_active_sub_tab', 'long');
+  } else if (view === 'daily') {
+    if (attTab) attTab.style.display = 'none';
+    if (salaryContainer) salaryContainer.style.display = 'flex';
+    if (cardLong) cardLong.style.display = 'none';
+    if (cardDaily) cardDaily.style.display = 'block';
+
+    if (btnAtt) btnAtt.classList.remove('active');
+    if (btnLong) btnLong.classList.remove('active');
+    if (btnDaily) btnDaily.classList.add('active');
+    localStorage.setItem('attendance_active_sub_tab', 'daily');
+  } else {
+    if (attTab) attTab.style.display = 'block';
+    if (salaryContainer) salaryContainer.style.display = 'none';
+    if (cardLong) cardLong.style.display = 'none';
+    if (cardDaily) cardDaily.style.display = 'none';
+
+    if (btnAtt) btnAtt.classList.add('active');
+    if (btnLong) btnLong.classList.remove('active');
+    if (btnDaily) btnDaily.classList.remove('active');
+    localStorage.setItem('attendance_active_sub_tab', 'attendance');
   }
 }
 
-// 工资结算子 Tab 切换（长期员工与日结工人）
-function switchSalarySubTab(subTab) {
-  const cardLong = document.getElementById('salaryLongCard');
-  const cardDaily = document.getElementById('salaryDailyCard');
-  const btnLong = document.getElementById('salarySubTabBtnLong');
-  const btnDaily = document.getElementById('salarySubTabBtnDaily');
-  
-  if (subTab === 'long') {
-    if (cardLong) cardLong.style.display = 'block';
-    if (cardDaily) cardDaily.style.display = 'none';
-    if (btnLong) btnLong.classList.add('active');
-    if (btnDaily) btnDaily.classList.remove('active');
-    localStorage.setItem('salary_active_sub_tab', 'long');
+function switchAttendanceTab(tab) {
+  if (tab === 'salary') {
+    switchAttendanceView('long');
   } else {
-    if (cardLong) cardLong.style.display = 'none';
-    if (cardDaily) cardDaily.style.display = 'block';
-    if (btnLong) btnLong.classList.remove('active');
-    if (btnDaily) btnDaily.classList.add('active');
-    localStorage.setItem('salary_active_sub_tab', 'daily');
+    switchAttendanceView('attendance');
   }
+}
+
+function switchSalarySubTab(subTab) {
+  switchAttendanceView(subTab);
 }
 
 function submitAttendanceImport(event) {
