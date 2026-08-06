@@ -146,7 +146,7 @@
           </div>
         </header>
 
-        <div class="content-body">
+        <div class="content-body" style="{% if active_tab == 'person_contracts' %}padding-top: 0 !important;{% endif %}">
           {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
               <div class="flash-messages" style="margin-bottom: 20px;">
