@@ -395,6 +395,19 @@
 <!-- 2. 人员考勤与结算 Tab 内容 -->
 <div id="mainTabContentAttendance" style="display: {% if active_tab == 'attendance' %}block{% else %}none{% endif %};">
 
+  <!-- 人员考勤与结算 视角子切换页签（考勤表 / 长期员工工资结算 / 日结工人工资结算） -->
+  <div class="view-switcher animate-slide-up" style="margin-bottom: 16px; width: fit-content; display: flex; gap: 4px;">
+    <button type="button" class="view-btn active" id="attSubTabBtnAttendance" onclick="switchAttendanceView('attendance')" style="min-height: 38px; font-weight: 700;">
+      {{ icon('checklist') }} 施工人员月度考勤表
+    </button>
+    <button type="button" class="view-btn" id="attSubTabBtnLong" onclick="switchAttendanceView('long')" style="min-height: 38px; font-weight: 650;">
+      {{ icon('people') }} 长期员工工资结算
+    </button>
+    <button type="button" class="view-btn" id="attSubTabBtnDaily" onclick="switchAttendanceView('daily')" style="min-height: 38px; font-weight: 650;">
+      {{ icon('people') }} 日结工人工资结算
+    </button>
+  </div>
+
   <div id="attendanceTabContent">
   <div class="panel-section">
     <div class="panel-card animate-slide-up">
@@ -515,17 +528,7 @@
   </div>
 
   <!-- 工资结算与预支台账 -->
-  <div id="salaryTabContent" style="display: none; flex-direction: column; gap: 20px; width: 100%; margin-top: 16px;">
-    <!-- 工资台账类别子选项卡切换 (Sub-tab Switcher for Salary Ledger) -->
-    <div class="view-switcher" style="margin-bottom: 8px; width: fit-content; align-self: flex-start;">
-      <button type="button" class="view-btn active" id="salarySubTabBtnLong" onclick="switchSalarySubTab('long')" style="min-height: 38px;">
-        {{ icon('people') }} 长期员工工资结算
-      </button>
-      <button type="button" class="view-btn" id="salarySubTabBtnDaily" onclick="switchSalarySubTab('daily')" style="min-height: 38px;">
-        {{ icon('people') }} 日结工人工资结算
-      </button>
-    </div>
-
+  <div id="salaryTabContent" style="display: none; flex-direction: column; gap: 20px; width: 100%;">
     <!-- 长期员工工资结算表 -->
     <div id="salaryLongCard" class="panel-card" style="width: 100%; padding: 28px 30px !important; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--surface-color); box-shadow: var(--shadow-sm);">
       <div class="panel-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
@@ -707,9 +710,9 @@
 
 <!-- 3. 人员合同签署情况 Tab 内容 -->
 <div id="mainTabContentPersonContracts" style="display: {% if active_tab == 'person_contracts' %}block{% else %}none{% endif %};">
-<div class="panel-section">
-  <div class="panel-card animate-slide-up">
-    <div class="panel-header">
+<div class="panel-section" style="margin-top: -6px; gap: 12px;">
+  <div class="panel-card animate-slide-up" style="padding: 16px 20px;">
+    <div class="panel-header" style="margin-bottom: 12px;">
       <div>
         <h2 class="panel-title">{{ icon('contract') }} 人员用工合同与签署回传台账</h2>
         <p class="panel-subtitle">公司所有录入与进场人员的个人劳动合同生成、高保真预览打印及盖章扫描件回传归档管理。</p>
@@ -720,7 +723,7 @@
     </div>
 
     <!-- Contract Search & Filter Bar -->
-    <div style="background: var(--bg); border: 1px solid var(--line-light); padding: 14px 20px; border-radius: var(--radius-md); margin-bottom: 20px;">
+    <div style="background: var(--bg); border: 1px solid var(--line-light); padding: 10px 16px; border-radius: var(--radius-md); margin-bottom: 12px;">
       <form method="get" action="{{ url_for('web.people') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <input type="hidden" name="tab" value="person_contracts">

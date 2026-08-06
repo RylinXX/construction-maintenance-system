@@ -37,6 +37,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         SESSION_COOKIE_SAMESITE="Lax",
         MAX_CONTENT_LENGTH=MAX_CONTENT_LENGTH,
         SEED_DEMO_DATA=SEED_DEMO_DATA,
+        TEMPLATES_AUTO_RELOAD=True,
         APP_VERSION="0.3.0",
     )
     if test_config:
