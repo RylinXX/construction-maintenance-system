@@ -1590,16 +1590,10 @@ def delete_qualification(qualification_id: int) -> None:
 
 def delete_person(person_id: int) -> None:
     db = get_db()
-    related = db.execute(
-        """
-        select
-          (select count(*) from salary_payments where person_id = ?) as payments,
-          (select count(*) from salary_sheets where person_id = ?) as sheets
-        """,
-        (person_id, person_id),
-    ).fetchone()
-    if related["payments"] or related["sheets"]:
-        raise ValueError("人员存在工资流水或结算记录，不能删除历史档案")
+    db.execute("delete from contracts where person_id = ?", (person_id,))
+    db.execute("delete from attendance where person_id = ?", (person_id,))
+    db.execute("delete from salary_payments where person_id = ?", (person_id,))
+    db.execute("delete from salary_sheets where person_id = ?", (person_id,))
     db.execute("delete from people where id = ?", (person_id,))
     db.commit()
 
