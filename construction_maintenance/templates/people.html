@@ -4,7 +4,7 @@
 {% block breadcrumb %}公司人员档案管理 / {% if active_tab == 'attendance' %}人员考勤{% elif active_tab == 'person_contracts' %}人员合同签署情况{% else %}花名册{% endif %}{% endblock %}
 
 {% block content %}
-<section class="module-hero animate-slide-up" style="{% if active_tab == 'person_contracts' %}margin-bottom: 6px;{% endif %}">
+<section class="module-hero animate-slide-up" style="{% if active_tab == 'person_contracts' %}margin-bottom: 0 !important; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none;{% endif %}">
   <div class="module-hero-copy">
     <span class="eyebrow">Human Resources Center</span>
     {% if active_tab == 'attendance' %}
@@ -709,9 +709,9 @@
 </div> <!-- 闭合 mainTabContentAttendance -->
 
 <!-- 3. 人员合同签署情况 Tab 内容 -->
-<div id="mainTabContentPersonContracts" style="display: {% if active_tab == 'person_contracts' %}block{% else %}none{% endif %}; margin-top: -6px;">
-<div class="panel-section" style="gap: 10px;">
-  <div class="panel-card animate-slide-up" style="padding: 12px 18px !important;">
+<div id="mainTabContentPersonContracts" style="display: {% if active_tab == 'person_contracts' %}block{% else %}none{% endif %}; margin-top: 0 !important;">
+<div class="panel-section" style="gap: 0;">
+  <div class="panel-card animate-slide-up" style="border-top-left-radius: 0; border-top-right-radius: 0; border-top: 1px solid var(--border-color); padding: 14px 18px !important;">
     <div class="panel-header" style="margin-bottom: 12px;">
       <div>
         <h2 class="panel-title">{{ icon('contract') }} 人员用工合同与签署回传台账</h2>
