@@ -1,54 +1,48 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% block title %}公司人员档案管理 - {{ system_settings.system_name }}{% endblock %}
-{% block breadcrumb %}公司人员档案管理{% endblock %}
+{% block title %}{% if active_tab == 'attendance' %}人员考勤 - 公司人员档案管理{% elif active_tab == 'person_contracts' %}人员合同签署情况 - 公司人员档案管理{% else %}花名册 - 公司人员档案管理{% endif %} - {{ system_settings.system_name }}{% endblock %}
+{% block breadcrumb %}公司人员档案管理 / {% if active_tab == 'attendance' %}人员考勤{% elif active_tab == 'person_contracts' %}人员合同签署情况{% else %}花名册{% endif %}{% endblock %}
 
 {% block content %}
 <section class="module-hero animate-slide-up">
   <div class="module-hero-copy">
     <span class="eyebrow">Human Resources Center</span>
-    <h1>公司人员档案管理</h1>
-    <p>集中管理公司员工电子档案、特种作业证书、月度考勤矩阵与工资结算台账。</p>
+    {% if active_tab == 'attendance' %}
+    <h1>人员考勤与结算</h1>
+    <p>集中管理公司施工人员月度出勤打卡矩阵、工日统计与工资预支/结算台账。</p>
+    {% elif active_tab == 'person_contracts' %}
+    <h1>人员合同签署情况</h1>
+    <p>劳务用工固定模版一键自动填充生成、高保真 Word 预览与签署回传扫描件归档。</p>
+    {% else %}
+    <h1>基础人员花名册</h1>
+    <p>集中管理公司全体员工电子档案、特种作业证书、身份证与收款银行卡账号。</p>
+    {% endif %}
   </div>
   <div class="module-hero-stats">
+    {% if active_tab == 'attendance' %}
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">考勤总人数</span>
+      <strong class="hero-stat-val">{{ attendance_people|length if attendance_people else people|length }} <small style="font-size: 11px;">人</small></strong>
+      <span class="hero-stat-sub">当前月份: {{ current_month or '当月' }}</span>
+    </div>
+    {% elif active_tab == 'person_contracts' %}
+    <div class="hero-stat-card">
+      <span class="hero-stat-title">合同记录</span>
+      <strong class="hero-stat-val">{{ contract_total_count or 0 }} <small style="font-size: 11px;">份</small></strong>
+      <span class="hero-stat-sub">劳动用工合同</span>
+    </div>
+    {% else %}
     <div class="hero-stat-card">
       <span class="hero-stat-title">花名册总人数</span>
       <strong class="hero-stat-val">{{ people|length }} <small style="font-size: 11px;">人</small></strong>
       <span class="hero-stat-sub">在册电子档案</span>
     </div>
-    <div class="hero-stat-card">
-      <span class="hero-stat-title">考勤与结算</span>
-      <strong class="hero-stat-val">月度矩阵</strong>
-      <span class="hero-stat-sub">工资预支跟踪</span>
-    </div>
+    {% endif %}
   </div>
 </section>
 
-<!-- Main Tabs Navigation -->
-<div class="view-tabs animate-slide-up" style="display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; align-items: center; width: 100%;">
-  <button type="button" class="tab-btn {% if active_tab == 'people' %}active{% endif %}" id="mainTabBtnPeople" onclick="switchMainTab('people')" style="background: none; border: none; border-bottom: 3px solid {% if active_tab == 'people' %}var(--secondary-color){% else %}transparent{% endif %}; color: {% if active_tab == 'people' %}var(--secondary-color){% else %}var(--text-secondary){% endif %}; padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
-    {{ icon('people') }} 花名册档案
-  </button>
-  <button type="button" class="tab-btn {% if active_tab == 'attendance' %}active{% endif %}" id="mainTabBtnAttendance" onclick="switchMainTab('attendance')" style="background: none; border: none; border-bottom: 3px solid {% if active_tab == 'attendance' %}var(--secondary-color){% else %}transparent{% endif %}; color: {% if active_tab == 'attendance' %}var(--secondary-color){% else %}var(--text-secondary){% endif %}; padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
-    {{ icon('checklist') }} 人员考勤与结算
-  </button>
-  <button type="button" class="tab-btn {% if active_tab == 'person_contracts' %}active{% endif %}" id="mainTabBtnPersonContracts" onclick="switchMainTab('person_contracts')" style="background: none; border: none; border-bottom: 3px solid {% if active_tab == 'person_contracts' %}var(--secondary-color){% else %}transparent{% endif %}; color: {% if active_tab == 'person_contracts' %}var(--secondary-color){% else %}var(--text-secondary){% endif %}; padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
-    {{ icon('contract') }} 人员合同签署情况
-  </button>
-
-  <!-- Sub Tabs Navigation positioned on the right of the main tabs -->
-  <div id="subTabsAttendanceContainer" style="margin-left: auto; display: {% if active_tab == 'attendance' %}flex{% else %}none{% endif %}; gap: 4px; align-items: center;">
-    <button type="button" class="tab-btn active" id="tabBtnAttendance" onclick="switchAttendanceTab('attendance')" style="background: none; border: none; border-bottom: 3px solid var(--secondary-color); color: var(--secondary-color); padding: 10px 20px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
-      {{ icon('checklist') }} 月度考勤矩阵
-    </button>
-    <button type="button" class="tab-btn" id="tabBtnSalary" onclick="switchAttendanceTab('salary')" style="background: none; border: none; border-bottom: 3px solid transparent; color: var(--text-secondary); padding: 10px 20px; font-weight: 650; font-size: 15px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;">
-      {{ icon('money') }} 工资结算与预支台账
-    </button>
-  </div>
-</div>
-
 <!-- 1. 花名册档案 Tab 内容 -->
-<div id="mainTabContentPeople" style="display: {% if active_tab == 'people' %}block{% else %}none{% endif %};">
+<div id="mainTabContentPeople" style="display: {% if not active_tab or active_tab in ['people', 'roster'] %}block{% else %}none{% endif %};">
 <div class="panel-section">
   <!-- Main People Card -->
   <div class="panel-card animate-slide-up">

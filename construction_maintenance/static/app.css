@@ -307,13 +307,19 @@ a {
   background: var(--hover-bg);
 }
 
-.nav-subdot {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 6px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.68;
+.nav-arrow {
+  margin-left: auto;
+  font-size: 10px;
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+.nav-group.collapsed .nav-submenu {
+  display: none !important;
+}
+
+.nav-group.collapsed .nav-arrow {
+  transform: rotate(-90deg);
 }
 
 .nav-icon {
