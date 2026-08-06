@@ -42,14 +42,46 @@
             <span class="nav-icon" aria-hidden="true">{{ icon('folder') }}</span>
             <span class="nav-label">项目台账</span>
           </a>
-          <a href="{{ url_for('web.vouchers') }}" class="nav-item {% if request.endpoint in ['web.vouchers', 'web.edit_voucher', 'web.void_voucher', 'web.ledger_pending', 'web.complete_ledger_pending', 'web.ignore_ledger_pending', 'web.expense_categories', 'web.edit_expense_category', 'web.migrate_expense_category'] %}active{% endif %}">
-            <span class="nav-icon" aria-hidden="true">{{ icon('receipt') }}</span>
-            <span class="nav-label">账套管理中心</span>
-          </a>
-          <a href="{{ url_for('web.people') }}" class="nav-item {% if request.endpoint == 'web.people' %}active{% endif %}">
-            <span class="nav-icon" aria-hidden="true">{{ icon('people') }}</span>
-            <span class="nav-label">人员花名册</span>
-          </a>
+          <!-- 3. 账套管理中心 (含 3 个子目录: 待补录费用 / 费用定义 / 全盘明细) -->
+          {% set is_financial_active = request.endpoint in ['web.vouchers', 'web.edit_voucher', 'web.void_voucher', 'web.ledger_pending', 'web.complete_ledger_pending', 'web.ignore_ledger_pending', 'web.expense_categories', 'web.edit_expense_category', 'web.migrate_expense_category'] %}
+          <div class="nav-group {% if is_financial_active %}active{% endif %}">
+            <a href="{{ url_for('web.vouchers') }}" class="nav-item {% if is_financial_active %}active{% endif %}">
+              <span class="nav-icon" aria-hidden="true">{{ icon('receipt') }}</span>
+              <span class="nav-label">账套管理中心</span>
+            </a>
+            <div class="nav-submenu">
+              <a href="{{ url_for('web.ledger_pending') }}" class="nav-subitem {% if request.endpoint in ['web.ledger_pending', 'web.complete_ledger_pending', 'web.ignore_ledger_pending'] %}active{% endif %}">
+                <span class="nav-subdot"></span> 待补录费用
+              </a>
+              <a href="{{ url_for('web.expense_categories') }}" class="nav-subitem {% if request.endpoint in ['web.expense_categories', 'web.edit_expense_category', 'web.migrate_expense_category'] %}active{% endif %}">
+                <span class="nav-subdot"></span> 费用定义
+              </a>
+              <a href="{{ url_for('web.vouchers') }}" class="nav-subitem {% if request.endpoint in ['web.vouchers', 'web.edit_voucher', 'web.void_voucher'] %}active{% endif %}">
+                <span class="nav-subdot"></span> 全盘明细
+              </a>
+            </div>
+          </div>
+
+          <!-- 4. 公司人员档案管理 (含 3 个子目录: 花名册 / 人员考勤 / 人员合同签署情况) -->
+          {% set is_people_active = (request.endpoint == 'web.people') %}
+          <div class="nav-group {% if is_people_active %}active{% endif %}">
+            <a href="{{ url_for('web.people') }}" class="nav-item {% if is_people_active %}active{% endif %}">
+              <span class="nav-icon" aria-hidden="true">{{ icon('people') }}</span>
+              <span class="nav-label">公司人员档案管理</span>
+            </a>
+            <div class="nav-submenu">
+              <a href="{{ url_for('web.people', tab='roster') }}" class="nav-subitem {% if is_people_active and (not active_tab or active_tab == 'roster') %}active{% endif %}">
+                <span class="nav-subdot"></span> 花名册
+              </a>
+              <a href="{{ url_for('web.people', tab='attendance') }}" class="nav-subitem {% if is_people_active and active_tab == 'attendance' %}active{% endif %}">
+                <span class="nav-subdot"></span> 人员考勤
+              </a>
+              <a href="{{ url_for('web.people', tab='person_contracts') }}" class="nav-subitem {% if is_people_active and active_tab == 'person_contracts' %}active{% endif %}">
+                <span class="nav-subdot"></span> 人员合同签署情况
+              </a>
+            </div>
+          </div>
+
           <a href="{{ url_for('web.qualifications') }}" class="nav-item {% if request.endpoint == 'web.qualifications' %}active{% endif %}">
             <span class="nav-icon" aria-hidden="true">{{ icon('qualification') }}</span>
             <span class="nav-label">企业资质</span>
@@ -68,12 +100,6 @@
             <span class="nav-label">系统设置</span>
           </a>
           {% endif %}
-          <!-- Hidden submenu for search/subitem compatibility -->
-          <div class="nav-submenu" style="display: none;">
-            <a href="{{ url_for('web.vouchers') }}" class="nav-subitem">财务明细</a>
-            <a href="{{ url_for('web.ledger_pending') }}" class="nav-subitem">待补录</a>
-            <a href="{{ url_for('web.expense_categories') }}" class="nav-subitem">财务分类</a>
-          </div>
         </nav>
 
         <div class="sidebar-status">
