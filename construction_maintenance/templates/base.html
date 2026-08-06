@@ -42,17 +42,14 @@
             <span class="nav-icon" aria-hidden="true">{{ icon('folder') }}</span>
             <span class="nav-label">项目台账</span>
           </a>
-          <!-- 3. 账套管理中心 (含 3 个可折叠子目录) -->
+          <!-- 3. 账套管理中心 (可点击标题自由折叠/展开) -->
           {% set is_financial_active = request.endpoint in ['web.vouchers', 'web.edit_voucher', 'web.void_voucher', 'web.ledger_pending', 'web.complete_ledger_pending', 'web.ignore_ledger_pending', 'web.expense_categories', 'web.edit_expense_category', 'web.migrate_expense_category'] %}
-          <div class="nav-group {% if is_financial_active %}active{% else %}collapsed{% endif %}" id="navGroupFinancial">
-            <div class="nav-item {% if is_financial_active %}active{% endif %}" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="toggleNavGroup(event, 'navGroupFinancial', '{{ url_for('web.vouchers') }}')">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <span class="nav-icon" aria-hidden="true">{{ icon('receipt') }}</span>
-                <span class="nav-label">账套管理中心</span>
-              </div>
-              <span class="nav-arrow">▼</span>
+          <div class="nav-group {% if is_financial_active %}active{% else %}collapsed{% endif %}">
+            <div class="nav-item {% if is_financial_active %}active{% endif %}" style="cursor: pointer; user-select: none;" onclick="toggleNavGroup(this)">
+              <span class="nav-icon" aria-hidden="true">{{ icon('receipt') }}</span>
+              <span class="nav-label">账套管理中心</span>
             </div>
-            <div class="nav-submenu">
+            <div class="nav-submenu" style="display: {% if is_financial_active %}flex{% else %}none{% endif %};">
               <a href="{{ url_for('web.ledger_pending') }}" class="nav-subitem {% if request.endpoint in ['web.ledger_pending', 'web.complete_ledger_pending', 'web.ignore_ledger_pending'] %}active{% endif %}">
                 <span class="nav-subdot"></span> 待补录费用
               </a>
@@ -65,17 +62,14 @@
             </div>
           </div>
 
-          <!-- 4. 公司人员档案管理 (含 3 个可折叠子目录) -->
+          <!-- 4. 公司人员档案管理 (可点击标题自由折叠/展开) -->
           {% set is_people_active = (request.endpoint == 'web.people') %}
-          <div class="nav-group {% if is_people_active %}active{% else %}collapsed{% endif %}" id="navGroupPeople">
-            <div class="nav-item {% if is_people_active %}active{% endif %}" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="toggleNavGroup(event, 'navGroupPeople', '{{ url_for('web.people') }}')">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <span class="nav-icon" aria-hidden="true">{{ icon('people') }}</span>
-                <span class="nav-label">公司人员档案管理</span>
-              </div>
-              <span class="nav-arrow">▼</span>
+          <div class="nav-group {% if is_people_active %}active{% else %}collapsed{% endif %}">
+            <div class="nav-item {% if is_people_active %}active{% endif %}" style="cursor: pointer; user-select: none;" onclick="toggleNavGroup(this)">
+              <span class="nav-icon" aria-hidden="true">{{ icon('people') }}</span>
+              <span class="nav-label">公司人员档案管理</span>
             </div>
-            <div class="nav-submenu">
+            <div class="nav-submenu" style="display: {% if is_people_active %}flex{% else %}none{% endif %};">
               <a href="{{ url_for('web.people', tab='roster') }}" class="nav-subitem {% if is_people_active and (not active_tab or active_tab in ['roster', 'people']) %}active{% endif %}">
                 <span class="nav-subdot"></span> 花名册
               </a>
@@ -328,14 +322,19 @@
       }
       window.paginators = {};
 
-      window.toggleNavGroup = function(event, groupId, defaultUrl) {
-        if (event) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        const group = document.getElementById(groupId);
-        if (group) {
-          group.classList.toggle('collapsed');
+      window.toggleNavGroup = function(navItemEl) {
+        const group = navItemEl.closest('.nav-group');
+        if (!group) return;
+        const submenu = group.querySelector('.nav-submenu');
+        if (!submenu) return;
+        
+        const isHidden = window.getComputedStyle(submenu).display === 'none';
+        if (isHidden) {
+          submenu.style.display = 'flex';
+          group.classList.remove('collapsed');
+        } else {
+          submenu.style.display = 'none';
+          group.classList.add('collapsed');
         }
       };
 
